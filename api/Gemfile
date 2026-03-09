@@ -1,0 +1,62 @@
+source "https://rubygems.org"
+
+gem "rails", "~> 8.1.2"
+gem "pg", "~> 1.1"
+gem "puma", ">= 5.0"
+
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+# Reduces boot times through caching; required in config/boot.rb
+gem "bootsnap", require: false
+
+# Deploy this application anywhere as a Docker container [https://kamal-deploy.org]
+gem "kamal", require: false
+
+# Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
+gem "thruster", require: false
+
+# Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
+gem "image_processing", "~> 1.2"
+
+# Cross-Origin Resource Sharing (CORS) — required for the React frontend
+gem "rack-cors"
+
+# Rate limiting — protects auth endpoints
+gem "rack-attack"
+
+# Authentication
+gem "devise", "~> 5.0"
+gem "devise-jwt"
+
+# Authorization — policy objects per model
+gem "pundit"
+
+# API serialization
+gem "jsonapi-serializer"
+
+# Background jobs (replaces Rails 8 solid_queue default)
+gem "sidekiq"
+gem "sidekiq-cron"
+
+# Database-backed cache (Rails 8 default, no Redis required for cache)
+gem "solid_cache"
+
+group :development do
+  gem "bullet"                         # N+1 query detection
+  gem "rubocop-rails-omakase", require: false
+  gem "brakeman", require: false
+  gem "bundler-audit", require: false
+end
+
+group :development, :test do
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+  gem "rspec-rails"
+  gem "factory_bot_rails"
+  gem "faker"
+end
+
+group :test do
+  gem "shoulda-matchers"
+  gem "pundit-matchers"
+end
