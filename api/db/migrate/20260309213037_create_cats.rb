@@ -16,7 +16,7 @@ class CreateCats < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :cats, :household_id
+    # :household_id index already created by t.references above
     add_index :cats, :active
   end
 end

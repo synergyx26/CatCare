@@ -12,12 +12,10 @@ class CreateCareEvents < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    # Core query: "all care events for this household today"
-    add_index :care_events, :household_id
-    add_index :care_events, :cat_id
+    # :household_id and :cat_id indexes already created by t.references above
+    # These additional indexes support the core dashboard query and JSONB filtering
     add_index :care_events, :occurred_at
     add_index :care_events, :event_type
-    # JSONB index for querying inside details
     add_index :care_events, :details, using: :gin
   end
 end

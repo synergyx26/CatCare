@@ -43,6 +43,7 @@ gem "sidekiq-cron"
 gem "solid_cache"
 
 group :development do
+  gem "dotenv-rails"                   # loads api/.env automatically in development
   gem "bullet"                         # N+1 query detection
   gem "rubocop-rails-omakase", require: false
   gem "brakeman", require: false
