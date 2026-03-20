@@ -3,11 +3,12 @@
 set -o pipefail
 
 echo "==> Running database migrations..."
-if ./bin/rails db:migrate 2>&1; then
+if timeout 30 ./bin/rails db:migrate 2>&1; then
   echo "==> Migrations complete."
 else
-  echo "==> WARNING: Migrations failed. Server will start but tables may be missing."
-  echo "==> Check DATABASE_URL and database connectivity."
+  echo "==> WARNING: Migrations failed or timed out after 30s."
+  echo "==> Check DATABASE_URL and that Supabase project is not paused."
+  echo "==> Server will still start so you can see logs."
 fi
 
 exec "${@}"

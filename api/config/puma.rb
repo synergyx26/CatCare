@@ -28,6 +28,10 @@
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
+# Run in single mode on Render free tier (512MB RAM) — cluster mode forks a
+# master + workers and runs out of memory. WEB_CONCURRENCY=0 means no forking.
+workers ENV.fetch("WEB_CONCURRENCY", 0).to_i
+
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT", 3000)
 
