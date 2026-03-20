@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+echo "==> Running database migrations..."
+bundle exec rails db:migrate 2>&1
+MIGRATE_EXIT=$?
+
+if [ $MIGRATE_EXIT -eq 0 ]; then
+  echo "==> Migrations complete."
+else
+  echo "==> WARNING: db:migrate exited with code $MIGRATE_EXIT."
+  echo "==> Check DATABASE_URL and Supabase connection."
+fi
+
+echo "==> Starting Puma..."
+exec bundle exec puma -C config/puma.rb
