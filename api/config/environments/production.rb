@@ -18,8 +18,9 @@ Rails.application.configure do
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
-  # Store uploaded files on Cloudinary in production.
-  config.active_storage.service = :cloudinary
+  # Store uploaded files on Cloudinary in production (falls back to local disk
+  # if CLOUDINARY_URL is not set — files will not persist across deploys).
+  config.active_storage.service = ENV["CLOUDINARY_URL"].present? ? :cloudinary : :local
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true
@@ -49,23 +50,27 @@ Rails.application.configure do
   # Use Sidekiq as the Active Job adapter.
   config.active_job.queue_adapter = :sidekiq
 
-  # Raise delivery errors so misconfigured email is caught immediately.
-  config.action_mailer.raise_delivery_errors = true
-
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST"), protocol: "https" }
 
-  # Gmail SMTP delivery (uses an App Password — not your regular Gmail password).
-  config.action_mailer.delivery_method = :smtp
-  config.action_mailer.smtp_settings = {
-    address: "smtp.gmail.com",
-    port: 587,
-    domain: "gmail.com",
-    user_name: ENV.fetch("GMAIL_USERNAME"),
-    password: ENV.fetch("GMAIL_APP_PASSWORD"),
-    authentication: :plain,
-    enable_starttls_auto: true
-  }
+  # Gmail SMTP delivery — active only when credentials are present.
+  # Without them the app boots normally but emails are logged instead of sent.
+  if ENV["GMAIL_USERNAME"].present? && ENV["GMAIL_APP_PASSWORD"].present?
+    config.action_mailer.raise_delivery_errors = true
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.smtp_settings = {
+      address: "smtp.gmail.com",
+      port: 587,
+      domain: "gmail.com",
+      user_name: ENV["GMAIL_USERNAME"],
+      password: ENV["GMAIL_APP_PASSWORD"],
+      authentication: :plain,
+      enable_starttls_auto: true
+    }
+  else
+    config.action_mailer.delivery_method = :logger
+    Rails.logger.warn "[CatCare] GMAIL_USERNAME or GMAIL_APP_PASSWORD not set — emails will be logged, not sent"
+  end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
