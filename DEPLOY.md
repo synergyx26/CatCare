@@ -2,165 +2,161 @@
 
 Production deployment for 2-person household beta testing. All services are free tier.
 
+**Last verified working:** March 2026
+
 ---
 
-## Services at a Glance
+## Production Stack
 
 | Purpose | Service | URL |
 |---|---|---|
 | API hosting | Render.com | render.com |
 | Database (PostgreSQL) | Supabase | supabase.com |
-| Redis (background jobs) | Upstash | upstash.com |
-| File storage (cat photos) | Cloudinary | cloudinary.com |
+| Redis (background jobs + cache) | Upstash | upstash.com |
 | Email delivery | Gmail SMTP (App Password) | myaccount.google.com |
 | Frontend hosting | Vercel | vercel.com |
+
+> **File storage note:** The `cloudinary` gem v2.x is incompatible with Rails 8.1 + Ruby 4.0 and has been removed. Cat photos use local Render disk storage for now. Photos will not persist across Render deploys — this is acceptable for beta testing. See NEXT_STEPS.md for the fix.
 
 ---
 
 ## Step 1 — Create External Service Accounts
 
-### A. Cloudinary (file storage)
-1. Sign up free at cloudinary.com — no credit card required
-2. Dashboard → copy the **`CLOUDINARY_URL`**
-   - Format: `cloudinary://api_key:api_secret@cloud_name`
-   - This single env var is all that's needed — no other config
-
-### B. Gmail App Password (email delivery)
-1. myaccount.google.com → Security
-2. Enable **2-Step Verification** (required before App Passwords work)
-3. Security → **App passwords** → Select app: "Mail" → Generate
-4. Copy the 16-character password — it is shown only once
-
-> Gmail sends up to 500 emails/day. More than enough for 2-person testing.
-
-### C. Supabase (PostgreSQL database)
-1. Sign up free at supabase.com — no credit card, no 90-day expiry
+### A. Supabase (PostgreSQL database)
+1. Sign up free at supabase.com — no credit card, no expiry
 2. New project → choose a region closest to you
-3. Settings → Database → **Connection string** → select **Transaction** mode
-   - Format: `postgresql://postgres.<ref>:<password>@<region>.pooler.supabase.com:6543/postgres`
-> Do NOT use Render's free PostgreSQL — it is deleted after 90 days.
+3. Settings → Database → **Connection Pooling** → select **Session** mode
+   - Format: `postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`
+   - Use the **Copy** button — do not type this manually
 
-### D. Upstash (Redis for Sidekiq)
+> **Critical:** Use **Session** mode (port 5432 through the pooler), NOT Transaction mode and NOT the direct connection.
+> - Direct connection resolves to an IPv6 address that Render's free tier cannot reach
+> - Transaction mode (pgBouncer, port 6543) breaks Rails advisory locks used during migrations
+> - Session mode is IPv4, supports persistent connections, and works correctly with Rails
+
+### B. Upstash (Redis for Sidekiq + cache)
 1. Sign up free at upstash.com — no credit card, no expiry
 2. Create database → Redis → same region as Supabase
 3. Database details page → copy the **Redis URL**
-   - Format: `rediss://...`
+   - Format: `rediss://default:PASSWORD@hostname:port`
+   - Use the **Copy** button — the URL contains a password that may not display fully on screen
+
+### C. Gmail App Password (email delivery)
+1. myaccount.google.com → Security
+2. Enable **2-Step Verification** (required before App Passwords work)
+3. Security → **App passwords** → Select app: "Mail" → Generate
+4. Copy the 16-character password — shown only once, no spaces
+
+> Gmail sends up to 500 emails/day — more than enough for beta testing.
 
 ---
 
-## Step 2 — Code is Already Configured
-
-The following production config changes are committed to the repo:
-
-| File | What was configured |
-|---|---|
-| `api/config/environments/production.rb` | SSL, Cloudinary storage, Gmail SMTP, Sidekiq, Redis cache, host authorization |
-| `api/config/storage.yml` | Cloudinary service block added |
-| `api/Gemfile` | `gem "cloudinary"` added |
-| `api/config/initializers/devise.rb` | Mailer sender reads `MAILER_SENDER` env var |
-| `api/app/mailers/application_mailer.rb` | `from` reads `MAILER_SENDER` env var |
-| `api/Procfile` | Defines `web` (Puma) and `worker` (Sidekiq) processes |
-
----
-
-## Step 3 — Deploy Rails API to Render.com
+## Step 2 — Deploy Rails API to Render.com
 
 1. render.com → New → **Web Service**
-   - Connect your GitHub repo
+   - Connect GitHub repo: `synergyx26/CatCare`
    - Root directory: `api`
-   - Build command: `bundle install && bundle exec rails db:migrate`
-   - Start command: `bundle exec puma -C config/puma.rb`
+   - Build command: `bundle install`
+   - Start command: *(leave blank — the Procfile handles it)*
    - Instance type: **Free**
 
-2. render.com → New → **Background Worker** (second service)
-   - Same GitHub repo, same root directory `api`
-   - Start command: `bundle exec sidekiq -q default -q mailers`
-   - Apply the same environment variables as the web service
+2. Set these **environment variables** on the web service:
 
-3. Set these **environment variables** on **both** services:
-
-   | Variable | Value / Source |
+   | Variable | Value |
    |---|---|
    | `RAILS_ENV` | `production` |
-   | `SECRET_KEY_BASE` | Run `openssl rand -hex 64` in your terminal |
-   | `RAILS_MASTER_KEY` | Contents of `api/config/master.key` (see note below) |
-   | `DATABASE_URL` | Supabase connection string (Step 1C) |
-   | `REDIS_URL` | Upstash Redis URL (Step 1D) |
-   | `DEVISE_JWT_SECRET_KEY` | Run `openssl rand -hex 64` in your terminal (different value from SECRET_KEY_BASE) |
-   | `APP_HOST` | e.g. `catcare-api.onrender.com` (your Render service name) |
-   | `CORS_ORIGINS` | e.g. `https://catcare.vercel.app` (set after Step 4) |
-   | `CLOUDINARY_URL` | From Cloudinary dashboard (Step 1A) |
-   | `GMAIL_USERNAME` | Your Gmail address (e.g. `you@gmail.com`) |
-   | `GMAIL_APP_PASSWORD` | 16-character app password (Step 1B) |
-   | `MAILER_SENDER` | Same as `GMAIL_USERNAME` |
+   | `SECRET_KEY_BASE` | `openssl rand -hex 64` |
+   | `RAILS_MASTER_KEY` | Contents of `api/config/master.key` |
+   | `DATABASE_URL` | Supabase Session pooler URL (Step 1A) |
+   | `REDIS_URL` | Upstash Redis URL (Step 1B) |
+   | `DEVISE_JWT_SECRET_KEY` | `openssl rand -hex 64` (different value from SECRET_KEY_BASE) |
+   | `APP_HOST` | e.g. `catcare-v52y.onrender.com` |
+   | `CORS_ORIGINS` | Your Vercel URL (set after Step 3) |
+   | `GMAIL_USERNAME` | Your full Gmail address (e.g. `you@gmail.com`) |
+   | `GMAIL_APP_PASSWORD` | 16-character app password, no spaces (Step 1C) |
 
-   **How to generate random secrets** (run in any terminal):
+   **Generating secrets:**
    ```bash
    openssl rand -hex 64
    ```
-   Run it twice — use one value for `SECRET_KEY_BASE` and a different value for `DEVISE_JWT_SECRET_KEY`.
+   Run twice — use different values for `SECRET_KEY_BASE` and `DEVISE_JWT_SECRET_KEY`.
 
-   **Finding `master.key`**: Open `api/config/master.key` in a text editor. Copy the single line of text and paste it as the value of `RAILS_MASTER_KEY`. Never commit this file to git.
+   **Finding master.key:** Open `api/config/master.key` — copy the single line of text. Never commit this file to git.
+
+3. Deploy → wait for `==> Migrations complete.` in logs, then `Your service is live`
 
 ---
 
-## Step 4 — Deploy Frontend to Vercel
+## Step 3 — Deploy Frontend to Vercel
 
 1. vercel.com → New Project → Import from GitHub
    - Root directory: `web`
-   - Build command: `npm run build` (auto-detected)
+   - Framework: Vite (auto-detected)
+   - Build command: `npm run build`
    - Output directory: `dist`
 
-2. Add environment variable:
+2. Add environment variable **before** deploying:
    ```
-   VITE_API_URL=https://<your-render-service>.onrender.com
+   VITE_API_URL = https://<your-render-service>.onrender.com
    ```
+   > This is a build-time variable — Vercel must rebuild after any change to it.
 
-3. Deploy → copy the Vercel production URL
+3. Deploy → copy the production Vercel URL
 
-4. Go back to Render → update `CORS_ORIGINS` on both services to the exact Vercel URL → trigger a redeploy
+4. Go back to Render → update `CORS_ORIGINS` to the exact Vercel URL → Save (triggers redeploy)
 
 ---
 
-## Step 5 — Smoke Test
+## Step 4 — Verify Deployment
 
-Walk through these flows to confirm the deployment is working:
+```
+GET https://<render-url>/health
+→ {"status":"ok","db":"connected"}
+```
+
+Then walk through the smoke test:
 
 - [ ] Open the Vercel URL → register your account
-- [ ] Create a household → add your cat(s)
-- [ ] Invite your partner via the invite form → partner clicks the email link → registers
-- [ ] Partner logs a care event → verify it appears on your dashboard
-- [ ] Upload a cat photo → refresh the page → verify it still shows (confirms Cloudinary is working)
-- [ ] Open on a phone → verify the layout is usable on mobile
+- [ ] Complete household setup → add your cat(s)
+- [ ] Invite household member → they accept and register
+- [ ] Log a care event → verify it appears on dashboard
 - [ ] Toggle dark mode → verify it persists on refresh
+- [ ] Open on mobile → verify layout is usable
+
+---
+
+## How Migrations Work
+
+Migrations run automatically on every deploy via `api/bin/render-start`:
+
+```bash
+bundle exec rails db:migrate   # runs all pending migrations
+exec bundle exec puma -C config/puma.rb  # starts server regardless
+```
+
+Render does not use the Docker entrypoint — it reads the Procfile (`web: bin/render-start`).
 
 ---
 
 ## Important Notes
 
-**Render free tier spin-down**: The free web service sleeps after 15 minutes of inactivity. The first request after sleeping takes ~30 seconds. This is fine for testing. Upgrade to Render Starter ($7/month) if the wake-up delay is annoying.
+**Render free tier spin-down:** The service sleeps after 15 minutes of inactivity. First request after sleeping takes ~30 seconds. Acceptable for beta. Upgrade to Render Starter ($7/mo) when this becomes annoying.
 
-**`master.key` is not in git**: You must paste its contents as `RAILS_MASTER_KEY` in Render manually every time you create a new service. Keep a copy somewhere safe (password manager).
+**Supabase free tier pausing:** Supabase pauses projects after 1 week of inactivity. Visit the Supabase dashboard to wake a paused project before testing.
 
-**CORS order of operations**: You will not know the Vercel URL until after Step 4. During Step 3, set `CORS_ORIGINS` to a placeholder. After Step 4, update it to the real URL and redeploy both Render services.
+**`master.key` is not in git:** Paste its contents as `RAILS_MASTER_KEY` in Render manually. Keep a copy in your password manager.
 
-**Supabase connection mode**: Use **Transaction** mode (port 6543) for the connection string, not Session mode. Render's Puma server uses a connection pool that works correctly with transaction mode.
-
-**Gmail limit**: 500 emails/day on a personal Gmail account. More than enough for 2 users. If you want emails to come from a custom domain address in the future, switch to SendGrid (free up to 100 emails/day).
-
-**Cloudinary free tier**: 25 GB storage + 25 GB bandwidth/month. At typical cat photo sizes (~500KB), this supports roughly 50,000 photos before hitting the limit.
+**Cat photos don't persist across deploys:** Render's free disk is ephemeral. Each deploy wipes uploaded files. For beta with 2 users this is tolerable. See NEXT_STEPS.md for the permanent fix.
 
 ---
 
 ## Future: Upgrading Beyond Free Tier
 
-When ready to go beyond 2-person testing:
-
 | Component | Upgrade path |
 |---|---|
 | API | Render Starter ($7/mo) — always-on, no spin-down |
-| Database | Supabase Pro ($25/mo) or keep free (500MB is generous) |
+| Database | Supabase Pro ($25/mo) or keep free (500MB limit) |
 | Redis | Upstash Pay-as-you-go (fractions of a cent per request) |
 | Email | SendGrid (free 100/day; Essentials $19.95/mo for 50k/mo) |
-| Storage | Cloudinary paid ($89/mo at next tier; free covers ~50k photos) |
+| File storage | Re-add Cloudinary once gem supports Rails 8.1 (see NEXT_STEPS.md) |
 | Frontend | Vercel free tier scales well for personal use |
