@@ -70,7 +70,7 @@ export function MembersSection({
   })
 
   const updateRoleMutation = useMutation({
-    mutationFn: ({ membershipId, role }: { membershipId: number; role: string }) =>
+    mutationFn: ({ membershipId, role }: { membershipId: number; role: MemberRole }) =>
       api.updateMemberRole(household.id, membershipId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['households'] })
