@@ -1,8 +1,10 @@
 FactoryBot.define do
   factory :cat do
-    household { nil }
-    name { "MyString" }
-    species { 1 }
-    sex { 1 }
+    household { association(:household) }
+    creator   { association(:user) }
+    name      { Faker::Creature::Cat.name }
+    species   { :cat }
+    sex       { :unknown }
+    active    { true }
   end
 end

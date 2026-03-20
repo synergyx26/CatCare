@@ -1,8 +1,9 @@
 FactoryBot.define do
   factory :household_invite do
-    household { nil }
-    email { "MyString" }
-    token { "MyString" }
-    status { 1 }
+    household  { association(:household) }
+    invited_by { association(:user) }
+    email      { Faker::Internet.email }
+    status     { :pending }
+    role       { :member }
   end
 end

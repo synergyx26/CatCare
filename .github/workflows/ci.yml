@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ── Rails: test + security audit ────────────────────────────────────────────
+  api:
+    name: API (RSpec + Brakeman + Bundler Audit)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: catcare_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/catcare_test
+      RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+      DEVISE_JWT_SECRET_KEY: ci-test-secret-key-not-used-in-production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: api
+
+      - name: Load database schema
+        working-directory: api
+        run: bundle exec rails db:schema:load
+
+      - name: Run RSpec
+        working-directory: api
+        run: bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec.xml
+        continue-on-error: false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rspec-results
+          path: api/tmp/rspec.xml
+
+      - name: Brakeman static analysis
+        working-directory: api
+        run: bundle exec brakeman --no-pager -q --exit-on-warn
+
+      - name: Bundler Audit (CVE check)
+        working-directory: api
+        run: |
+          bundle exec bundler-audit update
+          bundle exec bundler-audit check
+
+  # ── React: type-check + build ────────────────────────────────────────────────
+  web:
+    name: Web (TypeScript + Build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Type check
+        working-directory: web
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: web
+        run: npm run build
