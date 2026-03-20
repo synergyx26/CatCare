@@ -1,6 +1,13 @@
-#!/bin/bash -e
+#!/bin/bash
 
-# Always run migrations before starting any process
-./bin/rails db:migrate
+set -o pipefail
+
+echo "==> Running database migrations..."
+if ./bin/rails db:migrate 2>&1; then
+  echo "==> Migrations complete."
+else
+  echo "==> WARNING: Migrations failed. Server will start but tables may be missing."
+  echo "==> Check DATABASE_URL and database connectivity."
+fi
 
 exec "${@}"
