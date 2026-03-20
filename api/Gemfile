@@ -46,6 +46,9 @@ gem "jsonapi-serializer"
 gem "sidekiq"
 gem "sidekiq-cron"
 
+# Redis client — required by RedisCacheStore in production.rb
+gem "redis", ">= 4.0.1"
+
 # Database-backed cache (Rails 8 default, no Redis required for cache)
 gem "solid_cache"
 
