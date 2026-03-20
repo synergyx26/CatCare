@@ -152,7 +152,7 @@ export function MembersSection({
                           if (m.membership_id) {
                             updateRoleMutation.mutate({
                               membershipId: m.membership_id,
-                              role: e.target.value,
+                              role: e.target.value as MemberRole,
                             })
                           }
                         }}
