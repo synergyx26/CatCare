@@ -23,8 +23,9 @@ gem "thruster", require: false
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 1.2"
 
-# Cloudinary — Active Storage service for file uploads in production
-gem "cloudinary"
+# NOTE: cloudinary gem v2.x is incompatible with Rails 8.1 + Ruby 4.0 — its Railtie
+# fails to register ActiveStorage::Service::CloudinaryService during boot. Removed
+# until the gem ships a Rails 8 fix. Production uses local disk storage for now.
 
 # Cross-Origin Resource Sharing (CORS) — required for the React frontend
 gem "rack-cors"

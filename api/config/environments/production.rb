@@ -18,9 +18,9 @@ Rails.application.configure do
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
-  # Store uploaded files on Cloudinary in production (falls back to local disk
-  # if CLOUDINARY_URL is not set — files will not persist across deploys).
-  config.active_storage.service = ENV["CLOUDINARY_URL"].present? ? :cloudinary : :local
+  # Use local disk storage — cloudinary gem v2.x is incompatible with Rails 8.1.
+  # Files will not persist across Render deploys but this is fine for beta testing.
+  config.active_storage.service = :local
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true
