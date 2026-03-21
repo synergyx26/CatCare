@@ -77,4 +77,5 @@ end
 group :test do
   gem "shoulda-matchers"
   gem "pundit-matchers"
+  gem "rspec_junit_formatter"
 end
