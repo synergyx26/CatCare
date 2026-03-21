@@ -38,6 +38,14 @@ export function CatHistoryPage() {
   const navigate = useNavigate()
   const [range, setRange] = useState<Range>('30d')
 
+  // Mobile detection — skip drag-and-drop grid entirely on small screens
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+
   // Layout state — initialized from localStorage, falls back to defaults
   const [layouts, setLayouts] = useState<ResponsiveLayouts>(
     () => (catId ? loadLayouts(catId) : null) ?? DEFAULT_LAYOUTS
@@ -153,14 +161,16 @@ export function CatHistoryPage() {
 
           {/* Controls: range selector + reset layout */}
           <div className="flex items-center gap-2 sm:shrink-0 flex-wrap">
-            <button
-              onClick={handleResetLayout}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/50 transition-colors"
-              title="Reset chart layout to default"
-            >
-              <LayoutGrid className="size-3.5" />
-              Reset layout
-            </button>
+            {!isMobile && (
+              <button
+                onClick={handleResetLayout}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/50 transition-colors"
+                title="Reset chart layout to default"
+              >
+                <LayoutGrid className="size-3.5" />
+                Reset layout
+              </button>
+            )}
             <div className="flex rounded-xl overflow-hidden ring-1 ring-border/60 text-sm">
               {(['7d', '30d', '90d'] as Range[]).map((r) => (
                 <button
@@ -240,74 +250,136 @@ export function CatHistoryPage() {
           />
         )}
 
-        {/* ── Charts (drag-and-drop + resizable grid) ──────────────────────── */}
+        {/* ── Charts ───────────────────────────────────────────────────────── */}
         {stats && stats.total_events > 0 && (
-          <div ref={containerRef} className="w-full min-w-0 relative">
-          {statsQuery.isFetching && (
-            <div className="absolute inset-0 z-10 bg-background/50 rounded-2xl pointer-events-none transition-opacity" />
-          )}
-          <ResponsiveGridLayout
-            width={gridWidth || 800}
-            className="layout"
-            layouts={layouts}
-            breakpoints={{ lg: 768, sm: 0 }}
-            cols={{ lg: 12, sm: 12 }}
-            rowHeight={60}
-            dragConfig={{ handle: '.drag-handle' }}
-            resizeConfig={{ handles: ['se'] }}
-            onLayoutChange={handleLayoutChange}
-            margin={[16, 16]}
-            containerPadding={[0, 0]}
-          >
-            {stats.weight_series.length > 0 && (
-              <ChartCard
-                key="weight"
-                title="Weight over time"
-                subtitle={`${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${RANGE_LABELS[range].toLowerCase()}`}
-                accent="linear-gradient(to right, #34d399, #4ade80)"
-              >
-                <WeightTrendChart data={stats.weight_series} />
-              </ChartCard>
+          <div className="w-full min-w-0 relative">
+            {statsQuery.isFetching && (
+              <div className="absolute inset-0 z-10 bg-background/50 rounded-2xl pointer-events-none transition-opacity" />
             )}
 
-            <ChartCard
-              key="feeding"
-              title="Feeding frequency"
-              subtitle="Feedings per day"
-              accent="linear-gradient(to right, #fbbf24, #fb923c)"
-            >
-              <FeedingFrequencyChart data={stats.by_day} />
-            </ChartCard>
-
-            <ChartCard
-              key="care_breakdown"
-              title="Care breakdown"
-              subtitle={`By type \u00B7 ${RANGE_LABELS[range].toLowerCase()}`}
-              accent="linear-gradient(to right, #38bdf8, #60a5fa)"
-            >
-              <CareTypeBreakdownChart byType={stats.by_type} />
-            </ChartCard>
-
-            {stats.by_member.length > 0 && (
-              <ChartCard
-                key="member"
-                title="Household contributions"
-                subtitle="Events logged per member"
-                accent="linear-gradient(to right, #c084fc, #a78bfa)"
-              >
-                <MemberContributionChart data={stats.by_member} />
-              </ChartCard>
+            {/* Mobile: plain vertical stack — no drag/drop, no pixel-width grid */}
+            {isMobile && (
+              <div className="flex flex-col gap-4">
+                {stats.weight_series.length > 0 && (
+                  <div className="h-[240px]">
+                    <ChartCard
+                      className="h-full"
+                      title="Weight over time"
+                      subtitle={`${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${RANGE_LABELS[range].toLowerCase()}`}
+                      accent="linear-gradient(to right, #34d399, #4ade80)"
+                    >
+                      <WeightTrendChart data={stats.weight_series} />
+                    </ChartCard>
+                  </div>
+                )}
+                <div className="h-[220px]">
+                  <ChartCard
+                    className="h-full"
+                    title="Feeding frequency"
+                    subtitle="Feedings per day"
+                    accent="linear-gradient(to right, #fbbf24, #fb923c)"
+                  >
+                    <FeedingFrequencyChart data={stats.by_day} />
+                  </ChartCard>
+                </div>
+                <div className="h-[300px]">
+                  <ChartCard
+                    className="h-full"
+                    title="Care breakdown"
+                    subtitle={`By type \u00B7 ${RANGE_LABELS[range].toLowerCase()}`}
+                    accent="linear-gradient(to right, #38bdf8, #60a5fa)"
+                  >
+                    <CareTypeBreakdownChart byType={stats.by_type} />
+                  </ChartCard>
+                </div>
+                {stats.by_member.length > 0 && (
+                  <div style={{ height: Math.max(200, stats.by_member.length * 52 + 110) }}>
+                    <ChartCard
+                      className="h-full"
+                      title="Household contributions"
+                      subtitle="Events logged per member"
+                      accent="linear-gradient(to right, #c084fc, #a78bfa)"
+                    >
+                      <MemberContributionChart data={stats.by_member} />
+                    </ChartCard>
+                  </div>
+                )}
+                <div className="h-[280px]">
+                  <ChartCard
+                    className="h-full"
+                    title="Activity heatmap"
+                    subtitle="Care events by day"
+                    accent="linear-gradient(to right, #22d3ee, #38bdf8)"
+                  >
+                    <CareActivityHeatmap data={stats.by_day} />
+                  </ChartCard>
+                </div>
+              </div>
             )}
 
-            <ChartCard
-              key="heatmap"
-              title="Activity heatmap"
-              subtitle="Care events by day"
-              accent="linear-gradient(to right, #22d3ee, #38bdf8)"
-            >
-              <CareActivityHeatmap data={stats.by_day} />
-            </ChartCard>
-          </ResponsiveGridLayout>
+            {/* Desktop: drag-and-drop + resizable grid */}
+            {!isMobile && (
+              <div ref={containerRef}>
+                <ResponsiveGridLayout
+                  width={gridWidth || 800}
+                  className="layout"
+                  layouts={layouts}
+                  breakpoints={{ lg: 768, sm: 0 }}
+                  cols={{ lg: 12, sm: 12 }}
+                  rowHeight={60}
+                  dragConfig={{ handle: '.drag-handle' }}
+                  resizeConfig={{ handles: ['se'] }}
+                  onLayoutChange={handleLayoutChange}
+                  margin={[16, 16]}
+                  containerPadding={[0, 0]}
+                >
+                  {stats.weight_series.length > 0 && (
+                    <ChartCard
+                      key="weight"
+                      title="Weight over time"
+                      subtitle={`${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${RANGE_LABELS[range].toLowerCase()}`}
+                      accent="linear-gradient(to right, #34d399, #4ade80)"
+                    >
+                      <WeightTrendChart data={stats.weight_series} />
+                    </ChartCard>
+                  )}
+                  <ChartCard
+                    key="feeding"
+                    title="Feeding frequency"
+                    subtitle="Feedings per day"
+                    accent="linear-gradient(to right, #fbbf24, #fb923c)"
+                  >
+                    <FeedingFrequencyChart data={stats.by_day} />
+                  </ChartCard>
+                  <ChartCard
+                    key="care_breakdown"
+                    title="Care breakdown"
+                    subtitle={`By type \u00B7 ${RANGE_LABELS[range].toLowerCase()}`}
+                    accent="linear-gradient(to right, #38bdf8, #60a5fa)"
+                  >
+                    <CareTypeBreakdownChart byType={stats.by_type} />
+                  </ChartCard>
+                  {stats.by_member.length > 0 && (
+                    <ChartCard
+                      key="member"
+                      title="Household contributions"
+                      subtitle="Events logged per member"
+                      accent="linear-gradient(to right, #c084fc, #a78bfa)"
+                    >
+                      <MemberContributionChart data={stats.by_member} />
+                    </ChartCard>
+                  )}
+                  <ChartCard
+                    key="heatmap"
+                    title="Activity heatmap"
+                    subtitle="Care events by day"
+                    accent="linear-gradient(to right, #22d3ee, #38bdf8)"
+                  >
+                    <CareActivityHeatmap data={stats.by_day} />
+                  </ChartCard>
+                </ResponsiveGridLayout>
+              </div>
+            )}
           </div>
         )}
 
