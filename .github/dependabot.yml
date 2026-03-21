@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # Ruby gems (api/)
+  - package-ecosystem: bundler
+    directory: /api
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      ruby-dependencies:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 10
+
+  # npm packages (web/)
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 10
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

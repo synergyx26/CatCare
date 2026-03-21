@@ -461,13 +461,13 @@ DEPENDENCIES
   letter_opener_web
   ostruct
   pg (~> 1.1)
-  puma (>= 5.0)
+  puma (~> 7.0)
   pundit
   pundit-matchers
   rack-attack
   rack-cors
   rails (~> 8.1.2)
-  redis (>= 4.0.1)
+  redis (~> 5.0)
   rspec-rails
   rspec_junit_formatter
   rubocop-rails-omakase
