@@ -13,6 +13,7 @@ Rails.application.routes.draw do
       delete "sessions",            to: "sessions#destroy"
       post   "passwords",           to: "passwords#create"
       patch  "passwords/:token",    to: "passwords#update"
+      post   "auth/google",         to: "oauth#google"
 
       # Current user profile
       get "me", to: "users#me"

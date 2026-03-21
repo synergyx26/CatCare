@@ -13,6 +13,15 @@ module Api
         user  = User.find_by(email: email)
 
         if user
+          if user.oauth_user?
+            # Don't send a reset email — this account was created via OAuth and has no password.
+            # Return a specific error so the frontend can show a helpful message.
+            return render json: {
+              error: "OAUTH_USER",
+              message: "This account uses Google sign-in. Password reset is not available."
+            }, status: :unprocessable_entity
+          end
+
           raw, enc = Devise.token_generator.generate(User, :reset_password_token)
           user.reset_password_token   = enc
           user.reset_password_sent_at = Time.now.utc

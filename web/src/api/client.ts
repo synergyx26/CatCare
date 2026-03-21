@@ -45,6 +45,9 @@ export const api = {
   login: (data: { user: { email: string; password: string } }) =>
     apiClient.post('/sessions', data),
 
+  googleOAuth: (credential: string) =>
+    apiClient.post('/auth/google', { credential }),
+
   logout: () =>
     apiClient.delete('/sessions'),
 

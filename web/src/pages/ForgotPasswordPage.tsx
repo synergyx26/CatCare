@@ -5,8 +5,10 @@ import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Cat, Mail, ArrowLeft } from 'lucide-react'
+import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
 import { Input } from '@/components/ui/input'
+import type { ApiError } from '@/types/api'
 
 const schema = z.object({
   email: z.string().email('Invalid email'),
@@ -24,6 +26,10 @@ export function ForgotPasswordPage() {
   const mutation = useMutation({
     mutationFn: (data: FormData) => api.forgotPassword(data.email),
   })
+
+  const oauthError = mutation.isError
+    ? (mutation.error as AxiosError<ApiError>).response?.data?.error === 'OAUTH_USER'
+    : false
 
   if (mutation.isSuccess) {
     return (
@@ -92,7 +98,9 @@ export function ForgotPasswordPage() {
 
             {mutation.isError && (
               <p className="text-destructive text-xs text-center">
-                Something went wrong. Please try again.
+                {oauthError
+                  ? 'This account uses Google sign-in. Use "Continue with Google" on the login page instead.'
+                  : 'Something went wrong. Please try again.'}
               </p>
             )}
 

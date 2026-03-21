@@ -42,6 +42,63 @@
 
 ---
 
+## OAuth / Social Login
+
+### Architecture: Frontend-Initiated Token Exchange (no OmniAuth redirect flow)
+Because CatCare is an API-only Rails app with a React SPA, the traditional OmniAuth redirect + cookie flow is impractical. Use the frontend-initiated pattern instead:
+
+1. React launches the OAuth consent popup (Google JS SDK / `@react-oauth/google`)
+2. Provider returns an ID token directly to the React client
+3. React POSTs the token to `POST /api/v1/auth/google`
+4. Rails verifies the token against Google's public endpoint and finds-or-creates the User
+5. Rails issues a CatCare JWT — identical response contract to email login
+6. React stores the JWT in `authStore` — no change to downstream code
+
+No new OmniAuth gems required. No callback URL complexity.
+
+### Implementation Steps
+
+**A — Database Migration**
+- Add `provider` (string, nullable) and `uid` (string, nullable) to `users` table
+- Add unique index on `[provider, uid]`
+- Make Devise password validations conditional (skip for OAuth users who have no password)
+- Add `oauth_user?` helper to `User` model
+
+**B — Rails API (`api/`)**
+- Create `app/controllers/api/v1/oauth_controller.rb`
+  - `POST /api/v1/auth/google` — accepts `{ credential: "<google_id_token>" }`, verifies via `https://oauth2.googleapis.com/tokeninfo?id_token=<token>`, validates `aud` claim matches `GOOGLE_CLIENT_ID`, finds or creates User, returns JWT
+- Add route: `post "auth/google", to: "oauth#google"`
+- Add `GOOGLE_CLIENT_ID` to env vars (Render + `api/.env`)
+
+**C — Account Linking Edge Cases**
+- If Google email matches an existing email/password user → link accounts (set `provider`/`uid` on that row, don't create duplicate)
+- If an OAuth user requests a password reset → return `OAUTH_USER` error: "You signed in with Google — password reset is not available"
+
+**D — React Frontend (`web/`)**
+- Install `@react-oauth/google`
+- Wrap `<App>` in `<GoogleOAuthProvider clientId={VITE_GOOGLE_CLIENT_ID}>` in `main.tsx`
+- Add `<GoogleLogin>` button to `LoginPage.tsx` and `RegisterPage.tsx`
+- On OAuth success: POST credential to `/api/v1/auth/google` → store JWT + user in `authStore` → redirect to dashboard (same flow as email login)
+- Add `VITE_GOOGLE_CLIENT_ID` to `.env.local` and Vercel env vars
+
+**E — Google Cloud Console Setup**
+- Create a new OAuth 2.0 Web Client ID at console.cloud.google.com
+- Authorized JavaScript origins: `http://localhost:5173`, `https://<your-vercel-domain>`
+- No Redirect URIs needed (frontend-initiated flow — no server-side callback)
+- Set the Client ID as `GOOGLE_CLIENT_ID` (Rails) and `VITE_GOOGLE_CLIENT_ID` (React)
+
+### Future Providers (same pattern)
+- **GitHub**: exchange code for access token server-side via `POST https://github.com/login/oauth/access_token`, then fetch `GET https://api.github.com/user` for profile
+- **Apple Sign In**: more complex — requires Apple Developer account + JWKS verification; defer until there's user demand
+
+### Smoke Test Additions
+- [ ] "Sign in with Google" on login page → lands on dashboard
+- [ ] First-time Google sign-in creates account + household setup flow triggers
+- [ ] Google sign-in with email matching existing account → links, does not duplicate
+- [ ] OAuth user visits "forgot password" → receives helpful error, not a crash
+
+---
+
 ## Phase 2 Features (from product plan)
 
 ### Medication Tracking

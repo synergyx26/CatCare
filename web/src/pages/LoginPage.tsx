@@ -9,6 +9,7 @@ import { Cat, Mail, Lock } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { Input } from '@/components/ui/input'
+import { GoogleOAuthButton } from '@/components/GoogleOAuthButton'
 import type { User } from '@/types/api'
 
 const schema = z.object({
@@ -58,6 +59,21 @@ export function LoginPage() {
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">Welcome back!</h1>
             <p className="text-muted-foreground text-sm">Sign in to your CatCare account</p>
+          </div>
+
+          {/* Google OAuth */}
+          <div className="flex justify-center">
+            <GoogleOAuthButton redirectTo={redirectTo} />
+          </div>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border/60" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-card px-3 text-muted-foreground/60">or sign in with email</span>
+            </div>
           </div>
 
           {/* Form */}

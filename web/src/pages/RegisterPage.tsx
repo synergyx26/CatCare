@@ -10,6 +10,7 @@ import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { Input } from '@/components/ui/input'
+import { GoogleOAuthButton } from '@/components/GoogleOAuthButton'
 import type { User, ApiError } from '@/types/api'
 
 const schema = z.object({
@@ -66,6 +67,21 @@ export function RegisterPage() {
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
             <p className="text-muted-foreground text-sm">Start tracking care for your cats</p>
+          </div>
+
+          {/* Google OAuth — new Google users land on /setup same as email registration */}
+          <div className="flex justify-center">
+            <GoogleOAuthButton redirectTo={redirectTo ?? '/setup'} />
+          </div>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border/60" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-card px-3 text-muted-foreground/60">or sign up with email</span>
+            </div>
           </div>
 
           {/* Form */}

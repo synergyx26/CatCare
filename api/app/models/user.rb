@@ -10,4 +10,13 @@ class User < ApplicationRecord
   has_many :reminder_recipients, dependent: :destroy
 
   validates :name, presence: true
+
+  def oauth_user?
+    provider.present?
+  end
+
+  # Skip Devise's password requirement for OAuth accounts — they have no password.
+  def password_required?
+    oauth_user? ? false : super
+  end
 end
