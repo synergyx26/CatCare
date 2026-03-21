@@ -18,10 +18,12 @@ module Api
       # Generate a new invite link for the given email address
       def create
         authorize @household, policy_class: HouseholdInvitePolicy
+        raw_role = params.dig(:invite, :role).to_s
+        role = HouseholdInvite.roles.key?(raw_role) ? raw_role : "member"
         invite = @household.household_invites.build(
           email:         invite_params[:email],
           invited_by_id: current_user.id,
-          role:          invite_params[:role].presence || :member,
+          role:          role,
         )
 
         if invite.save
@@ -88,7 +90,7 @@ module Api
       end
 
       def invite_params
-        params.require(:invite).permit(:email, :role)
+        params.require(:invite).permit(:email)
       end
 
       def invite_json(invite)
