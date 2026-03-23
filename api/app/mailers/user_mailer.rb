@@ -7,4 +7,14 @@ class UserMailer < ApplicationMailer
 
     mail(to: user.email, subject: "Reset your CatCare password")
   end
+
+  # Sends a household invite link to the invitee's email address.
+  def invite(invite)
+    @invited_by     = invite.invited_by.name
+    @household_name = invite.household.name
+    @role           = invite.role
+    @invite_url     = "#{ENV.fetch('FRONTEND_URL', 'http://localhost:5173')}/invite/#{invite.token}"
+
+    mail(to: invite.email, subject: "#{@invited_by} invited you to #{@household_name} on CatCare")
+  end
 end

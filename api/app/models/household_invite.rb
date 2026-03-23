@@ -8,8 +8,8 @@ class HouseholdInvite < ApplicationRecord
   validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :token, presence: true, uniqueness: true
 
-  before_create :generate_token
-  before_create :set_expiry
+  before_validation :generate_token, on: :create
+  before_validation :set_expiry, on: :create
 
   def usable?
     pending? && expires_at > Time.current
