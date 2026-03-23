@@ -27,7 +27,7 @@ module Api
         )
 
         if invite.save
-          UserMailer.invite(invite).deliver_later
+          UserMailer.invite(invite).deliver_now
           render_success(invite_json(invite), status: :created)
         else
           render_error("VALIDATION_ERROR", invite.errors.full_messages.join(", "), status: :unprocessable_entity)
