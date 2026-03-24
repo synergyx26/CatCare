@@ -196,8 +196,13 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
       toast.success(isEditing ? 'Changes saved!' : `${cat.name}: ${typeLabel} logged`)
       onClose()
     },
-    onError: () => {
-      toast.error('Something went wrong. Please try again.')
+    onError: (err: unknown) => {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 403) {
+        toast.error("You can only edit entries you logged.")
+      } else {
+        toast.error('Something went wrong. Please try again.')
+      }
     },
   })
 
@@ -208,8 +213,13 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
       toast.success('Entry deleted')
       onClose()
     },
-    onError: () => {
-      toast.error('Failed to delete. Please try again.')
+    onError: (err: unknown) => {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 403) {
+        toast.error("You can only delete entries you logged.")
+      } else {
+        toast.error('Failed to delete. Please try again.')
+      }
     },
   })
 
