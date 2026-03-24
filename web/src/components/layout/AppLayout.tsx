@@ -3,7 +3,8 @@ import { Outlet, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { api } from '@/api/client'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -188,9 +189,7 @@ export function AppLayout() {
             {/* User dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger
-                render={
-                  <Button variant="outline" size="sm" className="gap-1.5" />
-                }
+                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}
               >
                 <div className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <User className="size-3" />

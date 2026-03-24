@@ -157,7 +157,7 @@ export function MembersSection({
                           }
                         }}
                         disabled={updateRoleMutation.isPending}
-                        className="h-7 rounded-lg border border-input bg-transparent px-2 text-xs transition-colors outline-none focus-visible:border-ring dark:bg-input/30"
+                        className="h-7 rounded-lg border border-input bg-background text-foreground px-2 text-xs transition-colors outline-none focus-visible:border-ring"
                       >
                         <option value="member">Member</option>
                         <option value="admin">Admin</option>
@@ -344,7 +344,7 @@ export function MembersSection({
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value)}
-                  className="flex h-9 w-full rounded-xl border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                  className="flex h-9 w-full rounded-xl border border-input bg-background text-foreground px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   <option value="member">Household member</option>
                   <option value="sitter">

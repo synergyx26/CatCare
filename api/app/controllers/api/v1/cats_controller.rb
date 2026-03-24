@@ -8,9 +8,9 @@ module Api
       def index
         authorize current_household, policy_class: CatPolicy
         if params[:include_inactive].present? && authorize(current_household, :archive?, policy_class: CatPolicy)
-          cats = current_household.cats.where(active: false)
+          cats = current_household.cats.with_attached_photo.where(active: false)
         else
-          cats = current_household.cats.active
+          cats = current_household.cats.with_attached_photo.active
         end
         render json: { data: cats.map { |c| cat_json(c) } }
       end
@@ -79,8 +79,19 @@ module Api
 
       private
 
+      # Returns a URL only when the blob is stored in the currently configured service.
+      # Blobs recorded against an old service (e.g. "local" before the Supabase migration)
+      # are skipped rather than serving a broken URL — the frontend falls back to the
+      # avatar placeholder and the user can re-upload.
+      def photo_url_for(cat)
+        return nil unless cat.photo.attached?
+        current_service = Rails.application.config.active_storage.service.to_s
+        return nil unless cat.photo.blob.service_name == current_service
+        url_for(cat.photo)
+      end
+
       def set_cat
-        @cat = current_household.cats.find(params[:id])
+        @cat = current_household.cats.with_attached_photo.find(params[:id])
       end
 
       def cat_params
@@ -106,7 +117,7 @@ module Api
           active:            cat.active,
           deceased:          cat.deceased,
           created_by:        cat.created_by_id,
-          photo_url:         cat.photo.attached? ? url_for(cat.photo) : nil,
+          photo_url:         photo_url_for(cat),
           vet_name:          cat.vet_name,
           vet_clinic:        cat.vet_clinic,
           vet_phone:         cat.vet_phone,

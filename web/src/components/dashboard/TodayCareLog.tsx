@@ -1,10 +1,13 @@
-import { ClipboardList, RefreshCw } from 'lucide-react'
-import { formatTime, formatEventSummary, EVENT_TYPE_LABEL } from '@/lib/helpers'
+import { ChevronLeft, ChevronRight, ClipboardList, RefreshCw } from 'lucide-react'
+import { isToday, formatTime, formatEventSummary, EVENT_TYPE_LABEL } from '@/lib/helpers'
 import { EVENT_COLORS } from '@/lib/eventColors'
 import type { Cat, CareEvent } from '@/types/api'
 
 interface TodayCareLogProps {
   todayEvents: CareEvent[]
+  selectedDate: Date
+  onPrevDay: () => void
+  onNextDay: () => void
   cats: Cat[]
   memberMap: Map<number, string>
   currentUserId: number
@@ -13,8 +16,25 @@ interface TodayCareLogProps {
   isRefreshing: boolean
 }
 
+function getDateLabel(date: Date): string {
+  if (isToday(date.toISOString())) return 'Today'
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (
+    date.getFullYear() === yesterday.getFullYear() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getDate() === yesterday.getDate()
+  ) {
+    return 'Yesterday'
+  }
+  return date.toLocaleDateString([], { month: 'long', day: 'numeric' })
+}
+
 export function TodayCareLog({
   todayEvents,
+  selectedDate,
+  onPrevDay,
+  onNextDay,
   cats,
   memberMap,
   currentUserId,
@@ -22,13 +42,37 @@ export function TodayCareLog({
   onRefresh,
   isRefreshing,
 }: TodayCareLogProps) {
+  const viewingToday = isToday(selectedDate.toISOString())
+  const dateLabel = getDateLabel(selectedDate)
+
   return (
     <div className="rounded-2xl bg-card ring-1 ring-border/60 shadow-sm overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="size-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Today's care log</h2>
+        <div className="flex items-center gap-1.5">
+          <ClipboardList className="size-4 text-muted-foreground shrink-0" />
+          <h2 className="text-sm font-semibold">Care log</h2>
+          <span className="text-xs text-muted-foreground">·</span>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={onPrevDay}
+              className="flex items-center justify-center size-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="size-3.5" />
+            </button>
+            <span className="text-xs font-medium tabular-nums px-0.5 min-w-[64px] text-center">
+              {dateLabel}
+            </span>
+            <button
+              onClick={onNextDay}
+              disabled={viewingToday}
+              className="flex items-center justify-center size-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Next day"
+            >
+              <ChevronRight className="size-3.5" />
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {todayEvents.length > 0 && (
@@ -49,7 +93,9 @@ export function TodayCareLog({
 
       {todayEvents.length === 0 ? (
         <div className="px-4 py-6 text-center">
-          <p className="text-sm text-muted-foreground">Nothing logged today</p>
+          <p className="text-sm text-muted-foreground">
+            Nothing logged {viewingToday ? 'today' : `on ${dateLabel}`}
+          </p>
         </div>
       ) : (
         <div className="divide-y divide-border/40">

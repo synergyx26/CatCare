@@ -15,7 +15,7 @@ import { CatCardSkeleton } from '@/components/skeletons/CatCardSkeleton'
 import { CareLogSkeleton } from '@/components/skeletons/CareLogSkeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { usePageTitle } from '@/hooks/usePageTitle'
-import { isToday, formatDateHeader, getCatTodayStatus } from '@/lib/helpers'
+import { isToday, isSameLocalDay, formatDateHeader, getCatTodayStatus } from '@/lib/helpers'
 import { Home, PawPrint, Plus } from 'lucide-react'
 import type {
   Household,
@@ -35,6 +35,9 @@ export function DashboardPage() {
   const [editingEvent, setEditingEvent] = useState<CareEvent | null>(null)
   const [logInitType, setLogInitType] = useState<EventType | undefined>(undefined)
   const [showArchived, setShowArchived] = useState(false)
+
+  // Care log date navigation
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date())
 
   // ── Queries ──────────────────────────────────────────────────
   const { data: householdsData, isLoading } = useQuery({
@@ -69,12 +72,36 @@ export function DashboardPage() {
     queryClient.invalidateQueries({ queryKey: ['care_events', primaryHousehold?.id] })
   }
   const allEvents: CareEvent[] = careData?.data?.data ?? []
+  // todayEvents drives cat status badges and the "needs attention" banner — always today
   const todayEvents = allEvents
     .filter((e) => isToday(e.occurred_at))
     .sort(
       (a, b) =>
         new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
     )
+  // selectedDateEvents drives the care log section (can be a past day)
+  const selectedDateEvents = allEvents
+    .filter((e) => isSameLocalDay(e.occurred_at, selectedDate))
+    .sort(
+      (a, b) =>
+        new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+    )
+
+  function goPrevDay() {
+    setSelectedDate((d) => {
+      const prev = new Date(d)
+      prev.setDate(prev.getDate() - 1)
+      return prev
+    })
+  }
+
+  function goNextDay() {
+    setSelectedDate((d) => {
+      const next = new Date(d)
+      next.setDate(next.getDate() + 1)
+      return next
+    })
+  }
 
   const memberMap = new Map<number, string>(
     (primaryHousehold?.members ?? []).map((m) => [m.id, m.name])
@@ -277,10 +304,13 @@ export function DashboardPage() {
           />
         )}
 
-        {/* Today's care log */}
+        {/* Care log with date navigation */}
         {primaryHousehold && (
           <TodayCareLog
-            todayEvents={todayEvents}
+            todayEvents={selectedDateEvents}
+            selectedDate={selectedDate}
+            onPrevDay={goPrevDay}
+            onNextDay={goNextDay}
             cats={cats}
             memberMap={memberMap}
             currentUserId={user?.id ?? -1}

@@ -6,26 +6,17 @@ local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
 
-# Cloudinary -- reads CLOUDINARY_URL env var automatically
-cloudinary:
-  service: Cloudinary
-
-# Use bin/rails credentials:edit to set the AWS secrets (as aws:access_key_id|secret_access_key)
-# amazon:
-#   service: S3
-#   access_key_id: <%= Rails.application.credentials.dig(:aws, :access_key_id) %>
-#   secret_access_key: <%= Rails.application.credentials.dig(:aws, :secret_access_key) %>
-#   region: us-east-1
-#   bucket: your_own_bucket-<%= Rails.env %>
-
-# Remember not to checkin your GCS keyfile to a repository
-# google:
-#   service: GCS
-#   project: your_project
-#   credentials: <%= Rails.root.join("path/to/gcs.keyfile") %>
-#   bucket: your_own_bucket-<%= Rails.env %>
-
-# mirror:
-#   service: Mirror
-#   primary: local
-#   mirrors: [ amazon, google, microsoft ]
+# Supabase Storage (S3-compatible). Set these env vars on Render:
+#   SUPABASE_S3_KEY_ID      — Supabase dashboard → Storage → S3 Access → Access Key ID
+#   SUPABASE_S3_SECRET      — same place → Secret Access Key
+#   SUPABASE_S3_REGION      — your project region (e.g. us-east-1)
+#   SUPABASE_S3_BUCKET      — name of the bucket you create in Supabase Storage
+#   SUPABASE_S3_ENDPOINT    — https://<project-ref>.supabase.co/storage/v1/s3
+supabase:
+  service: S3
+  access_key_id: <%= ENV["SUPABASE_S3_KEY_ID"] %>
+  secret_access_key: <%= ENV["SUPABASE_S3_SECRET"] %>
+  region: <%= ENV["SUPABASE_S3_REGION"] %>
+  bucket: <%= ENV["SUPABASE_S3_BUCKET"] %>
+  endpoint: <%= ENV["SUPABASE_S3_ENDPOINT"] %>
+  force_path_style: true

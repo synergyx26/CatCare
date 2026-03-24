@@ -10,6 +10,15 @@ export function isToday(isoString: string): boolean {
   )
 }
 
+export function isSameLocalDay(isoString: string, date: Date): boolean {
+  const d = new Date(isoString)
+  return (
+    d.getFullYear() === date.getFullYear() &&
+    d.getMonth() === date.getMonth() &&
+    d.getDate() === date.getDate()
+  )
+}
+
 export function formatTime(isoString: string): string {
   return new Date(isoString).toLocaleTimeString([], {
     hour: '2-digit',

@@ -18,9 +18,8 @@ Rails.application.configure do
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
-  # Use local disk storage — cloudinary gem v2.x is incompatible with Rails 8.1.
-  # Files will not persist across Render deploys but this is fine for beta testing.
-  config.active_storage.service = :local
+  # Supabase Storage via S3-compatible adapter. See config/storage.yml for env vars.
+  config.active_storage.service = :supabase
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true
