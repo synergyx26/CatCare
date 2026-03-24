@@ -11,6 +11,7 @@ body {
 }
 
 :root {
+  color-scheme: light;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -46,6 +47,7 @@ body {
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -137,21 +139,32 @@ body {
 
 /* Ghost placeholder shown while dragging a card */
 .react-grid-item.react-grid-placeholder {
-  background: oklch(0.588 0.158 241.966 / 0.12);
+  background: oklch(0.588 0.158 241.966 / 0.12) !important;
   border: 1.5px dashed oklch(0.588 0.158 241.966 / 0.4);
   border-radius: 1rem;
   opacity: 1 !important;
 }
 
-/* SE resize handle — ensure visibility after Tailwind v4 preflight */
+/* SE resize handle — modern 3-dot indicator, visible on hover/resize only */
 .react-resizable-handle.react-resizable-handle-se {
   width: 20px;
   height: 20px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 6'%3E%3Cpath d='M6 6H0V4.5h4.5V0H6z' fill='%23888' fill-opacity='0.5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Ccircle cx='8' cy='8' r='1.2' fill='%23888'/%3E%3Ccircle cx='4.5' cy='8' r='1.2' fill='%23888'/%3E%3Ccircle cx='8' cy='4.5' r='1.2' fill='%23888'/%3E%3C/svg%3E");
   background-position: bottom right;
   background-repeat: no-repeat;
-  background-size: 10px 10px;
+  background-size: 13px 13px;
   padding: 0 4px 4px 0;
   cursor: se-resize;
   z-index: 10;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.dark .react-resizable-handle.react-resizable-handle-se {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Ccircle cx='8' cy='8' r='1.2' fill='%23bbb'/%3E%3Ccircle cx='4.5' cy='8' r='1.2' fill='%23bbb'/%3E%3Ccircle cx='8' cy='4.5' r='1.2' fill='%23bbb'/%3E%3C/svg%3E");
+}
+
+.react-grid-item:hover .react-resizable-handle.react-resizable-handle-se,
+.react-grid-item.resizing .react-resizable-handle.react-resizable-handle-se {
+  opacity: 1;
 }

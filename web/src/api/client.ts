@@ -98,9 +98,7 @@ export const api = {
     apiClient.post(`/households/${householdId}/cats`, data),
 
   updateCat: (householdId: number, catId: number, data: FormData) =>
-    apiClient.patch(`/households/${householdId}/cats/${catId}`, data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    apiClient.patch(`/households/${householdId}/cats/${catId}`, data),
 
   getCat: (householdId: number, catId: number) =>
     apiClient.get(`/households/${householdId}/cats/${catId}`),

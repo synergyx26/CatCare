@@ -2,6 +2,7 @@ import { GoogleLogin } from '@react-oauth/google'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import type { User } from '@/types/api'
@@ -32,6 +33,15 @@ export function GoogleOAuthButton({ redirectTo }: Props) {
       toast.error('Google sign-in failed. Please try again.')
     },
   })
+
+  if (mutation.isPending) {
+    return (
+      <div className="flex h-10 w-full items-center justify-center gap-2 rounded border bg-white px-4 text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Signing in with Google…
+      </div>
+    )
+  }
 
   return (
     <GoogleLogin

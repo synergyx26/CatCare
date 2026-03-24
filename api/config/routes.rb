@@ -21,10 +21,8 @@ Rails.application.routes.draw do
       # Households + nested resources
       resources :households, only: [:index, :create, :show, :update] do
         resource  :membership,   only: [:show, :update]
-        scope '/memberships' do
-          patch  ':id', to: 'api/v1/memberships#manage_update'
-          delete ':id', to: 'api/v1/memberships#manage_destroy'
-        end
+        patch  'memberships/:id', to: 'memberships#manage_update'
+        delete 'memberships/:id', to: 'memberships#manage_destroy'
         resources :cats, only: [:index, :create, :show, :update] do
           get :stats, on: :member
         end
