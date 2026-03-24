@@ -1,4 +1,4 @@
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, RefreshCw } from 'lucide-react'
 import { formatTime, formatEventSummary, EVENT_TYPE_LABEL } from '@/lib/helpers'
 import { EVENT_COLORS } from '@/lib/eventColors'
 import type { Cat, CareEvent } from '@/types/api'
@@ -9,6 +9,8 @@ interface TodayCareLogProps {
   memberMap: Map<number, string>
   currentUserId: number
   onEdit: (event: CareEvent) => void
+  onRefresh: () => void
+  isRefreshing: boolean
 }
 
 export function TodayCareLog({
@@ -17,6 +19,8 @@ export function TodayCareLog({
   memberMap,
   currentUserId,
   onEdit,
+  onRefresh,
+  isRefreshing,
 }: TodayCareLogProps) {
   return (
     <div className="rounded-2xl bg-card ring-1 ring-border/60 shadow-sm overflow-hidden">
@@ -26,11 +30,21 @@ export function TodayCareLog({
           <ClipboardList className="size-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Today's care log</h2>
         </div>
-        {todayEvents.length > 0 && (
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {todayEvents.length} {todayEvents.length === 1 ? 'event' : 'events'}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {todayEvents.length > 0 && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {todayEvents.length} {todayEvents.length === 1 ? 'event' : 'events'}
+            </span>
+          )}
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            aria-label="Refresh care log"
+          >
+            <RefreshCw className={`size-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {todayEvents.length === 0 ? (

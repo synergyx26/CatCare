@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -50,18 +50,24 @@ export function DashboardPage() {
   const households: Household[] = householdsData?.data?.data ?? []
   const primaryHousehold: Household | undefined = households[0]
 
-  const { data: catsData } = useQuery({
+  const queryClient = useQueryClient()
+
+  const { data: catsData, isLoading: catsLoading } = useQuery({
     queryKey: ['cats', primaryHousehold?.id],
     queryFn: () => api.getCats(primaryHousehold!.id),
     enabled: !!primaryHousehold,
   })
   const cats: Cat[] = catsData?.data?.data ?? []
 
-  const { data: careData } = useQuery({
+  const { data: careData, isFetching: careRefetching } = useQuery({
     queryKey: ['care_events', primaryHousehold?.id],
     queryFn: () => api.getCareEvents(primaryHousehold!.id),
     enabled: !!primaryHousehold,
   })
+
+  function refreshCareLog() {
+    queryClient.invalidateQueries({ queryKey: ['care_events', primaryHousehold?.id] })
+  }
   const allEvents: CareEvent[] = careData?.data?.data ?? []
   const todayEvents = allEvents
     .filter((e) => isToday(e.occurred_at))
@@ -118,7 +124,7 @@ export function DashboardPage() {
   usePageTitle(primaryHousehold?.name ?? 'Dashboard')
 
   // ── Loading ──────────────────────────────────────────────────
-  if (isLoading) {
+  if (isLoading || (!!primaryHousehold && catsLoading)) {
     return (
       <div className="mx-auto max-w-sm space-y-6 sm:max-w-md lg:max-w-lg">
         <div className="space-y-2">
@@ -279,6 +285,8 @@ export function DashboardPage() {
             memberMap={memberMap}
             currentUserId={user?.id ?? -1}
             onEdit={openEdit}
+            onRefresh={refreshCareLog}
+            isRefreshing={careRefetching}
           />
         )}
       </div>
