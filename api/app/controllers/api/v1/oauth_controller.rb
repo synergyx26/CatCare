@@ -8,8 +8,8 @@ module Api
     class OauthController < BaseController
       skip_before_action :authenticate_user!
 
-      GOOGLE_CERTS_URL = "https://www.googleapis.com/oauth2/v3/certs"
-      GOOGLE_ISSUERS   = %w[https://accounts.google.com accounts.google.com].freeze
+      GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
+      GOOGLE_ISSUERS       = %w[https://accounts.google.com accounts.google.com].freeze
 
       # POST /api/v1/auth/google
       # Accepts a Google ID token from the React frontend (via @react-oauth/google).
@@ -43,45 +43,37 @@ module Api
 
       private
 
-      # Verifies the Google ID token locally using Google's cached JWKS public keys.
-      # This avoids a synchronous HTTP call to Google on every login; the public keys
-      # are fetched once and cached in Rails.cache for their TTL (~24 h).
-      # Returns the decoded payload hash on success, nil on failure.
+      # Verifies a Google ID token by calling Google's tokeninfo endpoint.
+      # Returns the payload hash on success, nil on any failure.
       def verify_google_token(credential)
-        jwks = fetch_google_jwks
-        return nil if jwks.nil?
+        uri  = URI("https://oauth2.googleapis.com/tokeninfo")
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl      = true
+        http.open_timeout = 5
+        http.read_timeout = 5
 
-        payload, _header = JWT.decode(
-          credential,
-          jwks,
-          true,
-          algorithms:      %w[RS256],
-          iss:             GOOGLE_ISSUERS,
-          verify_iss:      true,
-          aud:             ENV["GOOGLE_CLIENT_ID"],
-          verify_aud:      true,
-          verify_expiration: true
-        )
-        payload
-      rescue JWT::DecodeError, StandardError
-        nil
-      end
+        resp = http.get("/tokeninfo?id_token=#{URI.encode_www_form_component(credential)}")
 
-      # Fetches and caches Google's JSON Web Key Set.
-      # Keys are stable for ~24 h; we cache for 1 h to stay ahead of any rotation.
-      # On fetch failure we return nil without caching, so the next request retries.
-      def fetch_google_jwks
-        Rails.cache.fetch("google_oauth_jwks", expires_in: 1.hour) do
-          uri  = URI(GOOGLE_CERTS_URL)
-          http = Net::HTTP.new(uri.host, uri.port)
-          http.use_ssl      = true
-          http.open_timeout = 5
-          http.read_timeout = 5
-          resp = http.get(uri.request_uri)
-          raise "Unexpected response: #{resp.code}" unless resp.is_a?(Net::HTTPSuccess)
-          JWT::JWK::Set.new(JSON.parse(resp.body))
+        unless resp.is_a?(Net::HTTPSuccess)
+          Rails.logger.error("[OauthController] tokeninfo #{resp.code}: #{resp.body.truncate(200)}")
+          return nil
         end
-      rescue StandardError
+
+        payload = JSON.parse(resp.body)
+
+        unless GOOGLE_ISSUERS.include?(payload["iss"])
+          Rails.logger.error("[OauthController] iss mismatch: #{payload['iss']}")
+          return nil
+        end
+
+        unless payload["aud"] == ENV["GOOGLE_CLIENT_ID"]
+          Rails.logger.error("[OauthController] aud mismatch: #{payload['aud']} vs #{ENV['GOOGLE_CLIENT_ID']&.truncate(30)}")
+          return nil
+        end
+
+        payload
+      rescue StandardError => e
+        Rails.logger.error("[OauthController] tokeninfo error: #{e.class} #{e.message}")
         nil
       end
 
