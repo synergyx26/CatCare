@@ -78,18 +78,25 @@ module Api
       # Keys are stable for ~24 h; we cache for 1 h to stay ahead of any rotation.
       # On fetch failure we return nil without caching, so the next request retries.
       def fetch_google_jwks
-        Rails.cache.fetch("google_oauth_jwks", expires_in: 1.hour) do
+        # Cache the raw JSON string, not the JWT::JWK::Set object.
+        # Ruby objects don't round-trip reliably through Redis Marshal serialization;
+        # plain strings do. We deserialize into a JWT::JWK::Set on every use.
+        json_str = Rails.cache.fetch("google_oauth_jwks_json", expires_in: 1.hour) do
           uri  = URI(GOOGLE_CERTS_URL)
           http = Net::HTTP.new(uri.host, uri.port)
           http.use_ssl      = true
           http.open_timeout = 5
           http.read_timeout = 5
           resp = http.get(uri.request_uri)
-          raise "Unexpected response: #{resp.code}" unless resp.is_a?(Net::HTTPSuccess)
-          JWT::JWK::Set.new(JSON.parse(resp.body))
+          raise "Unexpected HTTP #{resp.code} from Google JWKS endpoint" unless resp.is_a?(Net::HTTPSuccess)
+          resp.body
         end
+
+        return nil if json_str.nil?
+
+        JWT::JWK::Set.new(JSON.parse(json_str))
       rescue StandardError => e
-        Rails.logger.error("[OauthController] JWKS fetch error: #{e.message}")
+        Rails.logger.error("[OauthController] JWKS fetch/parse error: #{e.message}")
         nil
       end
 
