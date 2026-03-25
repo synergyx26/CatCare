@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, ClipboardList, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronLeft, ChevronRight, ClipboardList, RefreshCw, Plus } from 'lucide-react'
 import { isToday, formatTime, formatEventSummary, EVENT_TYPE_LABEL } from '@/lib/helpers'
 import { EVENT_COLORS } from '@/lib/eventColors'
 import type { Cat, CareEvent } from '@/types/api'
@@ -14,6 +15,8 @@ interface TodayCareLogProps {
   onEdit: (event: CareEvent) => void
   onRefresh: () => void
   isRefreshing: boolean
+  onQuickLog: (cat: Cat) => void
+  onGoToToday: () => void
 }
 
 function getDateLabel(date: Date): string {
@@ -41,7 +44,10 @@ export function TodayCareLog({
   onEdit,
   onRefresh,
   isRefreshing,
+  onQuickLog,
+  onGoToToday,
 }: TodayCareLogProps) {
+  const [showCatPicker, setShowCatPicker] = useState(false)
   const viewingToday = isToday(selectedDate.toISOString())
   const dateLabel = getDateLabel(selectedDate)
 
@@ -61,9 +67,19 @@ export function TodayCareLog({
             >
               <ChevronLeft className="size-3.5" />
             </button>
-            <span className="text-xs font-medium tabular-nums px-0.5 min-w-[64px] text-center">
-              {dateLabel}
-            </span>
+            {viewingToday ? (
+              <span className="text-xs font-medium tabular-nums px-0.5 min-w-[64px] text-center">
+                {dateLabel}
+              </span>
+            ) : (
+              <button
+                onClick={onGoToToday}
+                className="text-xs font-medium tabular-nums px-0.5 min-w-[64px] text-center text-sky-600 dark:text-sky-400 hover:underline"
+                title="Jump to today"
+              >
+                {dateLabel}
+              </button>
+            )}
             <button
               onClick={onNextDay}
               disabled={viewingToday}
@@ -80,6 +96,15 @@ export function TodayCareLog({
               {todayEvents.length} {todayEvents.length === 1 ? 'event' : 'events'}
             </span>
           )}
+          {cats.length > 0 && (
+            <button
+              onClick={() => setShowCatPicker((v) => !v)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Log care event"
+            >
+              <Plus className="size-3.5" />
+            </button>
+          )}
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
@@ -90,6 +115,25 @@ export function TodayCareLog({
           </button>
         </div>
       </div>
+
+      {/* Inline cat picker */}
+      {showCatPicker && (
+        <div className="flex flex-wrap gap-1.5 px-4 py-2.5 border-b border-border/40 bg-muted/30">
+          <span className="text-xs text-muted-foreground self-center mr-0.5">Log for:</span>
+          {cats.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => {
+                setShowCatPicker(false)
+                onQuickLog(cat)
+              }}
+              className="px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-sky-50 hover:border-sky-300 hover:text-sky-700 dark:hover:bg-sky-950/20 dark:hover:border-sky-700 dark:hover:text-sky-400 transition-colors"
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {todayEvents.length === 0 ? (
         <div className="px-4 py-6 text-center">

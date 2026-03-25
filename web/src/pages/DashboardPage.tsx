@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -10,13 +10,18 @@ import { TodayCareLog } from '@/components/dashboard/TodayCareLog'
 import { MembersSection } from '@/components/dashboard/MembersSection'
 import { EmergencyContactSection } from '@/components/dashboard/EmergencyContactSection'
 import { HouseholdNotesSection } from '@/components/dashboard/HouseholdNotesSection'
+import { UpcomingAppointmentsSection } from '@/components/dashboard/UpcomingAppointmentsSection'
 import { Button } from '@/components/ui/button'
 import { CatCardSkeleton } from '@/components/skeletons/CatCardSkeleton'
 import { CareLogSkeleton } from '@/components/skeletons/CareLogSkeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { isToday, isSameLocalDay, formatDateHeader, getCatTodayStatus } from '@/lib/helpers'
-import { Home, PawPrint, Plus } from 'lucide-react'
+import { toast } from 'sonner'
+import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X } from 'lucide-react'
+import { loadBatchActions, saveBatchActions } from '@/lib/batchActions'
+import { BatchActionModal } from '@/components/dashboard/BatchActionModal'
+import type { BatchAction } from '@/lib/batchActions'
 import type {
   Household,
   Cat,
@@ -103,6 +108,10 @@ export function DashboardPage() {
     })
   }
 
+  function goToToday() {
+    setSelectedDate(new Date())
+  }
+
   const memberMap = new Map<number, string>(
     (primaryHousehold?.members ?? []).map((m) => [m.id, m.name])
   )
@@ -127,6 +136,49 @@ export function DashboardPage() {
     enabled: !!primaryHousehold && showArchived && currentRole !== 'sitter',
   })
   const archivedCats: Cat[] = archivedCatsData?.data?.data ?? []
+
+  // ── Batch logging ─────────────────────────────────────────────
+  const [showBatchModal, setShowBatchModal] = useState(false)
+  const [customActions, setCustomActions] = useState<BatchAction[]>(() =>
+    primaryHousehold ? loadBatchActions(primaryHousehold.id) : []
+  )
+
+  function addCustomAction(action: Omit<BatchAction, 'id'>) {
+    const newAction: BatchAction = { ...action, id: crypto.randomUUID() }
+    const updated = [...customActions, newAction]
+    setCustomActions(updated)
+    if (primaryHousehold) saveBatchActions(primaryHousehold.id, updated)
+  }
+
+  function removeCustomAction(id: string) {
+    const updated = customActions.filter((a) => a.id !== id)
+    setCustomActions(updated)
+    if (primaryHousehold) saveBatchActions(primaryHousehold.id, updated)
+  }
+
+  const batchMutation = useMutation({
+    mutationFn: async (action: { label: string; event_type: EventType; details: Record<string, unknown> }) => {
+      await Promise.all(
+        cats.map((cat) =>
+          api.createCareEvent(primaryHousehold!.id, {
+            care_event: {
+              cat_id: cat.id,
+              event_type: action.event_type,
+              occurred_at: new Date().toISOString(),
+              details: action.details,
+            },
+          })
+        )
+      )
+      return action.label
+    },
+    onSuccess: (label) => {
+      queryClient.invalidateQueries({ queryKey: ['care_events', primaryHousehold?.id] })
+      const names = cats.map((c) => c.name).join(', ')
+      toast.success(`${label} logged for ${names}`)
+    },
+    onError: () => toast.error('Something went wrong. Please try again.'),
+  })
 
   // ── Modal helpers ────────────────────────────────────────────
   function openNewLog(cat: Cat, type?: EventType) {
@@ -153,12 +205,12 @@ export function DashboardPage() {
   // ── Loading ──────────────────────────────────────────────────
   if (isLoading || (!!primaryHousehold && catsLoading)) {
     return (
-      <div className="mx-auto max-w-sm space-y-6 sm:max-w-md lg:max-w-lg">
+      <div className="space-y-6">
         <div className="space-y-2">
           <div className="h-7 w-48 rounded-md bg-muted animate-pulse" />
           <div className="h-4 w-64 rounded-md bg-muted animate-pulse" />
         </div>
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <CatCardSkeleton />
           <CatCardSkeleton />
         </div>
@@ -170,7 +222,7 @@ export function DashboardPage() {
   // ── No household ─────────────────────────────────────────────
   if (households.length === 0) {
     return (
-      <div className="mx-auto max-w-sm space-y-6">
+      <div className="mx-auto max-w-md space-y-6">
         <PageHeader
           title="Welcome to CatCare"
           subtitle={`Hi, ${user?.name}`}
@@ -187,7 +239,8 @@ export function DashboardPage() {
 
   return (
     <>
-      <div className="mx-auto max-w-sm space-y-6 sm:max-w-md lg:max-w-lg">
+      {/* Page header + attention banner — full width */}
+      <div className="space-y-4 mb-6">
         <PageHeader
           title={primaryHousehold?.name ?? 'Your household'}
           subtitle={`Hi, ${user?.name} · ${formatDateHeader()}`}
@@ -207,7 +260,6 @@ export function DashboardPage() {
           }
         />
 
-        {/* Needs attention banner */}
         {cats.length > 0 && needsAttentionCount > 0 && (
           <div className="flex items-center gap-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 px-4 py-2.5">
             <span className="size-1.5 shrink-0 rounded-full bg-amber-500" />
@@ -218,110 +270,186 @@ export function DashboardPage() {
             </p>
           </div>
         )}
-
-        {/* Cat cards */}
-        {cats.length === 0 ? (
-          <EmptyState
-            icon={PawPrint}
-            title="No cats added yet"
-            action={
-              primaryHousehold && currentRole !== 'sitter'
-                ? {
-                    label: 'Add your first cat',
-                    onClick: () => navigate(`/households/${primaryHousehold.id}/add-cat`),
-                  }
-                : undefined
-            }
-          />
-        ) : (
-          <div className="space-y-3">
-            {cats.map((cat) => (
-              <CatCard
-                key={cat.id}
-                cat={cat}
-                householdId={primaryHousehold!.id}
-                todayEvents={todayEvents}
-                memberMap={memberMap}
-                currentUserId={user?.id ?? -1}
-                onLog={openNewLog}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Archived cats toggle (non-sitters only) */}
-        {primaryHousehold && currentRole !== 'sitter' && (
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowArchived((v) => !v)}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {showArchived ? 'Hide archived cats' : 'Show archived cats'}
-            </button>
-
-            {showArchived && archivedCats.length === 0 && (
-              <p className="text-xs text-muted-foreground">No archived cats.</p>
-            )}
-
-            {showArchived && archivedCats.map((cat) => (
-              <div key={cat.id} className="opacity-50">
-                <CatCard
-                  cat={cat}
-                  householdId={primaryHousehold.id}
-                  todayEvents={[]}
-                  memberMap={memberMap}
-                  currentUserId={user?.id ?? -1}
-                  onLog={openNewLog}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Members */}
-        {primaryHousehold && (
-          <MembersSection
-            household={primaryHousehold}
-            currentUserId={user?.id ?? -1}
-            currentRole={currentRole}
-            pendingInvites={pendingInvites}
-          />
-        )}
-
-        {/* Emergency contact */}
-        {primaryHousehold && (
-          <EmergencyContactSection
-            household={primaryHousehold}
-            currentRole={currentRole}
-          />
-        )}
-
-        {/* Household notes */}
-        {primaryHousehold && (
-          <HouseholdNotesSection
-            householdId={primaryHousehold.id}
-            currentRole={currentRole}
-          />
-        )}
-
-        {/* Care log with date navigation */}
-        {primaryHousehold && (
-          <TodayCareLog
-            todayEvents={selectedDateEvents}
-            selectedDate={selectedDate}
-            onPrevDay={goPrevDay}
-            onNextDay={goNextDay}
-            cats={cats}
-            memberMap={memberMap}
-            currentUserId={user?.id ?? -1}
-            onEdit={openEdit}
-            onRefresh={refreshCareLog}
-            isRefreshing={careRefetching}
-          />
-        )}
       </div>
 
-      {/* Modal */}
+      {/* Two-column layout on large screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 lg:items-start">
+
+        {/* ── Left column: cats + members ─────────────────────── */}
+        <div className="space-y-4">
+          {/* Cat cards — 2-col grid on md+ */}
+          {cats.length === 0 ? (
+            <EmptyState
+              icon={PawPrint}
+              title="No cats added yet"
+              action={
+                primaryHousehold && currentRole !== 'sitter'
+                  ? {
+                      label: 'Add your first cat',
+                      onClick: () => navigate(`/households/${primaryHousehold.id}/add-cat`),
+                    }
+                  : undefined
+              }
+            />
+          ) : (
+            <>
+              {/* Batch log buttons — only when 2+ cats */}
+              {cats.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-muted-foreground shrink-0">Log for all:</span>
+                  {/* Built-in: Water */}
+                  <button
+                    onClick={() => batchMutation.mutate({ label: 'Water', event_type: 'water', details: {} })}
+                    disabled={batchMutation.isPending}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-sky-50 hover:border-sky-300 hover:text-sky-700 dark:hover:bg-sky-950/20 dark:hover:border-sky-700 dark:hover:text-sky-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Droplets className="size-3" />
+                    Water
+                  </button>
+                  {/* Built-in: Litter */}
+                  <button
+                    onClick={() => batchMutation.mutate({ label: 'Litter', event_type: 'litter', details: {} })}
+                    disabled={batchMutation.isPending}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 dark:hover:bg-amber-950/20 dark:hover:border-amber-700 dark:hover:text-amber-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Trash2 className="size-3" />
+                    Litter
+                  </button>
+                  {/* Custom actions */}
+                  {customActions.map((action) => (
+                    <span key={action.id} className="relative group flex items-center">
+                      <button
+                        onClick={() => batchMutation.mutate(action)}
+                        disabled={batchMutation.isPending}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-muted/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {action.label}
+                      </button>
+                      <button
+                        onClick={() => removeCustomAction(action.id)}
+                        className="absolute -top-1.5 -right-1.5 hidden group-hover:flex items-center justify-center size-4 rounded-full bg-destructive text-destructive-foreground"
+                        aria-label={`Remove ${action.label}`}
+                      >
+                        <X className="size-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                  {/* Add custom action */}
+                  <button
+                    onClick={() => setShowBatchModal(true)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+                    aria-label="Add custom quick action"
+                  >
+                    <Settings2 className="size-3" />
+                    Add
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {cats.map((cat) => (
+                  <CatCard
+                    key={cat.id}
+                    cat={cat}
+                    householdId={primaryHousehold!.id}
+                    todayEvents={todayEvents}
+                    memberMap={memberMap}
+                    currentUserId={user?.id ?? -1}
+                    onLog={openNewLog}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Archived cats toggle (non-sitters only) */}
+          {primaryHousehold && currentRole !== 'sitter' && (
+            <div className="space-y-3">
+              <button
+                onClick={() => setShowArchived((v) => !v)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showArchived ? 'Hide archived cats' : 'Show archived cats'}
+              </button>
+
+              {showArchived && archivedCats.length === 0 && (
+                <p className="text-xs text-muted-foreground">No archived cats.</p>
+              )}
+
+              {showArchived && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {archivedCats.map((cat) => (
+                    <div key={cat.id} className="opacity-50">
+                      <CatCard
+                        cat={cat}
+                        householdId={primaryHousehold.id}
+                        todayEvents={[]}
+                        memberMap={memberMap}
+                        currentUserId={user?.id ?? -1}
+                        onLog={openNewLog}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Members */}
+          {primaryHousehold && (
+            <MembersSection
+              household={primaryHousehold}
+              currentUserId={user?.id ?? -1}
+              currentRole={currentRole}
+              pendingInvites={pendingInvites}
+            />
+          )}
+        </div>
+
+        {/* ── Right column: care log + household info ──────────── */}
+        <div className="space-y-4 lg:sticky lg:top-20">
+          {primaryHousehold && cats.length > 0 && (
+            <UpcomingAppointmentsSection
+              householdId={primaryHousehold.id}
+              cats={cats}
+              onSchedule={openNewLog}
+            />
+          )}
+
+          {primaryHousehold && (
+            <TodayCareLog
+              todayEvents={selectedDateEvents}
+              selectedDate={selectedDate}
+              onPrevDay={goPrevDay}
+              onNextDay={goNextDay}
+              cats={cats}
+              memberMap={memberMap}
+              currentUserId={user?.id ?? -1}
+              onEdit={openEdit}
+              onRefresh={refreshCareLog}
+              isRefreshing={careRefetching}
+              onQuickLog={(cat) => openNewLog(cat)}
+              onGoToToday={goToToday}
+            />
+          )}
+
+          {primaryHousehold && (
+            <EmergencyContactSection
+              household={primaryHousehold}
+              currentRole={currentRole}
+            />
+          )}
+
+          {primaryHousehold && (
+            <HouseholdNotesSection
+              householdId={primaryHousehold.id}
+              currentRole={currentRole}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Log care modal */}
       {logCat && primaryHousehold && (
         <LogCareModal
           cat={logCat}
@@ -329,6 +457,14 @@ export function DashboardPage() {
           initialEvent={editingEvent ?? undefined}
           initialType={logInitType}
           onClose={closeModal}
+        />
+      )}
+
+      {/* Batch action creator */}
+      {showBatchModal && (
+        <BatchActionModal
+          onSave={addCustomAction}
+          onClose={() => setShowBatchModal(false)}
         />
       )}
     </>

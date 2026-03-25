@@ -9,11 +9,11 @@ export type ChartId = 'weight' | 'feeding' | 'care_breakdown' | 'member' | 'heat
 // sm breakpoint (<768px): all cards full-width
 export const DEFAULT_LAYOUTS: ResponsiveLayouts = {
   lg: [
-    { i: 'weight',         x: 0, y: 0,  w: 12, h: 5, minW: 5, minH: 4 },
-    { i: 'feeding',        x: 0, y: 5,  w: 6,  h: 5, minW: 5, minH: 4 },
-    { i: 'care_breakdown', x: 6, y: 5,  w: 6,  h: 5, minW: 5, minH: 4 },
-    { i: 'member',         x: 0, y: 10, w: 12, h: 4, minW: 5, minH: 3 },
-    { i: 'heatmap',        x: 0, y: 14, w: 12, h: 7, minW: 8, minH: 5 },
+    { i: 'weight',         x: 0, y: 0,  w: 6,  h: 5, minW: 5, minH: 4 },
+    { i: 'feeding',        x: 6, y: 0,  w: 6,  h: 5, minW: 5, minH: 4 },
+    { i: 'care_breakdown', x: 0, y: 5,  w: 6,  h: 5, minW: 5, minH: 4 },
+    { i: 'member',         x: 6, y: 5,  w: 6,  h: 5, minW: 5, minH: 3 },
+    { i: 'heatmap',        x: 0, y: 10, w: 12, h: 7, minW: 8, minH: 5 },
   ],
   sm: [
     { i: 'weight',         x: 0, y: 0,  w: 12, h: 5, minW: 12, minH: 4 },

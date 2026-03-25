@@ -98,6 +98,13 @@ export type EventType =
   | 'feeding' | 'litter' | 'water' | 'weight'
   | 'note' | 'medication' | 'vet_visit' | 'grooming'
 
+// details JSONB shapes per event_type:
+//   feeding:    { food_type: 'wet'|'dry'|'treats'|'other', amount_grams?: number }
+//   weight:     { weight_value: number, weight_unit: 'kg'|'g' }
+//   medication: { medication_name: string, dosage?: string, unit?: 'mg'|'ml'|'tablet' }
+//   vet_visit:  { reason: string, vet_name?: string, vet_clinic?: string }
+//   grooming:   { grooming_type: 'bath'|'nail_trim'|'full_groom'|'other' }
+//   litter / water / note: {}
 export interface CareEvent {
   id: number
   cat_id: number
