@@ -8,8 +8,8 @@ module Api
     class OauthController < BaseController
       skip_before_action :authenticate_user!
 
-      GOOGLE_CERTS_URL = "https://www.googleapis.com/oauth2/v3/certs"
-      GOOGLE_ISSUERS   = %w[https://accounts.google.com accounts.google.com].freeze
+      GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
+      GOOGLE_ISSUERS       = %w[https://accounts.google.com accounts.google.com].freeze
 
       # POST /api/v1/auth/google
       # Accepts a Google ID token from the React frontend (via @react-oauth/google).
@@ -43,60 +43,37 @@ module Api
 
       private
 
-      # Verifies the Google ID token locally using Google's cached JWKS public keys.
-      # This avoids a synchronous HTTP call to Google on every login; the public keys
-      # are fetched once and cached in Rails.cache for their TTL (~24 h).
-      # Returns the decoded payload hash on success, nil on failure.
+      # Verifies a Google ID token by calling Google's tokeninfo endpoint.
+      # Returns the payload hash on success, nil on any failure.
       def verify_google_token(credential)
-        jwks = fetch_google_jwks
-        if jwks.nil?
-          Rails.logger.error("[OauthController] JWKS fetch failed — cannot verify Google token")
+        uri  = URI("https://oauth2.googleapis.com/tokeninfo")
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl      = true
+        http.open_timeout = 5
+        http.read_timeout = 5
+
+        resp = http.get("/tokeninfo?id_token=#{URI.encode_www_form_component(credential)}")
+
+        unless resp.is_a?(Net::HTTPSuccess)
+          Rails.logger.error("[OauthController] tokeninfo #{resp.code}: #{resp.body.truncate(200)}")
           return nil
         end
 
-        payload, _header = JWT.decode(
-          credential,
-          jwks,
-          true,
-          algorithms:      %w[RS256],
-          iss:             GOOGLE_ISSUERS,
-          verify_iss:      true,
-          aud:             ENV["GOOGLE_CLIENT_ID"],
-          verify_aud:      true,
-          verify_expiration: true
-        )
-        payload
-      rescue JWT::DecodeError => e
-        Rails.logger.error("[OauthController] JWT::DecodeError: #{e.message} | GOOGLE_CLIENT_ID set=#{ENV['GOOGLE_CLIENT_ID'].present?}")
-        nil
-      rescue StandardError => e
-        Rails.logger.error("[OauthController] Unexpected error verifying Google token: #{e.class} #{e.message}")
-        nil
-      end
+        payload = JSON.parse(resp.body)
 
-      # Fetches and caches Google's JSON Web Key Set.
-      # Keys are stable for ~24 h; we cache for 1 h to stay ahead of any rotation.
-      # On fetch failure we return nil without caching, so the next request retries.
-      def fetch_google_jwks
-        # Cache the raw JSON string, not the JWT::JWK::Set object.
-        # Ruby objects don't round-trip reliably through Redis Marshal serialization;
-        # plain strings do. We deserialize into a JWT::JWK::Set on every use.
-        json_str = Rails.cache.fetch("google_oauth_jwks_json", expires_in: 1.hour) do
-          uri  = URI(GOOGLE_CERTS_URL)
-          http = Net::HTTP.new(uri.host, uri.port)
-          http.use_ssl      = true
-          http.open_timeout = 5
-          http.read_timeout = 5
-          resp = http.get(uri.request_uri)
-          raise "Unexpected HTTP #{resp.code} from Google JWKS endpoint" unless resp.is_a?(Net::HTTPSuccess)
-          resp.body
+        unless GOOGLE_ISSUERS.include?(payload["iss"])
+          Rails.logger.error("[OauthController] iss mismatch: #{payload['iss']}")
+          return nil
         end
 
-        return nil if json_str.nil?
+        unless payload["aud"] == ENV["GOOGLE_CLIENT_ID"]
+          Rails.logger.error("[OauthController] aud mismatch: #{payload['aud']} vs #{ENV['GOOGLE_CLIENT_ID']&.truncate(30)}")
+          return nil
+        end
 
-        JWT::JWK::Set.new(JSON.parse(json_str))
+        payload
       rescue StandardError => e
-        Rails.logger.error("[OauthController] JWKS fetch/parse error: #{e.message}")
+        Rails.logger.error("[OauthController] tokeninfo error: #{e.class} #{e.message}")
         nil
       end
 
