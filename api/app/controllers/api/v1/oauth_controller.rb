@@ -49,7 +49,10 @@ module Api
       # Returns the decoded payload hash on success, nil on failure.
       def verify_google_token(credential)
         jwks = fetch_google_jwks
-        return nil if jwks.nil?
+        if jwks.nil?
+          Rails.logger.error("[OauthController] JWKS fetch failed — cannot verify Google token")
+          return nil
+        end
 
         payload, _header = JWT.decode(
           credential,
@@ -63,7 +66,11 @@ module Api
           verify_expiration: true
         )
         payload
-      rescue JWT::DecodeError, StandardError
+      rescue JWT::DecodeError => e
+        Rails.logger.error("[OauthController] JWT::DecodeError: #{e.message} | GOOGLE_CLIENT_ID set=#{ENV['GOOGLE_CLIENT_ID'].present?}")
+        nil
+      rescue StandardError => e
+        Rails.logger.error("[OauthController] Unexpected error verifying Google token: #{e.class} #{e.message}")
         nil
       end
 
@@ -81,7 +88,8 @@ module Api
           raise "Unexpected response: #{resp.code}" unless resp.is_a?(Net::HTTPSuccess)
           JWT::JWK::Set.new(JSON.parse(resp.body))
         end
-      rescue StandardError
+      rescue StandardError => e
+        Rails.logger.error("[OauthController] JWKS fetch error: #{e.message}")
         nil
       end
 
