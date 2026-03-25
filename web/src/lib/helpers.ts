@@ -63,6 +63,19 @@ export function formatEventSummary(event: CareEvent): string {
       if (!name) return 'Medication'
       return dosage ? `${name} · ${dosage} ${unit}` : name
     }
+    case 'vet_visit': {
+      const reason = d.reason as string
+      return reason ? `Vet · ${reason}` : 'Vet visit'
+    }
+    case 'grooming': {
+      const groomingLabels: Record<string, string> = {
+        bath: 'Bath',
+        nail_trim: 'Nail trim',
+        full_groom: 'Full groom',
+        other: 'Grooming',
+      }
+      return groomingLabels[d.grooming_type as string] ?? 'Grooming'
+    }
     case 'note':
       return 'Note'
     default:

@@ -116,8 +116,7 @@ export function CatHistoryPage() {
   }, [catId])
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="space-y-6">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -319,7 +318,7 @@ export function CatHistoryPage() {
 
             {/* Desktop: drag-and-drop + resizable grid */}
             {!isMobile && (
-              <div ref={containerRef}>
+              <div ref={containerRef} className="w-full">
                 <ResponsiveGridLayout
                   width={gridWidth || 800}
                   className="layout"
@@ -383,7 +382,6 @@ export function CatHistoryPage() {
           </div>
         )}
 
-      </div>
     </div>
   )
 }

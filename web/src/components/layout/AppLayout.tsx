@@ -61,7 +61,7 @@ export function AppLayout() {
     <div className="min-h-screen bg-gradient-to-b from-sky-50/50 to-background dark:from-sky-950/10 dark:to-background">
       {/* ── Sticky top navbar ───────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-sky-100 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-border dark:bg-background/90">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Left: logo + household name */}
           <div className="flex items-center gap-3">
             {/* Mobile hamburger */}
@@ -225,7 +225,7 @@ export function AppLayout() {
       </header>
 
       {/* ── Page content ────────────────────────────────────────── */}
-      <main className="mx-auto max-w-5xl px-4 py-6">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         <Outlet />
       </main>
     </div>

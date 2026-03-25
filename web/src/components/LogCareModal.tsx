@@ -23,6 +23,7 @@ import type { Cat, CareEvent, EventType } from '@/types/api'
 type FoodType      = 'wet' | 'dry' | 'treats' | 'other'
 type WeightUnit    = 'kg' | 'g'
 type MedicationUnit = 'mg' | 'ml' | 'tablet'
+type GroomingType  = 'bath' | 'nail_trim' | 'full_groom' | 'other'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -32,7 +33,16 @@ const CARE_TYPES: { value: EventType; label: string }[] = [
   { value: 'water',      label: 'Water'      },
   { value: 'weight',     label: 'Weight'     },
   { value: 'medication', label: 'Medication' },
+  { value: 'vet_visit',  label: 'Vet Visit'  },
+  { value: 'grooming',   label: 'Grooming'   },
   { value: 'note',       label: 'Note'       },
+]
+
+const GROOMING_TYPES: { value: GroomingType; label: string }[] = [
+  { value: 'bath',       label: 'Bath'       },
+  { value: 'nail_trim',  label: 'Nail trim'  },
+  { value: 'full_groom', label: 'Full groom' },
+  { value: 'other',      label: 'Other'      },
 ]
 
 const FOOD_TYPES: { value: FoodType; label: string }[] = [
@@ -116,6 +126,16 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   const [medicationDosage, setMedicationDosage] = useState(initMedicationDosage)
   const [medicationUnit,   setMedicationUnit]   = useState<MedicationUnit>(initMedicationUnit)
 
+  // Vet visit
+  const [vetReason,  setVetReason]  = useState((initDetails.reason as string) ?? '')
+  const [vetName,    setVetName]    = useState((initDetails.vet_name as string) ?? cat.vet_name ?? '')
+  const [vetClinic,  setVetClinic]  = useState((initDetails.vet_clinic as string) ?? cat.vet_clinic ?? '')
+
+  // Grooming
+  const [groomingType, setGroomingType] = useState<GroomingType>(
+    (initDetails.grooming_type as GroomingType) ?? 'bath'
+  )
+
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -150,6 +170,9 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
     if (eventType === 'medication') {
       return medicationName.trim() !== ''
     }
+    if (eventType === 'vet_visit') {
+      return vetReason.trim() !== ''
+    }
     return true
   })()
 
@@ -171,6 +194,16 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
         medication_name: medicationName.trim(),
         ...(medicationDosage ? { dosage: medicationDosage, unit: medicationUnit } : {}),
       }
+    }
+    if (eventType === 'vet_visit') {
+      return {
+        reason: vetReason.trim(),
+        ...(vetName.trim() ? { vet_name: vetName.trim() } : {}),
+        ...(vetClinic.trim() ? { vet_clinic: vetClinic.trim() } : {}),
+      }
+    }
+    if (eventType === 'grooming') {
+      return { grooming_type: groomingType }
     }
     return {}
   }
@@ -406,6 +439,59 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Vet visit fields */}
+          {eventType === 'vet_visit' && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Reason for visit</label>
+                <Input
+                  placeholder="e.g. Annual checkup, Illness, Follow-up"
+                  value={vetReason}
+                  onChange={(e) => setVetReason(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">
+                  Vet name <span className="text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <Input
+                  placeholder="e.g. Dr. Smith"
+                  value={vetName}
+                  onChange={(e) => setVetName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">
+                  Clinic <span className="text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <Input
+                  placeholder="e.g. City Animal Hospital"
+                  value={vetClinic}
+                  onChange={(e) => setVetClinic(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Grooming fields */}
+          {eventType === 'grooming' && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Grooming type</p>
+              <div className="flex gap-2 flex-wrap">
+                {GROOMING_TYPES.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setGroomingType(value)}
+                    className={pillClass(groomingType === value)}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
           )}

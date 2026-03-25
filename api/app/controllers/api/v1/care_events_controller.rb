@@ -6,9 +6,15 @@ module Api
       def index
         authorize @household, policy_class: CareEventPolicy
         events = @household.care_events
-                           .order(occurred_at: :desc)
 
         events = events.where(cat_id: params[:cat_id]) if params[:cat_id].present?
+        events = events.where(event_type: params[:event_types]) if params[:event_types].present?
+
+        if params[:upcoming] == 'true'
+          events = events.where('occurred_at > ?', Time.current).order(occurred_at: :asc)
+        else
+          events = events.order(occurred_at: :desc)
+        end
 
         render_success(events.map { |e| serialize_event(e) })
       end

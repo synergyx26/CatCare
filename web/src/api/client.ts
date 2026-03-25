@@ -107,8 +107,11 @@ export const api = {
     apiClient.get(`/households/${householdId}/cats/${catId}/stats`, { params: { range } }),
 
   // Care events
-  getCareEvents: (householdId: number, catId?: number) => {
-    const params = catId ? { cat_id: catId } : {}
+  getCareEvents: (householdId: number, options?: { catId?: number; upcoming?: boolean; eventTypes?: string[] }) => {
+    const params: Record<string, unknown> = {}
+    if (options?.catId) params.cat_id = options.catId
+    if (options?.upcoming) params.upcoming = true
+    if (options?.eventTypes?.length) params['event_types[]'] = options.eventTypes
     return apiClient.get(`/households/${householdId}/care_events`, { params })
   },
 
