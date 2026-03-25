@@ -17,17 +17,17 @@ module Api
       # User and returns a CatCare JWT. No synchronous call to Google on each login.
       def google
         credential = params[:credential]
-        return render_error("MISSING_CREDENTIAL", "Google credential is required", :bad_request) if credential.blank?
+        return render_error("MISSING_CREDENTIAL", "Google credential is required", status: :bad_request) if credential.blank?
 
         google_payload = verify_google_token(credential)
-        return render_error("INVALID_CREDENTIAL", "Google token verification failed", :unauthorized) if google_payload.nil?
+        return render_error("INVALID_CREDENTIAL", "Google token verification failed", status: :unauthorized) if google_payload.nil?
 
         email = google_payload["email"]&.downcase
         name  = google_payload["name"].presence || email.split("@").first
         uid   = google_payload["sub"]
 
         user = find_or_create_oauth_user(email: email, name: name, uid: uid, provider: "google")
-        return render_error("OAUTH_FAILED", "Unable to sign in with Google", :unprocessable_entity) if user.nil?
+        return render_error("OAUTH_FAILED", "Unable to sign in with Google", status: :unprocessable_entity) if user.nil?
 
         token, _payload = Warden::JWTAuth::UserEncoder.new.call(user, :user, nil)
         response.set_header("Authorization", "Bearer #{token}")
