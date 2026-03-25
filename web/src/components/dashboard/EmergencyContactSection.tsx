@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import type { Household, MemberRole } from '@/types/api'
 
 interface EmergencyContactSectionProps {
@@ -86,12 +87,9 @@ export function EmergencyContactSection({
           </div>
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Phone</label>
-            <Input
-              type="tel"
-              placeholder="+1 555 000 0000"
+            <PhoneInput
               value={ecPhone}
-              onChange={(e) => setEcPhone(e.target.value)}
-              className="rounded-xl"
+              onChange={setEcPhone}
             />
           </div>
           <Button

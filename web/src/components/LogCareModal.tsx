@@ -97,11 +97,15 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   // ── State ───────────────────────────────────────────────────────────────────
   const [eventType,       setEventType]       = useState<EventType>(initType)
   const [notes,           setNotes]           = useState(initialEvent?.notes ?? '')
-  const [occurredAt,      setOccurredAt]      = useState(
-    initialEvent
-      ? toLocalDateTimeInput(new Date(initialEvent.occurred_at))
-      : toLocalDateTimeInput(new Date())
-  )
+  const [occurredAt,      setOccurredAt]      = useState(() => {
+    if (initialEvent) return toLocalDateTimeInput(new Date(initialEvent.occurred_at))
+    if (initType === 'vet_visit' || initType === 'grooming') {
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      return toLocalDateTimeInput(tomorrow)
+    }
+    return toLocalDateTimeInput(new Date())
+  })
 
   // Feeding
   const [foodType,        setFoodType]        = useState<FoodType>(initFoodType)
@@ -225,6 +229,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['care_events'] })
+      queryClient.invalidateQueries({ queryKey: ['upcoming_appointments'] })
       const typeLabel = CARE_TYPES.find((t) => t.value === eventType)?.label.toLowerCase() ?? ''
       toast.success(isEditing ? 'Changes saved!' : `${cat.name}: ${typeLabel} logged`)
       onClose()
@@ -243,6 +248,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
     mutationFn: () => api.deleteCareEvent(householdId, initialEvent!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['care_events'] })
+      queryClient.invalidateQueries({ queryKey: ['upcoming_appointments'] })
       toast.success('Entry deleted')
       onClose()
     },

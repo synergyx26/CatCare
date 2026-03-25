@@ -32,6 +32,10 @@ export interface Household {
   created_at: string
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  vet_name: string | null
+  vet_clinic: string | null
+  vet_phone: string | null
+  vet_address: string | null
 }
 
 export interface MembershipProfile {
@@ -87,6 +91,7 @@ export interface Cat {
   vet_name: string | null
   vet_clinic: string | null
   vet_phone: string | null
+  vet_address: string | null
   care_instructions: string | null
   created_at: string
   updated_at: string

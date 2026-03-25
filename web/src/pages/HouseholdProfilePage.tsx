@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -9,6 +9,7 @@ import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Textarea } from '@/components/ui/textarea'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
@@ -55,6 +56,7 @@ export function HouseholdProfilePage() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isDirty, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -135,11 +137,15 @@ export function HouseholdProfilePage() {
           </h2>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Phone number</label>
-            <Input
-              {...register('phone')}
-              type="tel"
-              placeholder="+1 555 000 0000"
-              className="rounded-xl"
+            <Controller
+              name="phone"
+              control={control}
+              render={({ field }) => (
+                <PhoneInput
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                />
+              )}
             />
             {errors.phone && (
               <p className="text-destructive text-xs">{errors.phone.message}</p>
@@ -174,11 +180,15 @@ export function HouseholdProfilePage() {
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Phone</label>
-            <Input
-              {...register('emergency_contact_phone')}
-              type="tel"
-              placeholder="+1 555 000 0000"
-              className="rounded-xl"
+            <Controller
+              name="emergency_contact_phone"
+              control={control}
+              render={({ field }) => (
+                <PhoneInput
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                />
+              )}
             />
             {errors.emergency_contact_phone && (
               <p className="text-destructive text-xs">{errors.emergency_contact_phone.message}</p>

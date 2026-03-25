@@ -204,6 +204,9 @@ export function CatProfilePage() {
                   </a>
                 </div>
               )}
+              {cat.vet_address && (
+                <Row label="Vet address" value={cat.vet_address} />
+              )}
               {nextVetVisit && (
                 <div className="flex justify-between px-4 py-3 text-sm">
                   <span className="text-muted-foreground">Next visit</span>
