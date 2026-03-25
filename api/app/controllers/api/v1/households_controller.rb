@@ -59,7 +59,10 @@ module Api
       end
 
       def household_params
-        params.require(:household).permit(:name, :emergency_contact_name, :emergency_contact_phone)
+        params.require(:household).permit(
+          :name, :emergency_contact_name, :emergency_contact_phone,
+          :vet_name, :vet_clinic, :vet_phone, :vet_address
+        )
       end
 
       def household_json(household)
@@ -76,6 +79,10 @@ module Api
           created_at:   household.created_at,
           emergency_contact_name:  household.emergency_contact_name,
           emergency_contact_phone: household.emergency_contact_phone,
+          vet_name:                household.vet_name,
+          vet_clinic:              household.vet_clinic,
+          vet_phone:               household.vet_phone,
+          vet_address:             household.vet_address,
         }
       end
     end

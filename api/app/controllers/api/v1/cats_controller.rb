@@ -98,7 +98,7 @@ module Api
         params.require(:cat).permit(
           :name, :species, :sex, :sterilized,
           :birthday, :breed, :microchip_number, :health_notes, :active, :deceased, :photo,
-          :vet_name, :vet_clinic, :vet_phone, :care_instructions
+          :vet_name, :vet_clinic, :vet_phone, :vet_address, :care_instructions
         )
       end
 
@@ -121,6 +121,7 @@ module Api
           vet_name:          cat.vet_name,
           vet_clinic:        cat.vet_clinic,
           vet_phone:         cat.vet_phone,
+          vet_address:       cat.vet_address,
           care_instructions: cat.care_instructions,
           created_at:        cat.created_at,
           updated_at:        cat.updated_at,

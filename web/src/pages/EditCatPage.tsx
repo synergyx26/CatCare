@@ -3,17 +3,19 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Controller } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Textarea } from '@/components/ui/textarea'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
 import { usePageTitle } from '@/hooks/usePageTitle'
-import type { ApiError, Cat } from '@/types/api'
+import type { ApiError, Cat, Household } from '@/types/api'
 
 const schema = z.object({
   name:              z.string().min(1, 'Name is required'),
@@ -26,7 +28,8 @@ const schema = z.object({
   care_instructions: z.string().optional(),
   vet_name:          z.string().optional(),
   vet_clinic:        z.string().optional(),
-  vet_phone:         z.string().optional(),
+  vet_phone:         z.string().max(50).optional(),
+  vet_address:       z.string().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -47,7 +50,14 @@ export function EditCatPage() {
   const cat: Cat | undefined = data?.data?.data
   usePageTitle(cat ? `Edit ${cat.name}` : '')
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { data: householdData } = useQuery({
+    queryKey: ['households'],
+    queryFn:  () => api.getHouseholds(),
+  })
+  const household: Household | undefined = householdData?.data?.data?.[0]
+  const hasHouseholdVet = !!(household?.vet_name || household?.vet_clinic || household?.vet_phone || household?.vet_address)
+
+  const { register, handleSubmit, setValue, control, formState: { errors } } = useForm<FormValues>({
     resolver:      zodResolver(schema),
     values: cat ? {
       name:              cat.name,
@@ -61,8 +71,17 @@ export function EditCatPage() {
       vet_name:          cat.vet_name          ?? '',
       vet_clinic:        cat.vet_clinic        ?? '',
       vet_phone:         cat.vet_phone         ?? '',
+      vet_address:       cat.vet_address       ?? '',
     } : undefined,
   })
+
+  function fillFromHouseholdVet() {
+    if (!household) return
+    setValue('vet_name',    household.vet_name    ?? '')
+    setValue('vet_clinic',  household.vet_clinic  ?? '')
+    setValue('vet_phone',   household.vet_phone   ?? '')
+    setValue('vet_address', household.vet_address ?? '')
+  }
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) => {
@@ -78,6 +97,7 @@ export function EditCatPage() {
       if (values.vet_name)          fd.append('cat[vet_name]',          values.vet_name)
       if (values.vet_clinic)        fd.append('cat[vet_clinic]',        values.vet_clinic)
       if (values.vet_phone)         fd.append('cat[vet_phone]',         values.vet_phone)
+      if (values.vet_address)       fd.append('cat[vet_address]',       values.vet_address)
       if (photoFile)                fd.append('cat[photo]',             photoFile)
       return api.updateCat(Number(householdId), Number(catId), fd)
     },
@@ -268,6 +288,21 @@ export function EditCatPage() {
             </p>
           </div>
 
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Vet
+            </p>
+            {hasHouseholdVet && (
+              <button
+                type="button"
+                onClick={fillFromHouseholdVet}
+                className="text-xs text-sky-600 dark:text-sky-400 font-medium hover:underline"
+              >
+                Fill from household vet
+              </button>
+            )}
+          </div>
+
           <div className="space-y-1">
             <label className="text-sm font-medium">Vet name</label>
             <Input {...register('vet_name')} placeholder="Dr. Sarah Kim" />
@@ -280,7 +315,21 @@ export function EditCatPage() {
 
           <div className="space-y-1">
             <label className="text-sm font-medium">Vet phone</label>
-            <Input {...register('vet_phone')} type="tel" placeholder="(555) 123-4567" />
+            <Controller
+              name="vet_phone"
+              control={control}
+              render={({ field }) => (
+                <PhoneInput
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Vet address</label>
+            <Input {...register('vet_address')} placeholder="123 Main St, City, State" />
           </div>
         </div>
 

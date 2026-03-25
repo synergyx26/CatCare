@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Stethoscope, Scissors, CalendarPlus } from 'lucide-react'
+import { Stethoscope, Scissors, CalendarPlus, Pencil } from 'lucide-react'
 import { api } from '@/api/client'
 import { formatEventSummary } from '@/lib/helpers'
 import type { Cat, CareEvent, EventType } from '@/types/api'
@@ -8,6 +8,7 @@ interface Props {
   householdId: number
   cats: Cat[]
   onSchedule: (cat: Cat, type: EventType) => void
+  onEdit: (event: CareEvent) => void
 }
 
 function formatAppointmentDate(isoString: string): { relative: string; absolute: string } {
@@ -32,7 +33,7 @@ function formatAppointmentDate(isoString: string): { relative: string; absolute:
   return { relative, absolute }
 }
 
-export function UpcomingAppointmentsSection({ householdId, cats, onSchedule }: Props) {
+export function UpcomingAppointmentsSection({ householdId, cats, onSchedule, onEdit }: Props) {
   const { data } = useQuery({
     queryKey: ['upcoming_appointments', householdId],
     queryFn: () => api.getCareEvents(householdId, {
@@ -91,6 +92,13 @@ export function UpcomingAppointmentsSection({ householdId, cats, onSchedule }: P
                     {' · '}{absolute}
                   </p>
                 </div>
+                <button
+                  onClick={() => onEdit(event)}
+                  className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Edit appointment"
+                >
+                  <Pencil className="size-3.5" />
+                </button>
               </li>
             )
           })}

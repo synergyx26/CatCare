@@ -9,6 +9,7 @@ import { CatCard } from '@/components/dashboard/CatCard'
 import { TodayCareLog } from '@/components/dashboard/TodayCareLog'
 import { MembersSection } from '@/components/dashboard/MembersSection'
 import { EmergencyContactSection } from '@/components/dashboard/EmergencyContactSection'
+import { HouseholdVetSection } from '@/components/dashboard/HouseholdVetSection'
 import { HouseholdNotesSection } from '@/components/dashboard/HouseholdNotesSection'
 import { UpcomingAppointmentsSection } from '@/components/dashboard/UpcomingAppointmentsSection'
 import { Button } from '@/components/ui/button'
@@ -413,6 +414,7 @@ export function DashboardPage() {
               householdId={primaryHousehold.id}
               cats={cats}
               onSchedule={openNewLog}
+              onEdit={openEdit}
             />
           )}
 
@@ -430,6 +432,13 @@ export function DashboardPage() {
               isRefreshing={careRefetching}
               onQuickLog={(cat) => openNewLog(cat)}
               onGoToToday={goToToday}
+            />
+          )}
+
+          {primaryHousehold && (
+            <HouseholdVetSection
+              household={primaryHousehold}
+              currentRole={currentRole}
             />
           )}
 

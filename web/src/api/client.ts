@@ -67,7 +67,7 @@ export const api = {
   createHousehold: (data: { household: { name: string } }) =>
     apiClient.post('/households', data),
 
-  updateHousehold: (id: number, data: { household: { name?: string; emergency_contact_name?: string | null; emergency_contact_phone?: string | null } }) =>
+  updateHousehold: (id: number, data: { household: { name?: string; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; vet_name?: string | null; vet_clinic?: string | null; vet_phone?: string | null; vet_address?: string | null } }) =>
     apiClient.patch(`/households/${id}`, data),
 
   getHousehold: (id: number) =>

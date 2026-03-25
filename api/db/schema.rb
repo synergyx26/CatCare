@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -91,6 +91,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_100000) do
     t.integer "species", default: 0, null: false
     t.boolean "sterilized", default: false
     t.datetime "updated_at", null: false
+    t.string "vet_address"
     t.string "vet_clinic"
     t.string "vet_name"
     t.string "vet_phone"
@@ -138,6 +139,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_100000) do
     t.string "emergency_contact_phone"
     t.string "name"
     t.datetime "updated_at", null: false
+    t.string "vet_address"
+    t.string "vet_clinic"
+    t.string "vet_name"
+    t.string "vet_phone"
   end
 
   create_table "reminder_recipients", force: :cascade do |t|
