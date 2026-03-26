@@ -229,10 +229,10 @@ export function DashboardPage() {
   if (households.length === 0) {
     return (
       <div className="mx-auto max-w-md space-y-6">
-        <PageHeader
-          title="Welcome to CatCare"
-          subtitle={`Hi, ${user?.name}`}
-        />
+        <div className="space-y-0.5">
+          <h1 className="text-xl font-bold tracking-tight">Welcome to CatCare</h1>
+          <p className="text-sm text-muted-foreground">Hi, {user?.name}</p>
+        </div>
         <EmptyState
           icon={Home}
           title="No household yet"
