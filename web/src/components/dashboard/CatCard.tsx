@@ -14,6 +14,17 @@ interface CatCardProps {
   onLog: (cat: Cat, type?: EventType) => void
 }
 
+function getStatusLine(status: CatTodayStatus): { text: string; allGood: boolean } {
+  const issues: string[] = []
+  if (status.feedCount === 0) issues.push('feeding')
+  if (!status.waterDoneAt) issues.push('water')
+  if (!status.litterDoneAt) issues.push('litter')
+
+  if (issues.length === 0) return { text: 'All caught up', allGood: true }
+  if (issues.length === 1) return { text: `Needs ${issues[0]}`, allGood: false }
+  return { text: 'Needs attention', allGood: false }
+}
+
 export function CatCard({
   cat,
   householdId,
@@ -29,14 +40,12 @@ export function CatCard({
     memberMap,
     currentUserId
   )
+  const { text: statusText, allGood } = getStatusLine(status)
 
   return (
-    <div className="rounded-2xl bg-card ring-1 ring-border/60 shadow-md shadow-sky-500/5 hover:shadow-lg hover:shadow-sky-500/10 transition-all hover:-translate-y-0.5 overflow-hidden">
-      {/* Colored top accent */}
-      <div className="h-1 bg-gradient-to-r from-sky-400 to-cyan-400" />
-
+    <div className="rounded-2xl bg-card ring-1 ring-border/60 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden">
       <div className="p-4 space-y-3">
-        {/* Top row: avatar + name + profile link */}
+        {/* Top row: avatar + name + status line + chips */}
         <button
           onClick={() => navigate(`/households/${householdId}/cats/${cat.id}`)}
           className="flex w-full items-center gap-3 text-left"
@@ -45,22 +54,30 @@ export function CatCard({
             <img
               src={cat.photo_url}
               alt={cat.name}
-              className="size-14 shrink-0 rounded-2xl border-2 border-sky-100 dark:border-sky-900/40 object-cover"
+              className="size-10 shrink-0 rounded-xl border border-border/40 object-cover"
             />
           ) : (
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-100 to-cyan-100 dark:from-sky-900/30 dark:to-cyan-900/30 text-sky-600 dark:text-sky-400">
-              <span className="text-lg font-bold">
-                {cat.name.charAt(0).toUpperCase()}
-              </span>
+            <div
+              className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-base font-bold ${
+                allGood
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+              }`}
+            >
+              {cat.name.charAt(0).toUpperCase()}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-base">{cat.name}</p>
-            {cat.breed && (
-              <p className="truncate text-xs text-muted-foreground">
-                {cat.breed}
-              </p>
-            )}
+            <p className="font-semibold text-sm leading-none">{cat.name}</p>
+            <p
+              className={`text-xs font-medium mt-0.5 ${
+                allGood
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-amber-600 dark:text-amber-400'
+              }`}
+            >
+              {statusText}
+            </p>
             <CatStatusBadges status={status} />
           </div>
         </button>

@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { LogCareModal } from '@/components/LogCareModal'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { CatCard } from '@/components/dashboard/CatCard'
 import { TodayCareLog } from '@/components/dashboard/TodayCareLog'
 import { MembersSection } from '@/components/dashboard/MembersSection'
@@ -17,9 +16,15 @@ import { CatCardSkeleton } from '@/components/skeletons/CatCardSkeleton'
 import { CareLogSkeleton } from '@/components/skeletons/CareLogSkeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { usePageTitle } from '@/hooks/usePageTitle'
-import { isToday, isSameLocalDay, formatDateHeader, getCatTodayStatus } from '@/lib/helpers'
+import { isToday, isSameLocalDay, getCatTodayStatus } from '@/lib/helpers'
 import { toast } from 'sonner'
 import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X } from 'lucide-react'
+
+function getTimeGreeting(name: string): string {
+  const hour = new Date().getHours()
+  const salutation = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  return `${salutation}, ${name}`
+}
 import { loadBatchActions, saveBatchActions } from '@/lib/batchActions'
 import { BatchActionModal } from '@/components/dashboard/BatchActionModal'
 import type { BatchAction } from '@/lib/batchActions'
@@ -224,10 +229,10 @@ export function DashboardPage() {
   if (households.length === 0) {
     return (
       <div className="mx-auto max-w-md space-y-6">
-        <PageHeader
-          title="Welcome to CatCare"
-          subtitle={`Hi, ${user?.name}`}
-        />
+        <div className="space-y-0.5">
+          <h1 className="text-xl font-bold tracking-tight">Welcome to CatCare</h1>
+          <p className="text-sm text-muted-foreground">Hi, {user?.name}</p>
+        </div>
         <EmptyState
           icon={Home}
           title="No household yet"
@@ -240,36 +245,30 @@ export function DashboardPage() {
 
   return (
     <>
-      {/* Page header + attention banner — full width */}
-      <div className="space-y-4 mb-6">
-        <PageHeader
-          title={primaryHousehold?.name ?? 'Your household'}
-          subtitle={`Hi, ${user?.name} · ${formatDateHeader()}`}
-          action={
-            primaryHousehold && currentRole !== 'sitter' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  navigate(`/households/${primaryHousehold.id}/add-cat`)
-                }
-              >
-                <Plus className="size-4" />
-                Add Cat
-              </Button>
-            ) : undefined
-          }
-        />
-
-        {cats.length > 0 && needsAttentionCount > 0 && (
-          <div className="flex items-center gap-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 px-4 py-2.5">
-            <span className="size-1.5 shrink-0 rounded-full bg-amber-500" />
-            <p className="text-sm text-amber-700 dark:text-amber-400">
-              {needsAttentionCount === 1
-                ? '1 cat needs attention'
-                : `${needsAttentionCount} cats need attention`}
+      {/* Page header — warm greeting */}
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="space-y-0.5">
+          <h1 className="text-xl font-bold tracking-tight">
+            {getTimeGreeting(user?.name ?? 'there')} 👋
+          </h1>
+          {cats.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {needsAttentionCount > 0
+                ? `${needsAttentionCount} ${needsAttentionCount === 1 ? 'cat needs' : 'cats need'} attention today`
+                : 'All cats are cared for today'}
             </p>
-          </div>
+          )}
+        </div>
+        {primaryHousehold && currentRole !== 'sitter' && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => navigate(`/households/${primaryHousehold.id}/add-cat`)}
+          >
+            <Plus className="size-4" />
+            Add Cat
+          </Button>
         )}
       </div>
 
