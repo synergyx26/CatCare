@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_26_211709) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_26_225959) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -83,6 +83,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_26_211709) do
     t.datetime "created_at", null: false
     t.integer "created_by_id", null: false
     t.boolean "deceased", default: false, null: false
+    t.jsonb "feeding_presets", default: {"dry" => [80, 90, 100], "wet" => [50, 60, 70, 80], "other" => [], "treats" => []}, null: false
     t.integer "feedings_per_day", default: 1, null: false
     t.text "health_notes"
     t.bigint "household_id", null: false

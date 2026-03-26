@@ -52,7 +52,7 @@ const FOOD_TYPES: { value: FoodType; label: string }[] = [
   { value: 'other',  label: 'Other'  },
 ]
 
-const PRESETS: Record<FoodType, number[]> = {
+const DEFAULT_PRESETS: Record<FoodType, number[]> = {
   wet:    [50, 60, 70, 80],
   dry:    [80, 90, 100],
   treats: [],
@@ -88,7 +88,13 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
 
   const initFoodType       = (initDetails.food_type as FoodType) ?? 'wet'
   const initAmountGrams    = typeof initDetails.amount_grams === 'number' ? initDetails.amount_grams : null
-  const initAmountIsPreset = initAmountGrams != null && PRESETS[initFoodType].includes(initAmountGrams)
+  const catPresets: Record<FoodType, number[]> = {
+    wet:    cat.feeding_presets?.wet    ?? DEFAULT_PRESETS.wet,
+    dry:    cat.feeding_presets?.dry    ?? DEFAULT_PRESETS.dry,
+    treats: cat.feeding_presets?.treats ?? DEFAULT_PRESETS.treats,
+    other:  cat.feeding_presets?.other  ?? DEFAULT_PRESETS.other,
+  }
+  const initAmountIsPreset = initAmountGrams != null && catPresets[initFoodType].includes(initAmountGrams)
 
   const initMedicationName = (initDetails.medication_name as string) || initialMedicationName || ''
   const initMedicationDosage = (initDetails.dosage as string) ?? ''
@@ -144,7 +150,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // ── Feeding helpers ─────────────────────────────────────────────────────────
-  const presets = PRESETS[foodType]
+  const presets = catPresets[foodType]
 
   function pickFoodType(type: FoodType) {
     setFoodType(type)

@@ -103,7 +103,14 @@ export const api = {
   updateCatCareRequirements: (
     householdId: number,
     catId: number,
-    data: { cat: { feedings_per_day?: number; track_water?: boolean; track_litter?: boolean } }
+    data: {
+      cat: {
+        feedings_per_day?: number
+        track_water?: boolean
+        track_litter?: boolean
+        feeding_presets?: { wet: number[]; dry: number[]; treats: number[]; other: number[] }
+      }
+    }
   ) => apiClient.patch(`/households/${householdId}/cats/${catId}`, data),
 
   getCat: (householdId: number, catId: number) =>

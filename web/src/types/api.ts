@@ -96,6 +96,7 @@ export interface Cat {
   feedings_per_day: number
   track_water: boolean
   track_litter: boolean
+  feeding_presets: { wet: number[]; dry: number[]; treats: number[]; other: number[] }
   created_at: string
   updated_at: string
 }

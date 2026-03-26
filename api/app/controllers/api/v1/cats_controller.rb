@@ -99,7 +99,8 @@ module Api
           :name, :species, :sex, :sterilized,
           :birthday, :breed, :microchip_number, :health_notes, :active, :deceased, :photo,
           :vet_name, :vet_clinic, :vet_phone, :vet_address, :care_instructions,
-          :feedings_per_day, :track_water, :track_litter
+          :feedings_per_day, :track_water, :track_litter,
+          feeding_presets: { wet: [], dry: [], treats: [], other: [] }
         )
       end
 
@@ -127,6 +128,7 @@ module Api
           feedings_per_day:  cat.feedings_per_day,
           track_water:       cat.track_water,
           track_litter:      cat.track_litter,
+          feeding_presets:   cat.feeding_presets,
           created_at:        cat.created_at,
           updated_at:        cat.updated_at,
         }
