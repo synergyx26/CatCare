@@ -4,6 +4,54 @@
 
 ---
 
+## Recently Completed
+
+### Care Settings & Feeding Portion Presets ✅ *(2026-03-26 — branch: feat/dashboard-enhancements)*
+- **Care requirements per cat**: `feedings_per_day` (1–5), `track_water`, `track_litter` columns added to cats table; dashboard badges and "needs attention" count respect per-cat settings
+- **Feeding portion presets**: `feeding_presets` JSONB column on cats; admins set custom gram presets per food type (wet, dry) in Care Settings — these appear as quick-pick buttons in the feeding log
+- **Care Settings page** (`/households/:id/settings`, admin-only): per-cat cards with daily tracking toggles and portion preset editor (add/remove gram values, optimistic updates with rollback)
+- **dotenv-rails moved to dev+test group**: RSpec now correctly loads `api/.env` so all 81 specs pass in test env
+
+### Care History Chart Improvements ✅ *(2026-03-26 — branch: feat/dashboard-enhancements)*
+- `CareTypeBreakdownChart`: replaced donut (WCAG grade C) with horizontal bar chart sorted descending, event colours preserved, LabelList value labels — now WCAG AAA
+- `WeightTrendChart`: upgraded from LineChart to AreaChart with green gradient fill; fixed Y-axis spacing
+- `FeedingFrequencyChart`: fixed XAxis font size (was below WCAG floor); tightened left margin
+- `MemberContributionChart`: added LabelList labels; changed fill to `#a78bfa` (purple accent)
+- `CareActivityHeatmap`: fixed dark mode contrast (sky-500 rgba ramp); unambiguous 2-char weekday labels
+- `ChartCard`: wider accent stripe; higher drag handle opacity; aria-label on drag handle
+- `CatHistoryPage`: StatCard label bumped from 10px to 11px; stale overlay uses animate-pulse
+
+### Google OAuth (Sign in with Google) ✅ *(2026-03-26 — branch: feat/dashboard-enhancements)*
+- `OauthController` verifies ID token against `https://oauth2.googleapis.com/tokeninfo` (no JWKS/Redis complexity); validates `aud` claim, finds-or-creates user, returns CatCare JWT
+- Fixed JWKS Redis serialization bug (was caching JWK::Set object, not raw JSON string)
+- Fixed Devise `DisabledSessionError` on 401 in API-only mode
+- `GoogleOAuthButton` component on login/register pages; `@react-oauth/google` installed
+- Smoke tests: sign-in with Google → dashboard; duplicate email → account linking (no duplicate user)
+
+### Vet Address + Household Vet Section ✅ *(2026-03-26 — branch: feat/dashboard-enhancements)*
+- `vet_address` column added to cats; editable in `EditCatPage`
+- `HouseholdVetSection` component on `DashboardPage` — shared vet contact info for the household
+- `UpcomingAppointmentsSection` — tracks scheduled vet/grooming appointments from future-dated care events
+- Phone input component (`components/ui/phone-input.tsx`) used in membership profile
+
+### Dashboard UX Enhancements ✅ *(2026-03-26 — branch: feat/dashboard-enhancements)*
+- **Batch logging** (`BatchActionModal`): log the same event for multiple cats in one action
+- **Care log date navigation**: browse past days in `TodayCareLog`; scroll back through history
+- **Dark mode fixes**: dropdowns, member role change UI, resize placeholder all corrected
+- **Dashboard greeting**: time-aware greeting with inline attention count replaces generic `PageHeader`
+
+### Landing Page & Dashboard UI/UX Redesign ✅ *(2026-03-26 — branch: feat/dashboard-enhancements)*
+- **Landing page hero**: Replaced cat photo with a live `AppDashboardMockup` component showing the real dashboard UI (cat cards, status chips, activity log)
+- **Landing page analytics section**: Replaced Norwegian Forest Cat photo with `AnalyticsMockup` (weight trend SVG chart, feeding bar chart, care type donut, activity heatmap)
+- **Landing page typography**: Fraunces display serif loaded dynamically for headings; warm off-white (`#faf8f5`) section backgrounds
+- **How it Works**: Center-aligned step content, fixed connector line math, family/couple-focused copy (removed "team" language)
+- **Dashboard greeting**: Replaced generic `PageHeader` + separate amber alert banner with a time-aware greeting ("Good morning, Sarah 👋") and inline attention count
+- **CatCard**: Removed top accent bar; added "All caught up" / "Needs feeding" status line in emerald/amber; avatar now amber when all-good, orange when needing attention
+- **CatStatusBadges**: Replaced verbose text badges with compact emoji chips (🍽️ Fed, 💧 Water, 🧹 Litter) — colored when done, muted when pending
+- **TodayCareLog**: Emoji-based event rows with bold `"Feeding · Luna · 60g"` + muted `"Sarah · 9:15 AM"` sub-line; section header changed to `ACTIVITY` label style
+
+---
+
 ## MVP Gaps (must fix before wider testing)
 
 ### 1. Email Reminders — Not Built
@@ -39,63 +87,6 @@
 **What's built:** The `PasswordsController` API and `UserMailer#reset_password_instructions` template exist. The Gmail SMTP config is live.
 
 **What to verify:** End-to-end test — request password reset → email arrives → link works → password updates successfully.
-
----
-
-## OAuth / Social Login
-
-### Architecture: Frontend-Initiated Token Exchange (no OmniAuth redirect flow)
-Because CatCare is an API-only Rails app with a React SPA, the traditional OmniAuth redirect + cookie flow is impractical. Use the frontend-initiated pattern instead:
-
-1. React launches the OAuth consent popup (Google JS SDK / `@react-oauth/google`)
-2. Provider returns an ID token directly to the React client
-3. React POSTs the token to `POST /api/v1/auth/google`
-4. Rails verifies the token against Google's public endpoint and finds-or-creates the User
-5. Rails issues a CatCare JWT — identical response contract to email login
-6. React stores the JWT in `authStore` — no change to downstream code
-
-No new OmniAuth gems required. No callback URL complexity.
-
-### Implementation Steps
-
-**A — Database Migration**
-- Add `provider` (string, nullable) and `uid` (string, nullable) to `users` table
-- Add unique index on `[provider, uid]`
-- Make Devise password validations conditional (skip for OAuth users who have no password)
-- Add `oauth_user?` helper to `User` model
-
-**B — Rails API (`api/`)**
-- Create `app/controllers/api/v1/oauth_controller.rb`
-  - `POST /api/v1/auth/google` — accepts `{ credential: "<google_id_token>" }`, verifies via `https://oauth2.googleapis.com/tokeninfo?id_token=<token>`, validates `aud` claim matches `GOOGLE_CLIENT_ID`, finds or creates User, returns JWT
-- Add route: `post "auth/google", to: "oauth#google"`
-- Add `GOOGLE_CLIENT_ID` to env vars (Render + `api/.env`)
-
-**C — Account Linking Edge Cases**
-- If Google email matches an existing email/password user → link accounts (set `provider`/`uid` on that row, don't create duplicate)
-- If an OAuth user requests a password reset → return `OAUTH_USER` error: "You signed in with Google — password reset is not available"
-
-**D — React Frontend (`web/`)**
-- Install `@react-oauth/google`
-- Wrap `<App>` in `<GoogleOAuthProvider clientId={VITE_GOOGLE_CLIENT_ID}>` in `main.tsx`
-- Add `<GoogleLogin>` button to `LoginPage.tsx` and `RegisterPage.tsx`
-- On OAuth success: POST credential to `/api/v1/auth/google` → store JWT + user in `authStore` → redirect to dashboard (same flow as email login)
-- Add `VITE_GOOGLE_CLIENT_ID` to `.env.local` and Vercel env vars
-
-**E — Google Cloud Console Setup**
-- Create a new OAuth 2.0 Web Client ID at console.cloud.google.com
-- Authorized JavaScript origins: `http://localhost:5173`, `https://<your-vercel-domain>`
-- No Redirect URIs needed (frontend-initiated flow — no server-side callback)
-- Set the Client ID as `GOOGLE_CLIENT_ID` (Rails) and `VITE_GOOGLE_CLIENT_ID` (React)
-
-### Future Providers (same pattern)
-- **GitHub**: exchange code for access token server-side via `POST https://github.com/login/oauth/access_token`, then fetch `GET https://api.github.com/user` for profile
-- **Apple Sign In**: more complex — requires Apple Developer account + JWKS verification; defer until there's user demand
-
-### Smoke Test Additions
-- [ ] "Sign in with Google" on login page → lands on dashboard
-- [ ] First-time Google sign-in creates account + household setup flow triggers
-- [ ] Google sign-in with email matching existing account → links, does not duplicate
-- [ ] OAuth user visits "forgot password" → receives helpful error, not a crash
 
 ---
 
@@ -166,6 +157,9 @@ Supabase pauses projects after 1 week of no activity. This causes connection fai
 - [ ] Upload cat photo
 - [ ] Invite a second user → they accept → both see shared dashboard
 - [ ] View cat history page → all 5 charts render with data
+- [ ] Open Care Settings → adjust feedings/day for a cat → verify badge updates on dashboard
+- [ ] Add a custom portion preset → log a feeding → verify the preset appears as a quick-pick button
+- [ ] Sign in with Google → lands on dashboard
 - [ ] Archive a cat → verify it's hidden from dashboard
 - [ ] Toggle dark mode → persists on refresh
 - [ ] Test on mobile viewport (375px)

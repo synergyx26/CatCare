@@ -14,6 +14,7 @@ import { InvitePage } from '@/pages/InvitePage'
 import { CatHistoryPage } from '@/pages/CatHistoryPage'
 import { EditCatPage } from '@/pages/EditCatPage'
 import { HouseholdProfilePage } from '@/pages/HouseholdProfilePage'
+import { HouseholdSettingsPage } from '@/pages/HouseholdSettingsPage'
 import { HouseholdNotesPage } from '@/pages/HouseholdNotesPage'
 import { LandingPage } from '@/pages/LandingPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
@@ -67,6 +68,10 @@ export default function App() {
               <Route
                 path="/households/:householdId/profile"
                 element={<HouseholdProfilePage />}
+              />
+              <Route
+                path="/households/:householdId/settings"
+                element={<HouseholdSettingsPage />}
               />
               <Route
                 path="/households/:householdId/notes"

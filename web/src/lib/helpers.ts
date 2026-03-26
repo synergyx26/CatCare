@@ -94,19 +94,29 @@ export const EVENT_TYPE_LABEL: Record<EventType, string> = {
   grooming: 'Grooming',
 }
 
+export interface CatCareRequirements {
+  feedings_per_day: number
+  track_water: boolean
+  track_litter: boolean
+}
+
 export interface CatTodayStatus {
   feedCount: number
+  feedingsNeeded: number
   lastFedAt: string | null
   lastFedBy: string | null
   litterDoneAt: string | null
   waterDoneAt: string | null
+  trackWater: boolean
+  trackLitter: boolean
 }
 
 export function getCatTodayStatus(
   catId: number,
   todayEvents: CareEvent[],
   memberMap: Map<number, string>,
-  currentUserId: number
+  currentUserId: number,
+  requirements?: CatCareRequirements
 ): CatTodayStatus {
   const catEvents = todayEvents.filter((e) => e.cat_id === catId)
 
@@ -141,9 +151,12 @@ export function getCatTodayStatus(
 
   return {
     feedCount: feedings.length,
+    feedingsNeeded: requirements?.feedings_per_day ?? 1,
     lastFedAt: lastFeeding?.occurred_at ?? null,
     lastFedBy,
     litterDoneAt: lastLitter?.occurred_at ?? null,
     waterDoneAt: lastWater?.occurred_at ?? null,
+    trackWater: requirements?.track_water ?? true,
+    trackLitter: requirements?.track_litter ?? true,
   }
 }

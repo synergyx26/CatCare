@@ -176,10 +176,10 @@ Route: `/households/:householdId/cats/:catId/history`
 Returns: `{ by_type, by_day, weight_series, by_member, total_events, start_date, end_date }`
 
 **Charts (all in `web/src/components/charts/`):**
-- `WeightTrendChart` — line, green, conditional (hidden if no weight events)
+- `WeightTrendChart` — AreaChart, green gradient fill, conditional (hidden if no weight events)
 - `FeedingFrequencyChart` — bar, amber, Cell-colored by intensity
-- `CareTypeBreakdownChart` — donut, uses `EVENT_COLORS` from `lib/eventColors.ts`
-- `MemberContributionChart` — horizontal bar
+- `CareTypeBreakdownChart` — horizontal bar sorted descending, WCAG AAA; uses `EVENT_COLORS`
+- `MemberContributionChart` — horizontal bar, purple (#a78bfa) fill, LabelList value labels
 - `CareActivityHeatmap` — hand-built CSS grid (no Recharts), weekday-aligned
 - `ChartCard` — shared card wrapper with `forwardRef` + drag handle; used by all 5 charts
 
@@ -207,8 +207,9 @@ HouseholdMembership — household_id, user_id, role [admin|member|sitter], statu
                       emergency_contact_name, emergency_contact_phone, notes
 HouseholdInvite — token (unique), expires_at, status [pending|accepted|expired], role
 Cat             — household_id, name, species, active (soft delete),
-                  vet_name, vet_clinic, vet_phone, care_instructions,
-                  details (jsonb), photo (Active Storage)
+                  vet_name, vet_clinic, vet_phone, vet_address, care_instructions,
+                  feedings_per_day (int, default 1), track_water (bool), track_litter (bool),
+                  feeding_presets (jsonb), photo (Active Storage)
 CareEvent       — cat_id, household_id (denorm), logged_by_id, event_type (enum),
                   occurred_at (indexed), notes, details (jsonb)
 Reminder        — cat_id, next_trigger_at (indexed)
@@ -237,6 +238,7 @@ api/app/controllers/api/v1/
   households_controller.rb
   household_invites_controller.rb — role param + accept flow + Pundit
   memberships_controller.rb       — self profile (show/update) + admin manage_update/manage_destroy
+  oauth_controller.rb             — POST /api/v1/auth/google; verifies Google ID token via tokeninfo endpoint, finds-or-creates user, returns CatCare JWT
 
 api/app/policies/
   cat_policy.rb                    — sitter: read-only; admin/member: full CRUD
@@ -270,7 +272,7 @@ web/src/
     usePageTitle.ts         — sets document.title as "{title} · CatCare"
   components/
     EmptyState.tsx          — reusable: Lucide icon + title + description + optional CTA
-    LogCareModal.tsx        — full care logging (all 8 types + edit/delete + AlertDialog confirm)
+    LogCareModal.tsx        — full care logging (all 8 types + edit/delete + AlertDialog confirm); reads feeding_presets from cat prop for quick-pick portion buttons
     layout/
       AppLayout.tsx         — sticky navbar, user dropdown, theme toggle, mobile sheet
       PageHeader.tsx        — reusable title + subtitle + back link + action slot
@@ -280,6 +282,9 @@ web/src/
       TodayCareLog.tsx      — today's care event list
       MembersSection.tsx    — member list + role management + invite form (admin only)
       EmergencyContactSection.tsx
+      HouseholdVetSection.tsx     — shared vet contact for the household; tap-to-call on mobile
+      UpcomingAppointmentsSection.tsx — future-dated vet/grooming events shown as upcoming appointments
+      BatchActionModal.tsx        — log the same care event for multiple cats in one action
     skeletons/
       PageSkeleton.tsx      — generic page loading skeleton (header + content blocks)
       CatCardSkeleton.tsx   — cat card shape skeleton
@@ -296,6 +301,7 @@ web/src/
     EditCatPage.tsx         — edit all cat fields + sitter info + photo upload
     CatHistoryPage.tsx      — stats dashboard with 5 charts
     HouseholdProfilePage.tsx — membership profile (phone, emergency contact, notes)
+    HouseholdSettingsPage.tsx — admin-only; per-cat care requirements (feedings/day, water, litter) + feeding portion preset editor
     LandingPage.tsx         — public landing page at /
     AddCatPage.tsx, HouseholdSetupPage.tsx, LoginPage.tsx, RegisterPage.tsx, InvitePage.tsx
 ```
@@ -311,3 +317,4 @@ web/src/
 5. **Stats on dashboard** — `CatHistoryPage` only; keeps dashboard query-light
 6. **JSONB string keys** — Rails reads back as strings: `details["weight_value"]` not `details[:weight_value]`
 7. **Base UI DropdownMenuLabel** — requires `DropdownMenuGroup` parent; use plain `div` for presentational headers
+8. **feeding_presets defaults** — `LogCareModal` falls back to `DEFAULT_PRESETS` if `cat.feeding_presets` is null; never assume the column is populated on existing rows before migration

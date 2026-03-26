@@ -125,8 +125,16 @@ export function DashboardPage() {
     primaryHousehold?.members.find((m) => m.id === user?.id)?.role ?? null
 
   const needsAttentionCount = cats.filter((cat) => {
-    const s = getCatTodayStatus(cat.id, todayEvents, memberMap, user?.id ?? -1)
-    return s.feedCount === 0 || s.litterDoneAt === null || s.waterDoneAt === null
+    const s = getCatTodayStatus(cat.id, todayEvents, memberMap, user?.id ?? -1, {
+      feedings_per_day: cat.feedings_per_day,
+      track_water: cat.track_water,
+      track_litter: cat.track_litter,
+    })
+    return (
+      s.feedCount < s.feedingsNeeded ||
+      (s.trackWater && !s.waterDoneAt) ||
+      (s.trackLitter && !s.litterDoneAt)
+    )
   }).length
 
   const { data: invitesData } = useQuery({

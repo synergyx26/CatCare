@@ -74,6 +74,7 @@ Production deployment for 2-person household beta testing. All services are free
    | `CORS_ORIGINS` | Your Vercel URL (set after Step 3) |
    | `GMAIL_USERNAME` | Your full Gmail address (e.g. `you@gmail.com`) |
    | `GMAIL_APP_PASSWORD` | 16-character app password, no spaces (Step 1C) |
+   | `GOOGLE_CLIENT_ID` | OAuth 2.0 Web Client ID from Google Cloud Console (optional — only needed if Google sign-in is enabled) |
 
    **Generating secrets:**
    ```bash
@@ -95,11 +96,12 @@ Production deployment for 2-person household beta testing. All services are free
    - Build command: `npm run build`
    - Output directory: `dist`
 
-2. Add environment variable **before** deploying:
+2. Add environment variables **before** deploying:
    ```
    VITE_API_URL = https://<your-render-service>.onrender.com
+   VITE_GOOGLE_CLIENT_ID = <same OAuth 2.0 Client ID as GOOGLE_CLIENT_ID above>
    ```
-   > This is a build-time variable — Vercel must rebuild after any change to it.
+   > These are build-time variables — Vercel must rebuild after any change to them.
 
 3. Deploy → copy the production Vercel URL
 
