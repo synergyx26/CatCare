@@ -1,5 +1,5 @@
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts'
 import type { WeightPoint } from '@/types/api'
@@ -26,8 +26,14 @@ export function WeightTrendChart({ data }: Props) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={formatted} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+      <AreaChart data={formatted} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
+        <defs>
+          <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
+            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
         <XAxis
           dataKey="date"
           tick={{ fill: 'var(--color-muted-foreground)', fontSize: 11 }}
@@ -38,8 +44,8 @@ export function WeightTrendChart({ data }: Props) {
           tick={{ fill: 'var(--color-muted-foreground)', fontSize: 11 }}
           axisLine={false}
           tickLine={false}
-          tickFormatter={(v) => `${v}${unit}`}
-          width={48}
+          tickFormatter={(v) => `${v} ${unit}`}
+          width={52}
         />
         <Tooltip
           contentStyle={{
@@ -54,15 +60,16 @@ export function WeightTrendChart({ data }: Props) {
             [`${val ?? ''} ${(props.payload as { unit?: string }).unit ?? ''}`, 'Weight']
           }
         />
-        <Line
+        <Area
           type="monotone"
           dataKey="value"
           stroke="#22c55e"
           strokeWidth={2.5}
+          fill="url(#weightGradient)"
           dot={{ fill: '#22c55e', r: 4, strokeWidth: 0 }}
           activeDot={{ r: 6, fill: '#22c55e', strokeWidth: 0 }}
         />
-      </LineChart>
+      </AreaChart>
     </ResponsiveContainer>
   )
 }

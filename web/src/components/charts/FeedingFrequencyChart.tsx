@@ -21,11 +21,11 @@ export function FeedingFrequencyChart({ data }: Props) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={formatted} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+      <BarChart data={formatted} margin={{ top: 4, right: 8, bottom: 4, left: -8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
         <XAxis
           dataKey="date"
-          tick={{ fill: 'var(--color-muted-foreground)', fontSize: 10 }}
+          tick={{ fill: 'var(--color-muted-foreground)', fontSize: 11 }}
           axisLine={false}
           tickLine={false}
           interval={data.length > 14 ? 'preserveStartEnd' : 0}
