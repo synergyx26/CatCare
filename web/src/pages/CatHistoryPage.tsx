@@ -253,7 +253,7 @@ export function CatHistoryPage() {
         {stats && stats.total_events > 0 && (
           <div className="w-full min-w-0 relative">
             {statsQuery.isFetching && (
-              <div className="absolute inset-0 z-10 bg-background/50 rounded-2xl pointer-events-none transition-opacity" />
+              <div className="absolute inset-0 z-10 bg-background/40 rounded-2xl pointer-events-none animate-pulse" />
             )}
 
             {/* Mobile: plain vertical stack — no drag/drop, no pixel-width grid */}
@@ -399,7 +399,7 @@ function StatCard({ label, value, sub, color = 'sky' }: { label: string; value: 
   return (
     <div className={`rounded-2xl bg-gradient-to-br ${STAT_COLORS[color] ?? STAT_COLORS.sky} ring-1 shadow-sm`}>
       <CardContent className="p-4">
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest truncate">
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest truncate">
           {label}
         </p>
         <p className="text-xl font-bold text-foreground mt-1 truncate">{value}</p>

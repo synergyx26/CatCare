@@ -1,20 +1,31 @@
 import { useState, useRef, useEffect } from 'react'
 import type { DayStats } from '@/types/api'
 
-const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+// Unambiguous 2-char abbreviations so 'S' and 'T' don't appear twice
+const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 const GAP       = 4   // px between cells
 const OVERHEAD  = 48  // px for weekday header + legend row + their gaps
 const MIN_CELL  = 10
 const MAX_CELL  = 32
 
+// Uses sky-500 (rgb 14 165 233) at varying opacity — visible on both light and
+// dark backgrounds without needing theme detection.
 function heatColor(count: number, max: number): string {
   if (count === 0) return 'var(--color-muted)'
   const t = count / max
-  if (t < 0.25) return '#bbf7d0'
-  if (t < 0.5)  return '#4ade80'
-  if (t < 0.75) return '#16a34a'
-  return '#14532d'
+  if (t < 0.25) return 'rgba(14, 165, 233, 0.38)'
+  if (t < 0.5)  return 'rgba(14, 165, 233, 0.60)'
+  if (t < 0.75) return 'rgba(14, 165, 233, 0.82)'
+  return '#0ea5e9'  // sky-500 full
 }
+
+const LEGEND_SWATCHES = [
+  'var(--color-muted)',
+  'rgba(14, 165, 233, 0.38)',
+  'rgba(14, 165, 233, 0.60)',
+  'rgba(14, 165, 233, 0.82)',
+  '#0ea5e9',
+]
 
 interface Props {
   data: DayStats[]
@@ -91,7 +102,7 @@ export function CareActivityHeatmap({ data }: Props) {
       {/* Legend */}
       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground shrink-0">
         <span>Less</span>
-        {(['var(--color-muted)', '#bbf7d0', '#4ade80', '#16a34a', '#14532d'] as const).map((color, i) => (
+        {LEGEND_SWATCHES.map((color, i) => (
           <div key={i} className="rounded-[2px]" style={{ width: 12, height: 12, backgroundColor: color }} />
         ))}
         <span>More</span>
