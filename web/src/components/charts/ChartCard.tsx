@@ -23,7 +23,7 @@ export const ChartCard = forwardRef<HTMLDivElement, ChartCardProps>(
         {...rest}
       >
         {accent && (
-          <div className="h-[3px] w-full shrink-0" style={{ background: accent }} />
+          <div className="h-1 w-full shrink-0" style={{ background: accent }} />
         )}
         {/* Header row: title + drag handle */}
         <div className="flex items-start justify-between px-5 pt-4 pb-1 shrink-0">
@@ -34,8 +34,9 @@ export const ChartCard = forwardRef<HTMLDivElement, ChartCardProps>(
             )}
           </div>
           <div
-            className="drag-handle cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors mt-0.5 -mr-1 ml-2 shrink-0"
+            className="drag-handle cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground transition-colors mt-0.5 -mr-1 ml-2 shrink-0"
             title="Drag to reorder"
+            aria-label="Drag to reorder chart"
           >
             <GripVertical className="size-4" />
           </div>

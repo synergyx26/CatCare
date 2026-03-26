@@ -1,6 +1,6 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer,
+  Tooltip, ResponsiveContainer, LabelList,
 } from 'recharts'
 import type { MemberStats } from '@/types/api'
 
@@ -25,7 +25,9 @@ export function MemberContributionChart({ data }: Props) {
       <BarChart
         data={sorted}
         layout="vertical"
-        margin={{ top: 0, right: 24, bottom: 0, left: 8 }}
+        margin={{ top: 0, right: 48, bottom: 0, left: 8 }}
+        role="img"
+        aria-label="Care events logged per household member"
       >
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
         <XAxis
@@ -56,11 +58,17 @@ export function MemberContributionChart({ data }: Props) {
         />
         <Bar
           dataKey="count"
-          fill="var(--color-primary)"
+          fill="#a78bfa"
           radius={[0, 6, 6, 0]}
           maxBarSize={28}
-          opacity={0.85}
-        />
+          opacity={0.9}
+        >
+          <LabelList
+            dataKey="count"
+            position="right"
+            style={{ fill: 'var(--color-muted-foreground)', fontSize: 11, fontWeight: 600 }}
+          />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )
