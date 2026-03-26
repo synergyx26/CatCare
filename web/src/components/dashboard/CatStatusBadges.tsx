@@ -1,41 +1,45 @@
-import { formatTime, type CatTodayStatus } from '@/lib/helpers'
+import type { CatTodayStatus } from '@/lib/helpers'
+
+interface ChipProps {
+  emoji: string
+  label: string
+  done: boolean
+  doneClass: string
+}
+
+function StatusChip({ emoji, label, done, doneClass }: ChipProps) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+        done ? doneClass : 'bg-muted text-muted-foreground/50'
+      }`}
+    >
+      {emoji} {label}
+    </span>
+  )
+}
 
 export function CatStatusBadges({ status }: { status: CatTodayStatus }) {
   return (
     <div className="mt-1.5 flex flex-wrap gap-1.5">
-      {/* Feeding */}
-      {status.feedCount > 0 ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-          {status.feedCount}x fed · {formatTime(status.lastFedAt!)} by{' '}
-          {status.lastFedBy}
-        </span>
-      ) : (
-        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-          Not fed today
-        </span>
-      )}
-
-      {/* Litter */}
-      {status.litterDoneAt ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
-          Litter {formatTime(status.litterDoneAt)}
-        </span>
-      ) : (
-        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-          Litter pending
-        </span>
-      )}
-
-      {/* Water */}
-      {status.waterDoneAt ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-          Water {formatTime(status.waterDoneAt)}
-        </span>
-      ) : (
-        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-          Water pending
-        </span>
-      )}
+      <StatusChip
+        emoji="🍽️"
+        label="Fed"
+        done={status.feedCount > 0}
+        doneClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+      />
+      <StatusChip
+        emoji="💧"
+        label="Water"
+        done={!!status.waterDoneAt}
+        doneClass="bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+      />
+      <StatusChip
+        emoji="🧹"
+        label="Litter"
+        done={!!status.litterDoneAt}
+        doneClass="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+      />
     </div>
   )
 }
