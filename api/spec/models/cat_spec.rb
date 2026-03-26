@@ -11,6 +11,10 @@ RSpec.describe Cat, type: :model do
   it { is_expected.to validate_presence_of(:name) }
   it { is_expected.to validate_presence_of(:species) }
 
+  it { is_expected.to validate_numericality_of(:feedings_per_day).only_integer.is_greater_than(0).is_less_than_or_equal_to(10) }
+  it { is_expected.to allow_value(true, false).for(:track_water) }
+  it { is_expected.to allow_value(true, false).for(:track_litter) }
+
   describe ".active" do
     it "returns only cats where active is true" do
       household = create(:household)

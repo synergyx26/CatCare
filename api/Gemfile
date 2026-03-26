@@ -60,8 +60,8 @@ gem "solid_cache"
 gem "sentry-ruby"
 gem "sentry-rails"
 
-group :development do
-  gem "dotenv-rails"                   # loads api/.env automatically in development
+group :development, :test do
+  gem "dotenv-rails"                   # loads api/.env in development and test
   gem "bullet"                         # N+1 query detection
   gem "rubocop-rails-omakase", require: false
   gem "ruby-lsp"                       # VS Code Ruby LSP extension — keeps it on the latest version

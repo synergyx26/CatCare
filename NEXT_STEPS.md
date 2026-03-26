@@ -4,6 +4,20 @@
 
 ---
 
+## Recently Completed
+
+### Landing Page & Dashboard UI/UX Redesign ✅ *(2026-03-26 — branch: feat/dashboard-enhancements)*
+- **Landing page hero**: Replaced cat photo with a live `AppDashboardMockup` component showing the real dashboard UI (cat cards, status chips, activity log)
+- **Landing page analytics section**: Replaced Norwegian Forest Cat photo with `AnalyticsMockup` (weight trend SVG chart, feeding bar chart, care type donut, activity heatmap)
+- **Landing page typography**: Fraunces display serif loaded dynamically for headings; warm off-white (`#faf8f5`) section backgrounds
+- **How it Works**: Center-aligned step content, fixed connector line math, family/couple-focused copy (removed "team" language)
+- **Dashboard greeting**: Replaced generic `PageHeader` + separate amber alert banner with a time-aware greeting ("Good morning, Sarah 👋") and inline attention count
+- **CatCard**: Removed top accent bar; added "All caught up" / "Needs feeding" status line in emerald/amber; avatar now amber when all-good, orange when needing attention
+- **CatStatusBadges**: Replaced verbose text badges with compact emoji chips (🍽️ Fed, 💧 Water, 🧹 Litter) — colored when done, muted when pending
+- **TodayCareLog**: Emoji-based event rows with bold `"Feeding · Luna · 60g"` + muted `"Sarah · 9:15 AM"` sub-line; section header changed to `ACTIVITY` label style
+
+---
+
 ## MVP Gaps (must fix before wider testing)
 
 ### 1. Email Reminders — Not Built

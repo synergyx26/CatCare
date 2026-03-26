@@ -93,6 +93,9 @@ export interface Cat {
   vet_phone: string | null
   vet_address: string | null
   care_instructions: string | null
+  feedings_per_day: number
+  track_water: boolean
+  track_litter: boolean
   created_at: string
   updated_at: string
 }

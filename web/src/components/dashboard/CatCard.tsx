@@ -16,9 +16,9 @@ interface CatCardProps {
 
 function getStatusLine(status: CatTodayStatus): { text: string; allGood: boolean } {
   const issues: string[] = []
-  if (status.feedCount === 0) issues.push('feeding')
-  if (!status.waterDoneAt) issues.push('water')
-  if (!status.litterDoneAt) issues.push('litter')
+  if (status.feedCount < status.feedingsNeeded) issues.push('feeding')
+  if (status.trackWater && !status.waterDoneAt) issues.push('water')
+  if (status.trackLitter && !status.litterDoneAt) issues.push('litter')
 
   if (issues.length === 0) return { text: 'All caught up', allGood: true }
   if (issues.length === 1) return { text: `Needs ${issues[0]}`, allGood: false }
@@ -38,7 +38,12 @@ export function CatCard({
     cat.id,
     todayEvents,
     memberMap,
-    currentUserId
+    currentUserId,
+    {
+      feedings_per_day: cat.feedings_per_day,
+      track_water: cat.track_water,
+      track_litter: cat.track_litter,
+    }
   )
   const { text: statusText, allGood } = getStatusLine(status)
 

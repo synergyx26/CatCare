@@ -49,6 +49,7 @@ export function AppLayout() {
   })
   const households: Household[] = householdsData?.data?.data ?? []
   const primaryHousehold = households[0]
+  const currentRole = primaryHousehold?.members?.find((m) => m.id === user?.id)?.role ?? null
 
   function handleLogout() {
     api.logout().finally(() => {
@@ -102,6 +103,18 @@ export function AppLayout() {
                     >
                       <Settings className="size-4" />
                       Household Settings
+                    </button>
+                  )}
+                  {primaryHousehold && currentRole === 'admin' && (
+                    <button
+                      onClick={() => {
+                        navigate(`/households/${primaryHousehold.id}/settings`)
+                        setMobileOpen(false)
+                      }}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
+                    >
+                      <Settings className="size-4" />
+                      Care Settings
                     </button>
                   )}
                 </nav>
@@ -167,6 +180,15 @@ export function AppLayout() {
                   onClick={() => navigate(`/households/${primaryHousehold.id}/profile`)}
                 >
                   Settings
+                </Button>
+              )}
+              {primaryHousehold && currentRole === 'admin' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(`/households/${primaryHousehold.id}/settings`)}
+                >
+                  Care Settings
                 </Button>
               )}
             </nav>
