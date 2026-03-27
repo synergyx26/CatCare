@@ -1,9 +1,13 @@
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
+export type SubscriptionTier = 'free' | 'pro' | 'premium'
+
 export interface User {
   id: number
   email: string
   name: string
+  subscription_tier: SubscriptionTier
+  is_super_admin?: boolean
   created_at?: string
 }
 
@@ -177,8 +181,17 @@ export interface MemberStats {
   count: number
 }
 
+export interface FeedingDayStat {
+  date: string
+  wet: number
+  dry: number
+  treats: number
+  other: number
+}
+
 export interface CatStats {
   range: '7d' | '30d' | '90d'
+  offset: number
   start_date: string
   end_date: string
   total_events: number
@@ -186,4 +199,5 @@ export interface CatStats {
   by_day: DayStats[]
   weight_series: WeightPoint[]
   by_member: MemberStats[]
+  feeding_series: FeedingDayStat[]
 }

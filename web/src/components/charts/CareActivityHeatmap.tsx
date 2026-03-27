@@ -3,10 +3,9 @@ import type { DayStats } from '@/types/api'
 
 // Unambiguous 2-char abbreviations so 'S' and 'T' don't appear twice
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-const GAP       = 4   // px between cells
-const OVERHEAD  = 48  // px for weekday header + legend row + their gaps
-const MIN_CELL  = 10
-const MAX_CELL  = 32
+const GAP      = 4   // px between cells
+const OVERHEAD = 48  // px for weekday header + legend row + their gaps
+const MIN_CELL = 10  // never go below this — keeps 90d readable
 
 // Uses sky-500 (rgb 14 165 233) at varying opacity — visible on both light and
 // dark backgrounds without needing theme detection.
@@ -46,7 +45,9 @@ export function CareActivityHeatmap({ data }: Props) {
     function compute(width: number, height: number) {
       const byHeight = Math.floor((height - OVERHEAD - (numWeeks - 1) * GAP) / numWeeks)
       const byWidth  = Math.floor((width  - 6 * GAP) / 7)
-      setCellSize(Math.max(MIN_CELL, Math.min(MAX_CELL, Math.min(byHeight, byWidth))))
+      // No upper cap — cells grow to fill available space as days decrease.
+      // byWidth is the practical limit on wide containers; byHeight on tall ones.
+      setCellSize(Math.max(MIN_CELL, Math.min(byHeight, byWidth)))
     }
 
     // Recompute immediately — fires when numWeeks changes (range switch) even if
@@ -63,8 +64,10 @@ export function CareActivityHeatmap({ data }: Props) {
 
   if (!data.length) return null
 
-  const maxCount = Math.max(...data.map((d) => d.count), 1)
+  const maxCount  = Math.max(...data.map((d) => d.count), 1)
   const gridWidth = 7 * cellSize + 6 * GAP
+  // Scale label text with cell size: 10px at small cells, up to 14px for large
+  const labelSize = Math.max(10, Math.min(14, Math.round(cellSize * 0.3)))
 
   return (
     <div ref={containerRef} className="flex flex-col items-center justify-center gap-[4px] h-full overflow-hidden">
@@ -73,8 +76,8 @@ export function CareActivityHeatmap({ data }: Props) {
         {WEEKDAY_LABELS.map((d, i) => (
           <div
             key={i}
-            className="text-center text-[10px] text-muted-foreground font-medium"
-            style={{ width: cellSize }}
+            className="text-center text-muted-foreground font-medium"
+            style={{ width: cellSize, fontSize: labelSize }}
           >
             {d}
           </div>

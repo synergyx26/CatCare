@@ -11,11 +11,14 @@ module Api
         if user&.valid_password?(params.dig(:user, :password))
           token, _payload = Warden::JWTAuth::UserEncoder.new.call(user, :user, nil)
           response.set_header('Authorization', "Bearer #{token}")
+          admin_email = ENV["SUPER_ADMIN_EMAIL"].to_s.strip
           render json: {
             data: {
-              id: user.id,
-              email: user.email,
-              name: user.name
+              id:                user.id,
+              email:             user.email,
+              name:              user.name,
+              subscription_tier: user.subscription_tier,
+              is_super_admin:    admin_email.present? && user.email == admin_email
             }
           }, status: :ok
         else

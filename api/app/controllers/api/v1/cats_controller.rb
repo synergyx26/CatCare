@@ -54,26 +54,36 @@ module Api
       # GET /api/v1/households/:household_id/cats/:id/stats
       def stats
         authorize @cat
-        range = params[:range] || "30d"
-        days  = case range
-                when "7d"  then 7
-                when "90d" then 90
-                else 30
-                end
+        range  = params[:range] || "30d"
+        offset = [params[:offset].to_i, 0].max
+        days   = case range
+                 when "7d"  then 7
+                 when "90d" then 90
+                 else 30
+                 end
 
-        start_time = days.days.ago.beginning_of_day
-        end_time   = Time.current.end_of_day
+        max = tier_max_offset(days)
+        if offset > max
+          return render_error("TIER_LIMIT",
+            "Upgrade your plan to access this historical period",
+            status: :forbidden)
+        end
+
+        end_time   = offset.zero? ? Time.current.end_of_day : (days * offset).days.ago.end_of_day
+        start_time = (days * (offset + 1)).days.ago.beginning_of_day
         events     = @cat.care_events.where(occurred_at: start_time..end_time).to_a
 
         render_success({
-          range:         range,
-          start_date:    start_time.iso8601,
-          end_date:      end_time.iso8601,
-          total_events:  events.count,
-          by_type:       events_by_type(events),
-          by_day:        events_by_day(events, start_time, days),
-          weight_series: weight_series(events),
-          by_member:     events_by_member(events),
+          range:           range,
+          offset:          offset,
+          start_date:      start_time.iso8601,
+          end_date:        end_time.iso8601,
+          total_events:    events.count,
+          by_type:         events_by_type(events),
+          by_day:          events_by_day(events, start_time, days),
+          weight_series:   weight_series(events),
+          by_member:       events_by_member(events),
+          feeding_series:  feeding_series_by_day(events, start_time, days),
         })
       end
 
@@ -159,6 +169,36 @@ module Api
             next if val.nil? || val.zero?
             { occurred_at: e.occurred_at.iso8601, value: val, unit: e.details["weight_unit"] || "kg" }
           end
+      end
+
+      # Returns the furthest-back offset allowed for this user's tier.
+      # Pro allows data up to 180 days old; Premium is unlimited.
+      def tier_max_offset(days)
+        case current_user.subscription_tier
+        when "pro"     then (180.0 / days).floor - 1
+        when "premium" then Float::INFINITY
+        else 0  # free
+        end
+      end
+
+      def feeding_series_by_day(events, start_time, days)
+        feeding_events = events.select { |e| e.event_type == "feeding" }
+        grouped = feeding_events.group_by { |e| e.occurred_at.to_date }
+        known_types = %w[wet dry treats other]
+
+        (0...days).map do |i|
+          date = (start_time + i.days).to_date
+          day_events = grouped[date] || []
+
+          totals = known_types.index_with { 0.0 }
+          day_events.each do |e|
+            food_type = e.details&.dig("food_type").to_s.strip.downcase
+            food_type = "other" unless known_types.include?(food_type)
+            totals[food_type] += e.details&.dig("amount_grams").to_f
+          end
+
+          { date: date.iso8601, wet: totals["wet"], dry: totals["dry"], treats: totals["treats"], other: totals["other"] }
+        end
       end
 
       def events_by_member(events)

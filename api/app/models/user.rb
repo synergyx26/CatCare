@@ -9,7 +9,10 @@ class User < ApplicationRecord
   has_many :households, through: :household_memberships
   has_many :reminder_recipients, dependent: :destroy
 
+  SUBSCRIPTION_TIERS = %w[free pro premium].freeze
+
   validates :name, presence: true
+  validates :subscription_tier, inclusion: { in: SUBSCRIPTION_TIERS }
 
   def oauth_user?
     provider.present?
