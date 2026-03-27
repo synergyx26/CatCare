@@ -436,7 +436,6 @@ export function CatHistoryPage() {
 
             {/* Desktop: drag-and-drop + resizable grid */}
             {!isMobile && (
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               <div ref={containerRef as any} className="w-full">
                 {gridMounted && <ResponsiveGridLayout
                   width={gridWidth}
