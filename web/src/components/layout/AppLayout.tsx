@@ -50,6 +50,20 @@ export function AppLayout() {
   const [tierSwitching, setTierSwitching] = useState(false)
   const { theme, setTheme } = useThemeStore()
 
+  // Re-fetch /me on every app load so DB changes (e.g. tier updates) are picked up
+  // without requiring the user to log out and back in.
+  useQuery({
+    queryKey: ['me'],
+    queryFn: async () => {
+      const res = await api.me()
+      const fresh = (res as any)?.data?.data
+      if (fresh && user) setAuth(fresh, localStorage.getItem('catcare_token') ?? '')
+      return fresh
+    },
+    staleTime: 60_000,
+    enabled: !!user,
+  })
+
   async function handleTierSwitch(tier: SubscriptionTier) {
     if (!user || tierSwitching) return
     setTierSwitching(true)
@@ -241,7 +255,21 @@ export function AppLayout() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={8} className="min-w-52 w-auto">
                 <div className="px-1.5 py-1">
-                  <p className="text-sm font-medium">{user?.name}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{user?.name}</p>
+                    {user?.subscription_tier && (
+                      <span className={[
+                        'text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full',
+                        user.subscription_tier === 'premium'
+                          ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                          : user.subscription_tier === 'pro'
+                            ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+                            : 'bg-muted text-muted-foreground',
+                      ].join(' ')}>
+                        {user.subscription_tier}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />

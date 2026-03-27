@@ -97,7 +97,7 @@ export function DailyFoodIntakeChart({ data }: Props) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={formatted} margin={{ top: 4, right: 8, bottom: 4, left: -4 }}>
+      <BarChart data={formatted} margin={{ top: 8, right: 8, bottom: 4, left: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
         <XAxis
           dataKey="date"
@@ -111,7 +111,7 @@ export function DailyFoodIntakeChart({ data }: Props) {
           tick={{ fill: 'var(--color-muted-foreground)', fontSize: 11 }}
           axisLine={false}
           tickLine={false}
-          width={32}
+          width={48}
           tickFormatter={(v) => `${v}g`}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-muted)', opacity: 0.35 }} />
