@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { X } from 'lucide-react'
+import { X, Lock } from 'lucide-react'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { Cat, CareEvent, EventType } from '@/types/api'
+import type { Cat, CareEvent, EventType, SubscriptionTier } from '@/types/api'
+import { useAuthStore } from '@/store/authStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,18 @@ const CARE_TYPES: { value: EventType; label: string }[] = [
   { value: 'grooming',   label: 'Grooming'   },
   { value: 'note',       label: 'Note'       },
 ]
+
+// Free tier: only these event types are available
+const FREE_EVENT_TYPES: EventType[] = ['feeding', 'litter', 'water', 'note']
+
+function isFreeEventType(type: EventType): boolean {
+  return FREE_EVENT_TYPES.includes(type)
+}
+
+function isEventTypeAllowed(type: EventType, tier: SubscriptionTier): boolean {
+  if (tier === 'pro' || tier === 'premium') return true
+  return isFreeEventType(type)
+}
 
 const GROOMING_TYPES: { value: GroomingType; label: string }[] = [
   { value: 'bath',       label: 'Bath'       },
@@ -81,9 +94,15 @@ interface Props {
 
 export function LogCareModal({ cat, householdId, initialEvent, initialType, initialMedicationName, onClose }: Props) {
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
+  const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
   const isEditing   = !!initialEvent
 
-  const initType    = (initialEvent?.event_type ?? initialType ?? 'feeding') as EventType
+  // If creating and the requested type is restricted, fall back to 'feeding'
+  const rawInitType = (initialEvent?.event_type ?? initialType ?? 'feeding') as EventType
+  const initType    = (!isEditing && !isEventTypeAllowed(rawInitType, tier))
+    ? 'feeding'
+    : rawInitType
   const initDetails = (initialEvent?.details ?? {}) as Record<string, unknown>
 
   const initFoodType       = (initDetails.food_type as FoodType) ?? 'wet'
@@ -312,15 +331,30 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
             <div className="space-y-2">
               <p className="text-sm font-medium">Type</p>
               <div className="flex gap-2 flex-wrap">
-                {CARE_TYPES.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => setEventType(value)}
-                    className={pillClass(eventType === value)}
-                  >
-                    {label}
-                  </button>
-                ))}
+                {CARE_TYPES.map(({ value, label }) => {
+                  const allowed = isEventTypeAllowed(value, tier)
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => {
+                        if (!allowed) {
+                          toast.error('Upgrade to Pro or Premium to log this event type.')
+                          return
+                        }
+                        setEventType(value)
+                      }}
+                      title={!allowed ? 'Requires Pro or Premium' : undefined}
+                      className={
+                        !allowed
+                          ? 'px-3 py-1.5 rounded-full text-sm font-medium border border-border transition-colors opacity-50 cursor-not-allowed flex items-center gap-1'
+                          : `${pillClass(eventType === value)} flex items-center gap-1`
+                      }
+                    >
+                      {!allowed && <Lock className="size-3 shrink-0" />}
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}

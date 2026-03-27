@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout'
@@ -44,6 +44,13 @@ function tierMaxOffset(tier: SubscriptionTier, range: Range): number {
   return 0 // free
 }
 
+/** Ranges the user's tier allows. Free: 7d only. Pro: 7d/30d. Premium: all. */
+function tierAllowedRanges(tier: SubscriptionTier): Range[] {
+  if (tier === 'premium') return ['7d', '30d', '90d']
+  if (tier === 'pro')     return ['7d', '30d']
+  return ['7d']
+}
+
 /** Human-readable label for the current window, e.g. "Mar 14 – Mar 20". */
 function periodLabel(range: Range, offset: number): string {
   if (offset === 0) return RANGE_LABELS[range]
@@ -66,8 +73,21 @@ export function CatHistoryPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
-  const [range, setRange] = useState<Range>('30d')
+  const allowedRanges = useMemo(() => tierAllowedRanges(tier), [tier])
+  const [range, setRange] = useState<Range>(() => {
+    // Default to the widest range available for the tier
+    const allowed = tierAllowedRanges(tier)
+    return allowed[allowed.length - 1]
+  })
   const [offset, setOffset] = useState(0)
+
+  // If the user's tier changes (e.g. downgrade), clamp the range to what's allowed
+  useEffect(() => {
+    if (!allowedRanges.includes(range)) {
+      setRange(allowedRanges[allowedRanges.length - 1])
+      setOffset(0)
+    }
+  }, [allowedRanges, range])
 
   // Mobile detection — skip drag-and-drop grid entirely on small screens
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -268,20 +288,28 @@ export function CatHistoryPage() {
 
             {/* ── Range selector ── */}
             <div className="flex rounded-xl overflow-hidden ring-1 ring-border/60 text-sm">
-              {(['7d', '30d', '90d'] as Range[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRange(r)}
-                  className={[
-                    'px-4 py-2 font-medium transition-colors',
-                    range === r
-                      ? 'bg-sky-500 text-white'
-                      : 'bg-card text-muted-foreground hover:text-foreground hover:bg-sky-50 dark:hover:bg-sky-950/20',
-                  ].join(' ')}
-                >
-                  {r}
-                </button>
-              ))}
+              {(['7d', '30d', '90d'] as Range[]).map((r) => {
+                const allowed = allowedRanges.includes(r)
+                return (
+                  <button
+                    key={r}
+                    onClick={() => allowed && setRange(r)}
+                    disabled={!allowed}
+                    title={!allowed ? upgradeHint(tier) : undefined}
+                    className={[
+                      'px-4 py-2 font-medium transition-colors flex items-center gap-1',
+                      range === r
+                        ? 'bg-sky-500 text-white'
+                        : allowed
+                          ? 'bg-card text-muted-foreground hover:text-foreground hover:bg-sky-50 dark:hover:bg-sky-950/20'
+                          : 'bg-card text-muted-foreground/40 cursor-not-allowed',
+                    ].join(' ')}
+                  >
+                    {!allowed && <Lock className="size-2.5 shrink-0" />}
+                    {r}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>

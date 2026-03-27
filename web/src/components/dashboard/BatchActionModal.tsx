@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { X, Lock } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { BatchAction } from '@/lib/batchActions'
-import type { EventType } from '@/types/api'
+import type { EventType, SubscriptionTier } from '@/types/api'
+import { useAuthStore } from '@/store/authStore'
 
 // Event types that make sense for batch logging (exclude weight/vet_visit
 // which require per-cat data that varies per animal)
@@ -20,6 +22,13 @@ type FoodType     = 'wet' | 'dry' | 'treats' | 'other'
 type GroomingType = 'bath' | 'nail_trim' | 'full_groom' | 'other'
 type MedUnit      = 'mg' | 'ml' | 'tablet'
 
+const FREE_BATCH_TYPES: EventType[] = ['feeding', 'litter', 'water', 'note']
+
+function isBatchTypeAllowed(type: EventType, tier: SubscriptionTier): boolean {
+  if (tier === 'pro' || tier === 'premium') return true
+  return FREE_BATCH_TYPES.includes(type)
+}
+
 interface Props {
   onSave: (action: Omit<BatchAction, 'id'>) => void
   onClose: () => void
@@ -33,6 +42,8 @@ const pillClass = (active: boolean) =>
   }`
 
 export function BatchActionModal({ onSave, onClose }: Props) {
+  const { user } = useAuthStore()
+  const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
   const [label,       setLabel]       = useState('')
   const [eventType,   setEventType]   = useState<EventType>('water')
   const [foodType,    setFoodType]    = useState<FoodType>('wet')
@@ -96,15 +107,30 @@ export function BatchActionModal({ onSave, onClose }: Props) {
         <div className="space-y-2">
           <p className="text-sm font-medium">Type</p>
           <div className="flex gap-2 flex-wrap">
-            {BATCH_TYPES.map(({ value, label: typeLabel }) => (
-              <button
-                key={value}
-                onClick={() => setEventType(value)}
-                className={pillClass(eventType === value)}
-              >
-                {typeLabel}
-              </button>
-            ))}
+            {BATCH_TYPES.map(({ value, label: typeLabel }) => {
+              const allowed = isBatchTypeAllowed(value, tier)
+              return (
+                <button
+                  key={value}
+                  onClick={() => {
+                    if (!allowed) {
+                      toast.error('Upgrade to Pro or Premium to use this event type.')
+                      return
+                    }
+                    setEventType(value)
+                  }}
+                  title={!allowed ? 'Requires Pro or Premium' : undefined}
+                  className={
+                    !allowed
+                      ? 'px-3 py-1.5 rounded-full text-sm font-medium border border-border transition-colors opacity-50 cursor-not-allowed flex items-center gap-1'
+                      : `${pillClass(eventType === value)} flex items-center gap-1`
+                  }
+                >
+                  {!allowed && <Lock className="size-3 shrink-0" />}
+                  {typeLabel}
+                </button>
+              )
+            })}
           </div>
         </div>
 

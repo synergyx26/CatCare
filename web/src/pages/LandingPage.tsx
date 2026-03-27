@@ -87,10 +87,10 @@ const features: {
     icon: ClipboardList,
     title: '8 care event types',
     description:
-      'Log feeding, water, litter, weight, medication, vet visits, grooming, and general notes — everything your vet wants to see at the next appointment.',
+      'Log feeding, water, litter, and notes on the free plan. Upgrade to Pro or Premium to add weight, medication, vet visits, and grooming — everything your vet wants to see.',
     color: 'text-rose-500',
     bg: 'bg-rose-50 dark:bg-rose-950/30',
-    tier: undefined,
+    tier: 'pro' as FeatureTier,
   },
   {
     icon: Stethoscope,
@@ -160,7 +160,7 @@ const plans: Plan[] = [
     description: 'Perfect for a single-cat household.',
     features: [
       { label: '1 cat', included: true },
-      { label: 'All 8 care event types', included: true },
+      { label: '4 care event types (feeding, litter, water, note)', included: true },
       { label: 'Up to 2 household members', included: true },
       { label: '7-day care history', included: true },
       { label: 'Vet info & care instructions', included: true },
@@ -187,6 +187,7 @@ const plans: Plan[] = [
       { label: '30-day care history', included: true },
       { label: 'All 5 analytics charts', included: true },
       { label: 'Vet info & care instructions', included: true },
+      { label: 'Weight, medication, vet & grooming logs', included: true },
       { label: 'Email reminders', included: false },
       { label: 'Persistent photo storage', included: false },
     ],
@@ -224,7 +225,7 @@ const faqItems = [
   {
     question: 'Is the free plan really free?',
     answer:
-      'Yes — always free, with no credit card required. The free plan gives you one cat, all 8 care event types, and up to two household members.',
+      'Yes — always free, with no credit card required. The free plan gives you one cat, four care event types (feeding, litter, water, and notes), and up to two household members. Upgrade to Pro or Premium for weight, medication, vet visits, and grooming logs.',
   },
   {
     question: 'What happens to my data if I downgrade?',

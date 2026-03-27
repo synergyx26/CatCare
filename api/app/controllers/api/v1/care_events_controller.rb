@@ -26,6 +26,14 @@ module Api
         event.logged_by = current_user
         authorize event
 
+        unless tier_event_type_allowed?(event.event_type)
+          return render_error(
+            "TIER_LIMIT",
+            "#{event.event_type.humanize} logging requires a Pro or Premium plan.",
+            status: :forbidden
+          )
+        end
+
         if event.save
           render_success(serialize_event(event), status: :created)
         else
@@ -55,6 +63,14 @@ module Api
 
       def set_household
         @household = current_household
+      end
+
+      # Free: feeding, litter, water, note only. Pro/Premium: all types.
+      FREE_EVENT_TYPES = %w[feeding litter water note].freeze
+
+      def tier_event_type_allowed?(event_type)
+        return true if %w[pro premium].include?(current_user.subscription_tier)
+        FREE_EVENT_TYPES.include?(event_type.to_s)
       end
 
       def create_params

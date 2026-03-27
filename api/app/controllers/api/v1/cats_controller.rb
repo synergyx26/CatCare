@@ -24,6 +24,17 @@ module Api
       # POST /api/v1/households/:household_id/cats
       def create
         authorize current_household.cats.build, policy_class: CatPolicy
+
+        active_count = current_household.cats.active.count
+        limit = tier_cat_limit
+        if active_count >= limit
+          return render_error(
+            "TIER_LIMIT",
+            "Your plan allows #{limit} active #{limit == 1 ? 'cat' : 'cats'}. Upgrade to add more.",
+            status: :forbidden
+          )
+        end
+
         cat = current_household.cats.build(cat_params)
         cat.created_by_id = current_user.id
         cat.active = true
@@ -55,6 +66,15 @@ module Api
       def stats
         authorize @cat
         range  = params[:range] || "30d"
+
+        unless tier_range_allowed?(range)
+          return render_error(
+            "TIER_LIMIT",
+            "Upgrade your plan to access this date range",
+            status: :forbidden
+          )
+        end
+
         offset = [params[:offset].to_i, 0].max
         days   = case range
                  when "7d"  then 7
@@ -178,6 +198,24 @@ module Api
         when "pro"     then (180.0 / days).floor - 1
         when "premium" then Float::INFINITY
         else 0  # free
+        end
+      end
+
+      # Free: 7d only. Pro: 7d/30d. Premium: all ranges.
+      def tier_range_allowed?(range)
+        case current_user.subscription_tier
+        when "premium" then true
+        when "pro"     then %w[7d 30d].include?(range)
+        else range == "7d"
+        end
+      end
+
+      # Free: 1 cat. Pro: 3. Premium: unlimited.
+      def tier_cat_limit
+        case current_user.subscription_tier
+        when "premium" then Float::INFINITY
+        when "pro"     then 3
+        else 1
         end
       end
 

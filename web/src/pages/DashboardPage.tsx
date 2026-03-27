@@ -18,7 +18,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { isToday, isSameLocalDay, getCatTodayStatus } from '@/lib/helpers'
 import { toast } from 'sonner'
-import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X } from 'lucide-react'
+import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X, Lock } from 'lucide-react'
 
 function getTimeGreeting(name: string): string {
   const hour = new Date().getHours()
@@ -123,6 +123,10 @@ export function DashboardPage() {
   )
   const currentRole: MemberRole | null =
     primaryHousehold?.members.find((m) => m.id === user?.id)?.role ?? null
+
+  const tier = user?.subscription_tier ?? 'free'
+  const catLimit = tier === 'premium' ? Infinity : tier === 'pro' ? 3 : 1
+  const atCatLimit = cats.length >= catLimit
 
   const needsAttentionCount = cats.filter((cat) => {
     const s = getCatTodayStatus(cat.id, todayEvents, memberMap, user?.id ?? -1, {
@@ -272,9 +276,18 @@ export function DashboardPage() {
             variant="outline"
             size="sm"
             className="shrink-0"
-            onClick={() => navigate(`/households/${primaryHousehold.id}/add-cat`)}
+            onClick={() => {
+              if (atCatLimit) {
+                const hint = tier === 'pro'
+                  ? 'Upgrade to Premium to add more than 3 cats.'
+                  : 'Upgrade to Pro or Premium to add more cats.'
+                toast.error(`Plan limit reached. ${hint}`)
+              } else {
+                navigate(`/households/${primaryHousehold.id}/add-cat`)
+              }
+            }}
           >
-            <Plus className="size-4" />
+            {atCatLimit ? <Lock className="size-4" /> : <Plus className="size-4" />}
             Add Cat
           </Button>
         )}
@@ -309,7 +322,7 @@ export function DashboardPage() {
                   <button
                     onClick={() => batchMutation.mutate({ label: 'Water', event_type: 'water', details: {} })}
                     disabled={batchMutation.isPending}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-sky-50 hover:border-sky-300 hover:text-sky-700 dark:hover:bg-sky-950/20 dark:hover:border-sky-700 dark:hover:text-sky-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 dark:hover:bg-blue-950/20 dark:hover:border-blue-700 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     <Droplets className="size-3" />
                     Water
@@ -318,30 +331,47 @@ export function DashboardPage() {
                   <button
                     onClick={() => batchMutation.mutate({ label: 'Litter', event_type: 'litter', details: {} })}
                     disabled={batchMutation.isPending}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 dark:hover:bg-amber-950/20 dark:hover:border-amber-700 dark:hover:text-amber-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 dark:hover:bg-purple-950/20 dark:hover:border-purple-700 dark:hover:text-purple-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     <Trash2 className="size-3" />
                     Litter
                   </button>
                   {/* Custom actions */}
-                  {customActions.map((action) => (
-                    <span key={action.id} className="relative group flex items-center">
-                      <button
-                        onClick={() => batchMutation.mutate(action)}
-                        disabled={batchMutation.isPending}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-muted/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {action.label}
-                      </button>
-                      <button
-                        onClick={() => removeCustomAction(action.id)}
-                        className="absolute -top-1.5 -right-1.5 hidden group-hover:flex items-center justify-center size-4 rounded-full bg-destructive text-destructive-foreground"
-                        aria-label={`Remove ${action.label}`}
-                      >
-                        <X className="size-2.5" />
-                      </button>
-                    </span>
-                  ))}
+                  {customActions.map((action) => {
+                    const FREE_TYPES: string[] = ['feeding', 'litter', 'water', 'note']
+                    const actionAllowed = tier === 'pro' || tier === 'premium' || FREE_TYPES.includes(action.event_type)
+                    return (
+                      <span key={action.id} className="relative group flex items-center">
+                        <button
+                          onClick={() => {
+                            if (!actionAllowed) {
+                              toast.error('Upgrade to Pro or Premium to use this quick action.')
+                              return
+                            }
+                            batchMutation.mutate(action)
+                          }}
+                          disabled={batchMutation.isPending}
+                          title={!actionAllowed ? 'Requires Pro or Premium' : undefined}
+                          className={[
+                            'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border transition-colors',
+                            actionAllowed
+                              ? 'hover:bg-muted/60 disabled:opacity-40 disabled:cursor-not-allowed'
+                              : 'opacity-50 cursor-not-allowed',
+                          ].join(' ')}
+                        >
+                          {!actionAllowed && <Lock className="size-3 shrink-0" />}
+                          {action.label}
+                        </button>
+                        <button
+                          onClick={() => removeCustomAction(action.id)}
+                          className="absolute -top-1.5 -right-1.5 hidden group-hover:flex items-center justify-center size-4 rounded-full bg-destructive text-destructive-foreground"
+                          aria-label={`Remove ${action.label}`}
+                        >
+                          <X className="size-2.5" />
+                        </button>
+                      </span>
+                    )
+                  })}
                   {/* Add custom action */}
                   <button
                     onClick={() => setShowBatchModal(true)}
@@ -410,6 +440,7 @@ export function DashboardPage() {
               currentUserId={user?.id ?? -1}
               currentRole={currentRole}
               pendingInvites={pendingInvites}
+              tier={tier}
             />
           )}
         </div>

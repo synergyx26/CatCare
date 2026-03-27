@@ -18,6 +18,19 @@ module Api
       # Generate a new invite link for the given email address
       def create
         authorize @household, policy_class: HouseholdInvitePolicy
+
+        limit = tier_member_limit
+        if limit != Float::INFINITY
+          active_count = @household.household_memberships.active.count
+          if active_count >= limit
+            return render_error(
+              "TIER_LIMIT",
+              "Your plan allows #{limit} household members. Upgrade to invite more.",
+              status: :forbidden
+            )
+          end
+        end
+
         raw_role = params.dig(:invite, :role).to_s
         role = HouseholdInvite.roles.key?(raw_role) ? raw_role : "member"
         invite = @household.household_invites.build(
@@ -96,6 +109,14 @@ module Api
 
       def invite_params
         params.require(:invite).permit(:email)
+      end
+
+      # Free: 2 members. Pro/Premium: unlimited.
+      def tier_member_limit
+        case current_user.subscription_tier
+        when "pro", "premium" then Float::INFINITY
+        else 2
+        end
       end
 
       def invite_json(invite)

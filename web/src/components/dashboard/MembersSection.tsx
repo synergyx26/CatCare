@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Lock } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,13 +16,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { Household, HouseholdInvite, HouseholdMember, MemberRole } from '@/types/api'
+import type { Household, HouseholdInvite, HouseholdMember, MemberRole, SubscriptionTier } from '@/types/api'
 
 interface MembersSectionProps {
   household: Household
   currentUserId: number
   currentRole: MemberRole | null
   pendingInvites: HouseholdInvite[]
+  tier?: SubscriptionTier
 }
 
 export function MembersSection({
@@ -29,9 +31,13 @@ export function MembersSection({
   currentUserId,
   currentRole,
   pendingInvites,
+  tier = 'free',
 }: MembersSectionProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+
+  const memberLimit = tier === 'pro' || tier === 'premium' ? Infinity : 2
+  const atMemberLimit = memberLimit !== Infinity && (household.members ?? []).length >= memberLimit
 
   const [showInviteForm, setShowInviteForm] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -109,11 +115,17 @@ export function MembersSection({
         {isAdmin && (
           <button
             onClick={() => {
+              if (atMemberLimit) {
+                toast.error('Plan limit reached. Upgrade to Pro or Premium to invite more members.')
+                return
+              }
               setShowInviteForm((v) => !v)
               setGeneratedLink(null)
             }}
-            className="text-xs text-sky-600 dark:text-sky-400 font-medium hover:underline"
+            className="flex items-center gap-1 text-xs text-sky-600 dark:text-sky-400 font-medium hover:underline"
+            title={atMemberLimit ? 'Upgrade to invite more members' : undefined}
           >
+            {atMemberLimit && <Lock className="size-3" />}
             {showInviteForm ? 'Cancel' : 'Invite someone'}
           </button>
         )}

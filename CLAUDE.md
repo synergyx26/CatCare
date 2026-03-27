@@ -167,6 +167,48 @@ New policy specs must be added whenever a new policy is created. Pundit policy b
 
 ---
 
+## Subscription Tiers
+
+### Tier definitions
+| Tier | Cats | Members | Event types | History range | History offset |
+|---|---|---|---|---|---|
+| `free` | 1 | 2 | feeding, litter, water, note | 7d only | current period only |
+| `pro` | 3 | unlimited | all 8 | 7d, 30d | up to 180 days back |
+| `premium` | unlimited | unlimited | all 8 | 7d, 30d, 90d | unlimited |
+
+**Free event types:** `feeding`, `litter`, `water`, `note`
+**Pro/Premium-only:** `weight`, `medication`, `vet_visit`, `grooming`
+
+### Backend enforcement (source of truth — never skip)
+- **`cats_controller.rb#create`** — `tier_cat_limit` checks active cat count before saving
+- **`cats_controller.rb#stats`** — `tier_range_allowed?` rejects out-of-tier ranges; `tier_max_offset` rejects out-of-range pagination
+- **`care_events_controller.rb#create`** — `tier_event_type_allowed?` rejects restricted types; `update` is NOT restricted (existing events editable after downgrade)
+- **`household_invites_controller.rb#create`** — `tier_member_limit` checks active membership count before creating invite
+- All return `{ error: "TIER_LIMIT", message: "..." }` with HTTP 403
+
+### Frontend enforcement (UX layer — always pair with backend)
+- **`CatHistoryPage.tsx`** — range selector locks unavailable ranges; defaults to widest allowed range on mount; clamps on tier change
+- **`DashboardPage.tsx`** — "Add Cat" button shows Lock icon + toast at cat limit; custom batch action buttons show Lock + toast for restricted event types
+- **`MembersSection.tsx`** — "Invite someone" shows Lock + toast at member limit; receives `tier` prop from `DashboardPage`
+- **`LogCareModal.tsx`** — reads tier from `useAuthStore`; restricted type pills are greyed/locked; falls back to `feeding` if opened with a restricted `initialType`
+- **`BatchActionModal.tsx`** — reads tier from `useAuthStore`; `medication` and `grooming` type pills are locked for Free
+
+### Event type color system
+`web/src/lib/eventColors.ts` is the **canonical source** — always reference it. Never hardcode event colors elsewhere.
+
+| Type | Hex | Tailwind |
+|---|---|---|
+| feeding | `#f59e0b` | amber |
+| litter | `#a855f7` | purple |
+| water | `#3b82f6` | blue |
+| weight | `#22c55e` | green |
+| note | `#94a3b8` | slate |
+| medication | `#ef4444` | red |
+| vet_visit | `#06b6d4` | cyan |
+| grooming | `#ec4899` | pink |
+
+---
+
 ## Care History Dashboard
 
 Route: `/households/:householdId/cats/:catId/history`
@@ -233,10 +275,10 @@ api/app/controllers/
 
 api/app/controllers/api/v1/
   base_controller.rb        — current_household, render_success/error helpers
-  cats_controller.rb        — CRUD + stats action + Pundit; ?include_inactive for archived cats
-  care_events_controller.rb — index/create/update/destroy + Pundit
+  cats_controller.rb        — CRUD + stats action + Pundit; ?include_inactive for archived cats; tier enforcement on create (cat limit) and stats (range + offset limits)
+  care_events_controller.rb — index/create/update/destroy + Pundit; tier enforcement on create (event type whitelist)
   households_controller.rb
-  household_invites_controller.rb — role param + accept flow + Pundit
+  household_invites_controller.rb — role param + accept flow + Pundit; tier enforcement on create (member limit)
   memberships_controller.rb       — self profile (show/update) + admin manage_update/manage_destroy
   oauth_controller.rb             — POST /api/v1/auth/google; verifies Google ID token via tokeninfo endpoint, finds-or-creates user, returns CatCare JWT
 
@@ -272,7 +314,7 @@ web/src/
     usePageTitle.ts         — sets document.title as "{title} · CatCare"
   components/
     EmptyState.tsx          — reusable: Lucide icon + title + description + optional CTA
-    LogCareModal.tsx        — full care logging (all 8 types + edit/delete + AlertDialog confirm); reads feeding_presets from cat prop for quick-pick portion buttons
+    LogCareModal.tsx        — full care logging (all 8 types + edit/delete + AlertDialog confirm); reads feeding_presets from cat prop for quick-pick portion buttons; Free tier locks weight/medication/vet_visit/grooming pills
     layout/
       AppLayout.tsx         — sticky navbar, user dropdown, theme toggle, mobile sheet
       PageHeader.tsx        — reusable title + subtitle + back link + action slot
@@ -280,11 +322,11 @@ web/src/
       CatCard.tsx           — cat card with status badges + quick-action buttons
       CatStatusBadges.tsx   — fed/litter/water status badges
       TodayCareLog.tsx      — today's care event list
-      MembersSection.tsx    — member list + role management + invite form (admin only)
+      MembersSection.tsx    — member list + role management + invite form (admin only); accepts `tier` prop to enforce Free 2-member limit
       EmergencyContactSection.tsx
       HouseholdVetSection.tsx     — shared vet contact for the household; tap-to-call on mobile
       UpcomingAppointmentsSection.tsx — future-dated vet/grooming events shown as upcoming appointments
-      BatchActionModal.tsx        — log the same care event for multiple cats in one action
+      BatchActionModal.tsx        — log the same care event for multiple cats in one action; Free tier locks medication/grooming type pills
     skeletons/
       PageSkeleton.tsx      — generic page loading skeleton (header + content blocks)
       CatCardSkeleton.tsx   — cat card shape skeleton
@@ -318,3 +360,6 @@ web/src/
 6. **JSONB string keys** — Rails reads back as strings: `details["weight_value"]` not `details[:weight_value]`
 7. **Base UI DropdownMenuLabel** — requires `DropdownMenuGroup` parent; use plain `div` for presentational headers
 8. **feeding_presets defaults** — `LogCareModal` falls back to `DEFAULT_PRESETS` if `cat.feeding_presets` is null; never assume the column is populated on existing rows before migration
+9. **Tier frontend-only** — every tier restriction must be enforced in Rails too; frontend is UX only, backend is the security boundary
+10. **Wrong event type color** — always use `EVENT_COLORS` from `lib/eventColors.ts`; never hardcode event colors (litter=purple, water=blue, not the other way around)
+11. **Forgetting batch actions** — `BatchActionModal` and the "Log for all" row in `DashboardPage` are separate from `LogCareModal`; any new event type tier rule must be applied to all three surfaces
