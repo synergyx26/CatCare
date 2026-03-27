@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ResponsiveGridLayout } from 'react-grid-layout'
+import { ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout'
 import type { Layout, ResponsiveLayouts } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -9,14 +9,16 @@ import { api } from '@/api/client'
 import { CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
-import { Cat as CatIcon, Inbox, LayoutGrid } from 'lucide-react'
+import { Cat as CatIcon, ChevronLeft, ChevronRight, Inbox, LayoutGrid, Lock } from 'lucide-react'
 import { usePageTitle } from '@/hooks/usePageTitle'
-import type { Cat, CatStats } from '@/types/api'
+import { useAuthStore } from '@/store/authStore'
+import type { Cat, CatStats, SubscriptionTier } from '@/types/api'
 import { WeightTrendChart } from '@/components/charts/WeightTrendChart'
 import { FeedingFrequencyChart } from '@/components/charts/FeedingFrequencyChart'
 import { CareTypeBreakdownChart } from '@/components/charts/CareTypeBreakdownChart'
 import { MemberContributionChart } from '@/components/charts/MemberContributionChart'
 import { CareActivityHeatmap } from '@/components/charts/CareActivityHeatmap'
+import { DailyFoodIntakeChart } from '@/components/charts/DailyFoodIntakeChart'
 import { ChartCard } from '@/components/charts/ChartCard'
 import {
   DEFAULT_LAYOUTS,
@@ -33,10 +35,39 @@ const RANGE_LABELS: Record<Range, string> = {
   '90d': 'Last 90 days',
 }
 
+const RANGE_DAYS: Record<Range, number> = { '7d': 7, '30d': 30, '90d': 90 }
+
+/** Maximum offset (periods back) allowed per tier per range. */
+function tierMaxOffset(tier: SubscriptionTier, range: Range): number {
+  if (tier === 'premium') return Infinity
+  if (tier === 'pro')     return Math.floor(180 / RANGE_DAYS[range]) - 1
+  return 0 // free
+}
+
+/** Human-readable label for the current window, e.g. "Mar 14 – Mar 20". */
+function periodLabel(range: Range, offset: number): string {
+  if (offset === 0) return RANGE_LABELS[range]
+  const days = RANGE_DAYS[range]
+  const now  = new Date()
+  const end  = new Date(now); end.setDate(now.getDate() - days * offset)
+  const start = new Date(now); start.setDate(now.getDate() - days * (offset + 1))
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `${fmt(start)} – ${fmt(end)}`
+}
+
+/** Upgrade tooltip copy tailored to the user's current tier. */
+function upgradeHint(tier: SubscriptionTier): string {
+  if (tier === 'pro') return 'Upgrade to Premium for unlimited history'
+  return 'Upgrade to Pro or Premium to access historical data'
+}
+
 export function CatHistoryPage() {
   const { householdId, catId } = useParams<{ householdId: string; catId: string }>()
   const navigate = useNavigate()
+  const { user } = useAuthStore()
+  const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
   const [range, setRange] = useState<Range>('30d')
+  const [offset, setOffset] = useState(0)
 
   // Mobile detection — skip drag-and-drop grid entirely on small screens
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -56,18 +87,12 @@ export function CatHistoryPage() {
     setLayouts((catId ? loadLayouts(catId) : null) ?? DEFAULT_LAYOUTS)
   }, [catId])
 
-  // Measure container width using our own ResizeObserver — useContainerWidth() from
-  // react-grid-layout uses a viewport-level fallback that ignores max-w constraints.
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [gridWidth, setGridWidth] = useState(0)
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    setGridWidth(el.getBoundingClientRect().width)
-    const ro = new ResizeObserver(([entry]) => setGridWidth(entry.contentRect.width))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
+  // Reset offset when range changes so we always start at the current period
+  useEffect(() => { setOffset(0) }, [range])
+
+  // useContainerWidth measures the wrapper div via ResizeObserver and gates
+  // rendering on `mounted` so the grid never initialises with a wrong fallback width.
+  const { width: gridWidth, containerRef, mounted: gridMounted } = useContainerWidth()
 
   const catQuery = useQuery({
     queryKey: ['cat', householdId, catId],
@@ -75,9 +100,10 @@ export function CatHistoryPage() {
   })
 
   const statsQuery = useQuery({
-    queryKey: ['cat_stats', householdId, catId, range],
-    queryFn: () => api.getCatStats(Number(householdId), Number(catId), range),
-    staleTime: 5 * 60 * 1000,
+    queryKey: ['cat_stats', householdId, catId, range, offset],
+    queryFn: () => api.getCatStats(Number(householdId), Number(catId), range, offset),
+    // Historical periods never change — cache them indefinitely
+    staleTime: offset === 0 ? 5 * 60 * 1000 : Infinity,
     enabled: !!householdId && !!catId,
     placeholderData: keepPreviousData,
   })
@@ -89,9 +115,25 @@ export function CatHistoryPage() {
 
   usePageTitle(cat ? `${cat.name}'s History` : '')
 
-  const latestWeight = stats?.weight_series[stats.weight_series.length - 1]
-  const feedingDays  = stats?.by_day.filter((d) => (d.types['feeding'] ?? 0) > 0).length ?? 0
-  const topMember    = stats?.by_member.slice().sort((a, b) => b.count - a.count)[0]
+  const latestWeight    = stats?.weight_series[stats.weight_series.length - 1]
+  const feedingDays     = stats?.by_day.filter((d) => (d.types['feeding'] ?? 0) > 0).length ?? 0
+  const topMember       = stats?.by_member.slice().sort((a, b) => b.count - a.count)[0]
+  const hasFoodIntake   = stats?.feeding_series.some((d) => d.wet + d.dry + d.treats + d.other > 0) ?? false
+
+  // Period navigation
+  const maxOffset    = tierMaxOffset(tier, range)
+  const canGoNewer   = offset > 0
+  const canGoOlder   = offset < maxOffset
+  const atTierLimit  = !canGoOlder && tier !== 'premium'
+  const currentLabel = periodLabel(range, offset)
+  // For chart subtitles — use the API-provided dates once loaded, fall back to local calc
+  const rangeLabel   = offset === 0
+    ? RANGE_LABELS[range].toLowerCase()
+    : currentLabel.toLowerCase()
+
+  // 403 from the API means tier enforcement kicked in server-side
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isTierError  = (statsQuery.error as any)?.response?.status === 403
 
   // Merge layout changes, preserving positions for conditionally-hidden charts
   // so they snap back to the right place when data appears (e.g. weight chart)
@@ -170,6 +212,61 @@ export function CatHistoryPage() {
                 Reset layout
               </button>
             )}
+
+            {/* ── Period navigator ── */}
+            <div className="flex items-center rounded-xl ring-1 ring-border/60 bg-card overflow-hidden text-sm">
+              {/* Older */}
+              <button
+                onClick={() => setOffset((o) => o + 1)}
+                disabled={!canGoOlder}
+                title={atTierLimit ? upgradeHint(tier) : 'Previous period'}
+                className={[
+                  'flex items-center justify-center w-8 h-9 transition-colors',
+                  canGoOlder
+                    ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    : atTierLimit
+                      ? 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 cursor-not-allowed'
+                      : 'text-muted-foreground/30 cursor-not-allowed',
+                ].join(' ')}
+              >
+                {atTierLimit
+                  ? <Lock className="size-3.5" />
+                  : <ChevronLeft className="size-4" />
+                }
+              </button>
+
+              {/* Current window label — double-click or tap "Today" to reset */}
+              <div className="flex flex-col items-center justify-center px-3 py-1 min-w-[110px]">
+                <span className="text-xs font-medium text-foreground whitespace-nowrap">
+                  {currentLabel}
+                </span>
+                {offset > 0 && (
+                  <button
+                    onClick={() => setOffset(0)}
+                    className="text-[10px] text-sky-500 hover:text-sky-600 dark:hover:text-sky-400 font-medium mt-0.5 leading-none transition-colors"
+                  >
+                    Back to today
+                  </button>
+                )}
+              </div>
+
+              {/* Newer */}
+              <button
+                onClick={() => setOffset((o) => o - 1)}
+                disabled={!canGoNewer}
+                title={canGoNewer ? 'Next period' : 'Already at current period'}
+                className={[
+                  'flex items-center justify-center w-8 h-9 transition-colors',
+                  canGoNewer
+                    ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    : 'text-muted-foreground/30 cursor-not-allowed',
+                ].join(' ')}
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+
+            {/* ── Range selector ── */}
             <div className="flex rounded-xl overflow-hidden ring-1 ring-border/60 text-sm">
               {(['7d', '30d', '90d'] as Range[]).map((r) => (
                 <button
@@ -201,7 +298,7 @@ export function CatHistoryPage() {
             <StatCard
               label="Total Events"
               value={String(stats.total_events)}
-              sub={RANGE_LABELS[range]}
+              sub={currentLabel}
               color="sky"
             />
             <StatCard
@@ -240,8 +337,17 @@ export function CatHistoryPage() {
           </div>
         )}
 
+        {/* ── Tier limit error ────────────────────────────────────────────── */}
+        {isTierError && (
+          <EmptyState
+            icon={Lock}
+            title="History not available on your plan"
+            description={upgradeHint(tier)}
+          />
+        )}
+
         {/* ── Empty state ─────────────────────────────────────────────────── */}
-        {stats && stats.total_events === 0 && (
+        {!isTierError && stats && stats.total_events === 0 && (
           <EmptyState
             icon={Inbox}
             title="No events in this period"
@@ -250,7 +356,7 @@ export function CatHistoryPage() {
         )}
 
         {/* ── Charts ───────────────────────────────────────────────────────── */}
-        {stats && stats.total_events > 0 && (
+        {!isTierError && stats && stats.total_events > 0 && (
           <div className="w-full min-w-0 relative">
             {statsQuery.isFetching && (
               <div className="absolute inset-0 z-10 bg-background/40 rounded-2xl pointer-events-none animate-pulse" />
@@ -264,7 +370,7 @@ export function CatHistoryPage() {
                     <ChartCard
                       className="h-full"
                       title="Weight over time"
-                      subtitle={`${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${RANGE_LABELS[range].toLowerCase()}`}
+                      subtitle={`${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${rangeLabel}`}
                       accent="linear-gradient(to right, #34d399, #4ade80)"
                     >
                       <WeightTrendChart data={stats.weight_series} />
@@ -285,7 +391,7 @@ export function CatHistoryPage() {
                   <ChartCard
                     className="h-full"
                     title="Care breakdown"
-                    subtitle={`By type \u00B7 ${RANGE_LABELS[range].toLowerCase()}`}
+                    subtitle={`By type \u00B7 ${rangeLabel}`}
                     accent="linear-gradient(to right, #38bdf8, #60a5fa)"
                   >
                     <CareTypeBreakdownChart byType={stats.by_type} />
@@ -313,14 +419,26 @@ export function CatHistoryPage() {
                     <CareActivityHeatmap data={stats.by_day} />
                   </ChartCard>
                 </div>
+                {hasFoodIntake && (
+                  <div className="h-[300px]">
+                    <ChartCard
+                      className="h-full"
+                      title="Daily food intake"
+                      subtitle="Grams per food type"
+                      accent="linear-gradient(to right, #fb923c, #fbbf24)"
+                    >
+                      <DailyFoodIntakeChart data={stats.feeding_series} />
+                    </ChartCard>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Desktop: drag-and-drop + resizable grid */}
             {!isMobile && (
-              <div ref={containerRef} className="w-full">
-                <ResponsiveGridLayout
-                  width={gridWidth || 800}
+              <div ref={containerRef as React.RefObject<HTMLDivElement>} className="w-full">
+                {gridMounted && <ResponsiveGridLayout
+                  width={gridWidth}
                   className="layout"
                   layouts={layouts}
                   breakpoints={{ lg: 768, sm: 0 }}
@@ -332,16 +450,21 @@ export function CatHistoryPage() {
                   margin={[16, 16]}
                   containerPadding={[0, 0]}
                 >
-                  {stats.weight_series.length > 0 && (
-                    <ChartCard
-                      key="weight"
-                      title="Weight over time"
-                      subtitle={`${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${RANGE_LABELS[range].toLowerCase()}`}
-                      accent="linear-gradient(to right, #34d399, #4ade80)"
-                    >
-                      <WeightTrendChart data={stats.weight_series} />
-                    </ChartCard>
-                  )}
+                  <ChartCard
+                    key="weight"
+                    title="Weight over time"
+                    subtitle={
+                      stats.weight_series.length > 0
+                        ? `${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${rangeLabel}`
+                        : `No weight data \u00B7 ${rangeLabel}`
+                    }
+                    accent="linear-gradient(to right, #34d399, #4ade80)"
+                  >
+                    {stats.weight_series.length > 0
+                      ? <WeightTrendChart data={stats.weight_series} />
+                      : <ChartEmptyState message="No weight events in this period" />
+                    }
+                  </ChartCard>
                   <ChartCard
                     key="feeding"
                     title="Feeding frequency"
@@ -353,21 +476,22 @@ export function CatHistoryPage() {
                   <ChartCard
                     key="care_breakdown"
                     title="Care breakdown"
-                    subtitle={`By type \u00B7 ${RANGE_LABELS[range].toLowerCase()}`}
+                    subtitle={`By type \u00B7 ${rangeLabel}`}
                     accent="linear-gradient(to right, #38bdf8, #60a5fa)"
                   >
                     <CareTypeBreakdownChart byType={stats.by_type} />
                   </ChartCard>
-                  {stats.by_member.length > 0 && (
-                    <ChartCard
-                      key="member"
-                      title="Household contributions"
-                      subtitle="Events logged per member"
-                      accent="linear-gradient(to right, #c084fc, #a78bfa)"
-                    >
-                      <MemberContributionChart data={stats.by_member} />
-                    </ChartCard>
-                  )}
+                  <ChartCard
+                    key="member"
+                    title="Household contributions"
+                    subtitle="Events logged per member"
+                    accent="linear-gradient(to right, #c084fc, #a78bfa)"
+                  >
+                    {stats.by_member.length > 0
+                      ? <MemberContributionChart data={stats.by_member} />
+                      : <ChartEmptyState message="No member data in this period" />
+                    }
+                  </ChartCard>
                   <ChartCard
                     key="heatmap"
                     title="Activity heatmap"
@@ -376,7 +500,18 @@ export function CatHistoryPage() {
                   >
                     <CareActivityHeatmap data={stats.by_day} />
                   </ChartCard>
-                </ResponsiveGridLayout>
+                  <ChartCard
+                    key="food_intake"
+                    title="Daily food intake"
+                    subtitle="Grams per food type"
+                    accent="linear-gradient(to right, #fb923c, #fbbf24)"
+                  >
+                    {hasFoodIntake
+                      ? <DailyFoodIntakeChart data={stats.feeding_series} />
+                      : <ChartEmptyState message="No food intake data in this period" />
+                    }
+                  </ChartCard>
+                </ResponsiveGridLayout>}
               </div>
             )}
           </div>
@@ -387,6 +522,14 @@ export function CatHistoryPage() {
 }
 
 // ── Local helper components ───────────────────────────────────────────────────
+
+function ChartEmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <p className="text-sm text-muted-foreground">{message}</p>
+    </div>
+  )
+}
 
 const STAT_COLORS: Record<string, string> = {
   sky:     'from-sky-50 to-cyan-50 dark:from-sky-950/20 dark:to-cyan-950/20 ring-sky-200/50 dark:ring-sky-800/30',

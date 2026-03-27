@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { api } from '@/api/client'
+import type { SubscriptionTier } from '@/types/api'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -30,6 +31,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  ShieldCheck,
 } from 'lucide-react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
 import type { Household } from '@/types/api'
@@ -37,11 +39,29 @@ import type { Household } from '@/types/api'
 const THEME_CYCLE: Record<Theme, Theme> = { light: 'dark', dark: 'system', system: 'light' }
 const THEME_ICON: Record<Theme, typeof Sun> = { light: Sun, dark: Moon, system: Monitor }
 
+const TIERS: SubscriptionTier[] = ['free', 'pro', 'premium']
+const TIER_LABELS: Record<SubscriptionTier, string> = { free: 'Free', pro: 'Pro', premium: 'Premium' }
+
 export function AppLayout() {
   const navigate = useNavigate()
-  const { user, clearAuth } = useAuthStore()
+  const { user, clearAuth, setAuth } = useAuthStore()
+  const queryClient = useQueryClient()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [tierSwitching, setTierSwitching] = useState(false)
   const { theme, setTheme } = useThemeStore()
+
+  async function handleTierSwitch(tier: SubscriptionTier) {
+    if (!user || tierSwitching) return
+    setTierSwitching(true)
+    try {
+      await api.updateSubscriptionTier(tier)
+      // Update the store so all tier-gated UI reacts immediately
+      setAuth({ ...user, subscription_tier: tier }, localStorage.getItem('catcare_token') ?? '')
+      queryClient.invalidateQueries({ queryKey: ['cat_stats'] })
+    } finally {
+      setTierSwitching(false)
+    }
+  }
 
   const { data: householdsData } = useQuery({
     queryKey: ['households'],
@@ -234,6 +254,35 @@ export function AppLayout() {
                     <Settings className="size-4" />
                     Household Settings
                   </DropdownMenuItem>
+                )}
+                {user?.is_super_admin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1.5">
+                      <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                        <ShieldCheck className="size-3" />
+                        Dev tier
+                      </div>
+                      <div className="flex gap-1">
+                        {TIERS.map((t) => (
+                          <button
+                            key={t}
+                            disabled={tierSwitching || user.subscription_tier === t}
+                            onClick={() => handleTierSwitch(t)}
+                            className={[
+                              'flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors',
+                              user.subscription_tier === t
+                                ? 'bg-sky-500 text-white cursor-default'
+                                : 'bg-muted text-muted-foreground hover:bg-sky-100 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300',
+                              tierSwitching ? 'opacity-50' : '',
+                            ].join(' ')}
+                          >
+                            {TIER_LABELS[t]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={handleLogout}>

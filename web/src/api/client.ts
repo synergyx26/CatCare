@@ -54,6 +54,9 @@ export const api = {
   me: () =>
     apiClient.get('/me'),
 
+  updateSubscriptionTier: (tier: string) =>
+    apiClient.patch('/me/subscription_tier', { subscription_tier: tier }),
+
   forgotPassword: (email: string) =>
     apiClient.post('/passwords', { email }),
 
@@ -116,8 +119,8 @@ export const api = {
   getCat: (householdId: number, catId: number) =>
     apiClient.get(`/households/${householdId}/cats/${catId}`),
 
-  getCatStats: (householdId: number, catId: number, range: '7d' | '30d' | '90d' = '30d') =>
-    apiClient.get(`/households/${householdId}/cats/${catId}/stats`, { params: { range } }),
+  getCatStats: (householdId: number, catId: number, range: '7d' | '30d' | '90d' = '30d', offset = 0) =>
+    apiClient.get(`/households/${householdId}/cats/${catId}/stats`, { params: { range, offset } }),
 
   // Care events
   getCareEvents: (householdId: number, options?: { catId?: number; upcoming?: boolean; eventTypes?: string[] }) => {
