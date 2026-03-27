@@ -50,6 +50,20 @@ export function AppLayout() {
   const [tierSwitching, setTierSwitching] = useState(false)
   const { theme, setTheme } = useThemeStore()
 
+  // Re-fetch /me on every app load so DB changes (e.g. tier updates) are picked up
+  // without requiring the user to log out and back in.
+  useQuery({
+    queryKey: ['me'],
+    queryFn: async () => {
+      const res = await api.me()
+      const fresh = (res as any)?.data?.data
+      if (fresh && user) setAuth(fresh, localStorage.getItem('catcare_token') ?? '')
+      return fresh
+    },
+    staleTime: 60_000,
+    enabled: !!user,
+  })
+
   async function handleTierSwitch(tier: SubscriptionTier) {
     if (!user || tierSwitching) return
     setTierSwitching(true)
