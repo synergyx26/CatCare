@@ -241,7 +241,21 @@ export function AppLayout() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={8} className="min-w-52 w-auto">
                 <div className="px-1.5 py-1">
-                  <p className="text-sm font-medium">{user?.name}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{user?.name}</p>
+                    {user?.subscription_tier && (
+                      <span className={[
+                        'text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full',
+                        user.subscription_tier === 'premium'
+                          ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                          : user.subscription_tier === 'pro'
+                            ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+                            : 'bg-muted text-muted-foreground',
+                      ].join(' ')}>
+                        {user.subscription_tier}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
