@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout'
@@ -436,7 +436,7 @@ export function CatHistoryPage() {
 
             {/* Desktop: drag-and-drop + resizable grid */}
             {!isMobile && (
-              <div ref={containerRef} className="w-full">
+              <div ref={containerRef as React.RefObject<HTMLDivElement>} className="w-full">
                 {gridMounted && <ResponsiveGridLayout
                   width={gridWidth}
                   className="layout"
