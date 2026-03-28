@@ -110,14 +110,33 @@ module Api
       private
 
       # Returns a URL only when the blob is stored in the currently configured service.
-      # Blobs recorded against an old service (e.g. "local" before the Supabase migration)
-      # are skipped rather than serving a broken URL — the frontend falls back to the
-      # avatar placeholder and the user can re-upload.
+      #
+      # Production: returns a direct Supabase public-bucket URL (no Rails redirect).
+      #   This means image loading doesn't require Render to be awake, never expires,
+      #   and works reliably after page refreshes. Requires the bucket to be set to
+      #   public in Supabase Dashboard → Storage → <bucket> → Make public.
+      #
+      # Development: uses the Rails redirect URL (local disk service).
+      #
+      # In both cases, blobs recorded against a different service (e.g. "local" blobs
+      # that predate the Supabase migration) return nil so the frontend shows the avatar
+      # placeholder and the user can re-upload.
       def photo_url_for(cat)
         return nil unless cat.photo.attached?
-        current_service = Rails.application.config.active_storage.service.to_s
-        return nil unless cat.photo.blob.service_name == current_service
-        url_for(cat.photo)
+        blob = cat.photo.blob
+
+        if Rails.env.production?
+          endpoint = ENV["SUPABASE_S3_ENDPOINT"]
+          bucket   = ENV["SUPABASE_S3_BUCKET"]
+          return nil if endpoint.blank? || bucket.blank? || blob.service_name != "supabase"
+          # e.g. https://<ref>.supabase.co/storage/v1/s3 → https://<ref>.supabase.co/storage/v1
+          base = endpoint.delete_suffix("/s3")
+          "#{base}/object/public/#{bucket}/#{blob.key}"
+        else
+          current_service = Rails.application.config.active_storage.service.to_s
+          return nil unless blob.service_name == current_service
+          url_for(cat.photo)
+        end
       end
 
       def set_cat

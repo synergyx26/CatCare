@@ -12,6 +12,9 @@ local:
 #   SUPABASE_S3_REGION      — your project region (e.g. us-east-1)
 #   SUPABASE_S3_BUCKET      — name of the bucket you create in Supabase Storage
 #   SUPABASE_S3_ENDPOINT    — https://<project-ref>.supabase.co/storage/v1/s3
+#
+# IMPORTANT: The bucket must be set to public so Rails can serve direct URLs.
+# Supabase Dashboard → Storage → <bucket-name> → (menu) → Make public
 supabase:
   service: S3
   access_key_id: <%= ENV["SUPABASE_S3_KEY_ID"] %>
