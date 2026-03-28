@@ -6,6 +6,13 @@
 
 ## Recently Completed
 
+### Session State & Auth Reliability ✅ *(2026-03-27)*
+- **Axios timeout (20s)**: API requests no longer hang indefinitely on Render cold starts — fail fast with an error instead of infinite loading skeletons
+- **Proper 401 cleanup**: the 401 interceptor now calls `clearAuth()` instead of only removing `catcare_token`; previously `isAuthenticated: true` survived in localStorage after token expiry, leaving the app in a dirty auth state that required closing all browser windows to recover
+- **Query cache cleared on login**: `queryClient.clear()` called on every successful login (email + Google OAuth) so stale entries from a prior session never produce an empty dashboard on re-login
+
+---
+
 ### Care Settings & Feeding Portion Presets ✅ *(2026-03-26 — branch: feat/dashboard-enhancements)*
 - **Care requirements per cat**: `feedings_per_day` (1–5), `track_water`, `track_litter` columns added to cats table; dashboard badges and "needs attention" count respect per-cat settings
 - **Feeding portion presets**: `feeding_presets` JSONB column on cats; admins set custom gram presets per food type (wet, dry) in Care Settings — these appear as quick-pick buttons in the feeding log
@@ -125,6 +132,47 @@ Export a cat's care history (last 90 days) as a formatted PDF. Useful for vet ap
 
 ### Multi-Species Support
 The `Cat` model has a `species` enum — the infrastructure is partially there. Needs: species-specific care types, UI labeling changes, species-specific default reminder templates.
+
+---
+
+## Best Practice Enhancements
+
+### Session & Auth Hardening
+
+**Proactive token expiry check in ProtectedRoute**
+Currently, if a JWT has expired (14-day window), the user lands on the dashboard, queries fire, they get 401s, and only then get redirected. Better: decode the JWT on the client (no extra call needed — it's base64), check `exp`, and redirect before any API call if already expired. Avoids the flash of loading skeletons.
+
+**"You've been signed out" toast on auto-logout**
+The 401 interceptor currently redirects silently. Adding a URL param (`/login?reason=session_expired`) and showing a toast on the login page when that param is present gives users context instead of confusion.
+
+**Cross-tab logout sync**
+If a user logs out in Tab A, Tab B still has the old in-memory Zustand state. The next API call from Tab B will 401 and redirect correctly, but there's a brief window of stale state. Fix: use the [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel) or a `window` `storage` event listener in `authStore` to call `clearAuth()` across all open tabs the moment any tab signs out.
+
+**Idle session timeout (optional)**
+For security-conscious households (sitter access), add a configurable idle timeout (e.g. 8 hours). Track last activity timestamp, and if the gap exceeds the threshold on next load, auto-logout. Rails side: already has `timeoutable` in the Devise comment block — just needs `config.timeout_in`.
+
+---
+
+### Cold-Start & Reliability
+
+**Server wake-up UX**
+When an Axios request times out (20s), TanStack Query marks the query as errored, but the UI currently shows either a loading skeleton that never resolves or a silent empty state. Add an `isError` check in the dashboard so users see a "Can't reach the server — tap to retry" banner instead of an indefinitely broken page.
+
+**Keep-alive ping to prevent Supabase pausing**
+Supabase free tier pauses after 1 week of inactivity. A GitHub Actions scheduled workflow (cron every 3 days) that hits `GET /health` keeps both the DB and Render server warm simultaneously. Already called out in Technical Debt — worth prioritising before wider beta.
+
+---
+
+### Data & UX Quality
+
+**Optimistic updates on care event logging**
+`LogCareModal` currently waits for the API round-trip before updating the care log. Adding TanStack Query's `onMutate` / `onError` / `onSettled` pattern would make the log feel instant and roll back cleanly on failure — high impact on mobile where latency is more noticeable.
+
+**Pagination or virtual list for care log**
+`TodayCareLog` loads all of today's events at once. Households with multiple cats and frequent logging will accumulate 30–50+ rows/day. Add `limit`/`offset` on the `GET /care_events` endpoint (the meta envelope already supports `total`) and infinite-scroll or "load more" on the frontend.
+
+**Soft-delete audit log**
+When a care event is deleted, there's no record of it. A simple `deleted_at` + `deleted_by_id` on `CareEvent` (rather than a hard destroy) makes dispute resolution possible in shared households and is low effort to add.
 
 ---
 
