@@ -1,6 +1,14 @@
 import * as React from 'react'
-import PhoneInputLib, { type Country } from 'react-phone-number-input'
+import PhoneInputLib, { formatPhoneNumberIntl, type Country } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
+
+/** Format a stored phone number for display. Returns the formatted international
+ *  string for E.164 values, the raw value for legacy formats, or '' for nullish. */
+export function formatPhoneDisplay(value: string | null | undefined): string {
+  if (!value) return ''
+  const formatted = formatPhoneNumberIntl(value)
+  return formatted || value
+}
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -40,7 +48,7 @@ export function PhoneInput({
       <PhoneInputLib
         international
         defaultCountry={defaultCountry}
-        value={value || undefined}
+        value={value && value.startsWith('+') ? value : undefined}
         onChange={(v) => onChange(v ?? '')}
         inputComponent={PhoneInputText}
         placeholder={placeholder}

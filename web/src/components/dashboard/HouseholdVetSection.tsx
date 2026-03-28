@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PhoneInput } from '@/components/ui/phone-input'
+import { PhoneInput, formatPhoneDisplay } from '@/components/ui/phone-input'
 import type { Household, MemberRole } from '@/types/api'
 
 interface HouseholdVetSectionProps {
@@ -139,7 +139,7 @@ export function HouseholdVetSection({ household, currentRole }: HouseholdVetSect
               href={`tel:${household.vet_phone}`}
               className="block text-xs text-sky-600 dark:text-sky-400 font-medium hover:underline"
             >
-              {household.vet_phone}
+              {formatPhoneDisplay(household.vet_phone)}
             </a>
           )}
           {household.vet_address && (

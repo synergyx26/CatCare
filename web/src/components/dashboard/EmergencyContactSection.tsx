@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PhoneInput } from '@/components/ui/phone-input'
+import { PhoneInput, formatPhoneDisplay } from '@/components/ui/phone-input'
 import type { Household, MemberRole } from '@/types/api'
 
 interface EmergencyContactSectionProps {
@@ -110,7 +110,7 @@ export function EmergencyContactSection({
               href={`tel:${household.emergency_contact_phone}`}
               className="text-xs text-sky-600 dark:text-sky-400 font-medium hover:underline"
             >
-              {household.emergency_contact_phone}
+              {formatPhoneDisplay(household.emergency_contact_phone)}
             </a>
           )}
         </div>

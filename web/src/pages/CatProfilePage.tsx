@@ -13,6 +13,7 @@ import { ArchiveConfirmDialog } from '@/components/ui/ArchiveConfirmDialog'
 import { LogCareModal } from '@/components/LogCareModal'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { formatTime } from '@/lib/helpers'
+import { formatPhoneDisplay } from '@/components/ui/phone-input'
 import type { Cat, CareEvent, Household, EventType } from '@/types/api'
 
 const SEX_LABEL: Record<string, string> = {
@@ -200,7 +201,7 @@ export function CatProfilePage() {
                 <div className="flex justify-between px-4 py-3 text-sm">
                   <span className="text-muted-foreground">Vet phone</span>
                   <a href={`tel:${cat.vet_phone}`} className="font-medium text-sky-600 dark:text-sky-400 hover:underline">
-                    {cat.vet_phone}
+                    {formatPhoneDisplay(cat.vet_phone)}
                   </a>
                 </div>
               )}
