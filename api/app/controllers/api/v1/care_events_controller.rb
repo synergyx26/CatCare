@@ -65,8 +65,8 @@ module Api
         @household = current_household
       end
 
-      # Free: feeding, litter, water, note only. Pro/Premium: all types.
-      FREE_EVENT_TYPES = %w[feeding litter water note].freeze
+      # Free: feeding, litter, water, note, tooth_brushing. Pro/Premium: all types.
+      FREE_EVENT_TYPES = %w[feeding litter water note tooth_brushing].freeze
 
       def tier_event_type_allowed?(event_type)
         return true if %w[pro premium].include?(current_user.subscription_tier)

@@ -175,6 +175,21 @@ export function CatProfilePage() {
             {cat.birthday && <Row label="Birthday" value={cat.birthday} />}
             {cat.microchip_number && <Row label="Microchip" value={cat.microchip_number} />}
             {cat.health_notes && <Row label="Health notes" value={cat.health_notes} />}
+            {cat.health_conditions.length > 0 && (
+              <div className="px-4 py-3">
+                <p className="text-xs text-muted-foreground mb-2">Known conditions</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {cat.health_conditions.map((condition) => (
+                    <span
+                      key={condition}
+                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300"
+                    >
+                      {condition}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

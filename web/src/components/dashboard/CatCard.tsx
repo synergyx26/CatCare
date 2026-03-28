@@ -40,9 +40,10 @@ export function CatCard({
     memberMap,
     currentUserId,
     {
-      feedings_per_day: cat.feedings_per_day,
-      track_water: cat.track_water,
-      track_litter: cat.track_litter,
+      feedings_per_day:    cat.feedings_per_day,
+      track_water:         cat.track_water,
+      track_litter:        cat.track_litter,
+      track_toothbrushing: cat.track_toothbrushing,
     }
   )
   const { text: statusText, allGood } = getStatusLine(status)

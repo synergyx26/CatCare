@@ -19,6 +19,7 @@ import { CareTypeBreakdownChart } from '@/components/charts/CareTypeBreakdownCha
 import { MemberContributionChart } from '@/components/charts/MemberContributionChart'
 import { CareActivityHeatmap } from '@/components/charts/CareActivityHeatmap'
 import { DailyFoodIntakeChart } from '@/components/charts/DailyFoodIntakeChart'
+import { SymptomLogChart } from '@/components/charts/SymptomLogChart'
 import { ChartCard } from '@/components/charts/ChartCard'
 import {
   DEFAULT_LAYOUTS,
@@ -139,6 +140,7 @@ export function CatHistoryPage() {
   const feedingDays     = stats?.by_day.filter((d) => (d.types['feeding'] ?? 0) > 0).length ?? 0
   const topMember       = stats?.by_member.slice().sort((a, b) => b.count - a.count)[0]
   const hasFoodIntake   = stats?.feeding_series.some((d) => d.wet + d.dry + d.treats + d.other > 0) ?? false
+  const hasSymptoms     = (stats?.symptom_series.length ?? 0) > 0
 
   // Period navigation
   const maxOffset    = tierMaxOffset(tier, range)
@@ -459,6 +461,18 @@ export function CatHistoryPage() {
                     </ChartCard>
                   </div>
                 )}
+                {hasSymptoms && (
+                  <div className="h-[280px]">
+                    <ChartCard
+                      className="h-full"
+                      title="Symptom log"
+                      subtitle={`${stats.symptom_series.length} event${stats.symptom_series.length === 1 ? '' : 's'} · ${rangeLabel}`}
+                      accent="linear-gradient(to right, #f97316, #ef4444)"
+                    >
+                      <SymptomLogChart data={stats.symptom_series} />
+                    </ChartCard>
+                  </div>
+                )}
               </div>
             )}
 
@@ -537,6 +551,21 @@ export function CatHistoryPage() {
                     {hasFoodIntake
                       ? <DailyFoodIntakeChart data={stats.feeding_series} />
                       : <ChartEmptyState message="No food intake data in this period" />
+                    }
+                  </ChartCard>
+                  <ChartCard
+                    key="symptom_log"
+                    title="Symptom log"
+                    subtitle={
+                      hasSymptoms
+                        ? `${stats.symptom_series.length} event${stats.symptom_series.length === 1 ? '' : 's'} · ${rangeLabel}`
+                        : `No symptoms logged · ${rangeLabel}`
+                    }
+                    accent="linear-gradient(to right, #f97316, #ef4444)"
+                  >
+                    {hasSymptoms
+                      ? <SymptomLogChart data={stats.symptom_series} />
+                      : <ChartEmptyState message="No symptoms logged in this period" />
                     }
                   </ChartCard>
                 </ResponsiveGridLayout>}

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -42,6 +42,8 @@ export function EditCatPage() {
   const fileInputRef               = useRef<HTMLInputElement>(null)
   const [photoFile, setPhotoFile]  = useState<File | null>(null)
   const [photoPreview, setPreview] = useState<string | null>(null)
+  const [healthConditions, setHealthConditions] = useState<string[]>([])
+  const [conditionInput,   setConditionInput]   = useState('')
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['cat', householdId, catId],
@@ -49,6 +51,10 @@ export function EditCatPage() {
   })
   const cat: Cat | undefined = data?.data?.data
   usePageTitle(cat ? `Edit ${cat.name}` : '')
+
+  useEffect(() => {
+    if (cat) setHealthConditions(cat.health_conditions ?? [])
+  }, [cat?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: householdData } = useQuery({
     queryKey: ['households'],
@@ -98,7 +104,13 @@ export function EditCatPage() {
       if (values.vet_clinic)        fd.append('cat[vet_clinic]',        values.vet_clinic)
       if (values.vet_phone)         fd.append('cat[vet_phone]',         values.vet_phone)
       if (values.vet_address)       fd.append('cat[vet_address]',       values.vet_address)
-      if (photoFile)                fd.append('cat[photo]',             photoFile)
+      if (photoFile) fd.append('cat[photo]', photoFile)
+      // Send health_conditions — empty sentinel ensures existing values are cleared
+      if (healthConditions.length > 0) {
+        healthConditions.forEach((c) => fd.append('cat[health_conditions][]', c))
+      } else {
+        fd.append('cat[health_conditions][]', '')
+      }
       return api.updateCat(Number(householdId), Number(catId), fd)
     },
     onSuccess: () => {
@@ -261,6 +273,61 @@ export function EditCatPage() {
             />
             <p className="text-xs text-muted-foreground">
               Allergies, ongoing conditions, vet info, current meds.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Known conditions</label>
+            <div className="flex flex-wrap gap-1.5 min-h-[2rem]">
+              {healthConditions.map((condition) => (
+                <span
+                  key={condition}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300"
+                >
+                  {condition}
+                  <button
+                    type="button"
+                    onClick={() => setHealthConditions((prev) => prev.filter((c) => c !== condition))}
+                    className="ml-0.5 hover:text-orange-600 dark:hover:text-orange-200 transition-colors"
+                    aria-label={`Remove ${condition}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={conditionInput}
+                onChange={(e) => setConditionInput(e.target.value)}
+                placeholder="e.g. Asthma, Diabetes"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    const trimmed = conditionInput.trim()
+                    if (trimmed && !healthConditions.includes(trimmed)) {
+                      setHealthConditions((prev) => [...prev, trimmed])
+                    }
+                    setConditionInput('')
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const trimmed = conditionInput.trim()
+                  if (trimmed && !healthConditions.includes(trimmed)) {
+                    setHealthConditions((prev) => [...prev, trimmed])
+                  }
+                  setConditionInput('')
+                }}
+                className="px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-muted/60 transition-colors shrink-0"
+              >
+                Add
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Press Enter or tap Add. These appear as badges on the cat&apos;s profile.
             </p>
           </div>
         </div>

@@ -4,14 +4,16 @@ import { isToday, formatTime, formatEventSummary, EVENT_TYPE_LABEL } from '@/lib
 import type { Cat, CareEvent, EventType } from '@/types/api'
 
 const EVENT_EMOJI: Record<EventType, string> = {
-  feeding: '🍽️',
-  water: '💧',
-  litter: '🧹',
-  weight: '⚖️',
+  feeding:   '🍽️',
+  water:     '💧',
+  litter:    '🧹',
+  weight:    '⚖️',
   medication: '💊',
   vet_visit: '🩺',
-  grooming: '✂️',
-  note: '📝',
+  grooming:  '✂️',
+  note:      '📝',
+  symptom:        '🤒',
+  tooth_brushing: '🦷',
 }
 
 interface TodayCareLogProps {

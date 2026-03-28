@@ -7,6 +7,8 @@ export const EVENT_COLORS: Record<string, string> = {
   medication: '#ef4444',
   vet_visit:  '#06b6d4',
   grooming:   '#ec4899',
+  symptom:        '#f97316',
+  tooth_brushing: '#14b8a6',
 }
 
 export const EVENT_LABELS: Record<string, string> = {
@@ -18,4 +20,6 @@ export const EVENT_LABELS: Record<string, string> = {
   medication: 'Medication',
   vet_visit:  'Vet Visit',
   grooming:   'Grooming',
+  symptom:        'Symptom',
+  tooth_brushing: 'Toothbrushing',
 }

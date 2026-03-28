@@ -88,6 +88,8 @@ export interface Cat {
   breed: string | null
   microchip_number: string | null
   health_notes: string | null
+  health_conditions: string[]
+  track_toothbrushing: boolean
   active: boolean
   deceased: boolean
   created_by: number
@@ -109,7 +111,7 @@ export interface Cat {
 
 export type EventType =
   | 'feeding' | 'litter' | 'water' | 'weight'
-  | 'note' | 'medication' | 'vet_visit' | 'grooming'
+  | 'note' | 'medication' | 'vet_visit' | 'grooming' | 'symptom' | 'tooth_brushing'
 
 // details JSONB shapes per event_type:
 //   feeding:    { food_type: 'wet'|'dry'|'treats'|'other', amount_grams?: number }
@@ -117,6 +119,7 @@ export type EventType =
 //   medication: { medication_name: string, dosage?: string, unit?: 'mg'|'ml'|'tablet' }
 //   vet_visit:  { reason: string, vet_name?: string, vet_clinic?: string }
 //   grooming:   { grooming_type: 'bath'|'nail_trim'|'full_groom'|'other' }
+//   symptom:    { symptom_type: SymptomType, severity?: 'mild'|'moderate'|'severe', duration_minutes?: number }
 //   litter / water / note: {}
 export interface CareEvent {
   id: number
@@ -169,6 +172,20 @@ export interface DayStats {
   types: Partial<Record<EventType, number>>
 }
 
+export type SymptomType =
+  | 'vomiting' | 'coughing' | 'asthma_attack' | 'sneezing'
+  | 'diarrhea' | 'lethargy' | 'not_eating' | 'limping'
+  | 'eye_discharge' | 'seizure' | 'other'
+
+export type SymptomSeverity = 'mild' | 'moderate' | 'severe'
+
+export interface SymptomPoint {
+  occurred_at: string
+  symptom_type: SymptomType | null
+  severity: SymptomSeverity | null
+  duration_minutes: number | null
+}
+
 export interface WeightPoint {
   occurred_at: string
   value: number
@@ -200,4 +217,5 @@ export interface CatStats {
   weight_series: WeightPoint[]
   by_member: MemberStats[]
   feeding_series: FeedingDayStat[]
+  symptom_series: SymptomPoint[]
 }

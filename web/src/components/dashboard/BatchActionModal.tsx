@@ -10,19 +10,23 @@ import { useAuthStore } from '@/store/authStore'
 // Event types that make sense for batch logging (exclude weight/vet_visit
 // which require per-cat data that varies per animal)
 const BATCH_TYPES: { value: EventType; label: string }[] = [
-  { value: 'feeding',    label: 'Feeding'    },
-  { value: 'litter',     label: 'Litter'     },
-  { value: 'water',      label: 'Water'      },
-  { value: 'medication', label: 'Medication' },
-  { value: 'grooming',   label: 'Grooming'   },
-  { value: 'note',       label: 'Note'       },
+  { value: 'feeding',        label: 'Feeding'       },
+  { value: 'litter',         label: 'Litter'        },
+  { value: 'water',          label: 'Water'         },
+  { value: 'tooth_brushing', label: 'Toothbrushing' },
+  { value: 'medication',     label: 'Medication'    },
+  { value: 'symptom',        label: 'Symptom'       },
+  { value: 'grooming',       label: 'Grooming'      },
+  { value: 'note',           label: 'Note'          },
 ]
 
-type FoodType     = 'wet' | 'dry' | 'treats' | 'other'
-type GroomingType = 'bath' | 'nail_trim' | 'full_groom' | 'other'
-type MedUnit      = 'mg' | 'ml' | 'tablet'
+type FoodType      = 'wet' | 'dry' | 'treats' | 'other'
+type GroomingType  = 'bath' | 'nail_trim' | 'full_groom' | 'other'
+type MedUnit       = 'mg' | 'ml' | 'tablet'
+type SymptomType   = 'vomiting' | 'coughing' | 'asthma_attack' | 'sneezing' | 'diarrhea' | 'lethargy' | 'not_eating' | 'limping' | 'eye_discharge' | 'seizure' | 'other'
+type SymptomSeverity = 'mild' | 'moderate' | 'severe'
 
-const FREE_BATCH_TYPES: EventType[] = ['feeding', 'litter', 'water', 'note']
+const FREE_BATCH_TYPES: EventType[] = ['feeding', 'litter', 'water', 'tooth_brushing', 'note']
 
 function isBatchTypeAllowed(type: EventType, tier: SubscriptionTier): boolean {
   if (tier === 'pro' || tier === 'premium') return true
@@ -44,14 +48,16 @@ const pillClass = (active: boolean) =>
 export function BatchActionModal({ onSave, onClose }: Props) {
   const { user } = useAuthStore()
   const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
-  const [label,       setLabel]       = useState('')
-  const [eventType,   setEventType]   = useState<EventType>('water')
-  const [foodType,    setFoodType]    = useState<FoodType>('wet')
-  const [amountGrams, setAmountGrams] = useState('')
-  const [medName,     setMedName]     = useState('')
-  const [medDosage,   setMedDosage]   = useState('')
-  const [medUnit,     setMedUnit]     = useState<MedUnit>('mg')
-  const [groomType,   setGroomType]   = useState<GroomingType>('bath')
+  const [label,           setLabel]           = useState('')
+  const [eventType,       setEventType]       = useState<EventType>('water')
+  const [foodType,        setFoodType]        = useState<FoodType>('wet')
+  const [amountGrams,     setAmountGrams]     = useState('')
+  const [medName,         setMedName]         = useState('')
+  const [medDosage,       setMedDosage]       = useState('')
+  const [medUnit,         setMedUnit]         = useState<MedUnit>('mg')
+  const [groomType,       setGroomType]       = useState<GroomingType>('bath')
+  const [symptomType,     setSymptomType]     = useState<SymptomType>('vomiting')
+  const [symptomSeverity, setSymptomSeverity] = useState<SymptomSeverity>('mild')
 
   function buildDetails(): Record<string, unknown> {
     if (eventType === 'feeding') {
@@ -68,6 +74,7 @@ export function BatchActionModal({ onSave, onClose }: Props) {
       }
     }
     if (eventType === 'grooming') return { grooming_type: groomType }
+    if (eventType === 'symptom') return { symptom_type: symptomType, severity: symptomSeverity }
     return {}
   }
 
@@ -220,6 +227,56 @@ export function BatchActionModal({ onSave, onClose }: Props) {
                   {gl}
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Symptom options */}
+        {eventType === 'symptom' && (
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">What happened?</p>
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  { value: 'vomiting',      label: 'Vomiting'      },
+                  { value: 'coughing',      label: 'Coughing'      },
+                  { value: 'asthma_attack', label: 'Breathing issue' },
+                  { value: 'sneezing',      label: 'Sneezing'      },
+                  { value: 'diarrhea',      label: 'Diarrhea'      },
+                  { value: 'lethargy',      label: 'Lethargy'      },
+                  { value: 'not_eating',    label: 'Not eating'    },
+                  { value: 'limping',       label: 'Limping'       },
+                  { value: 'eye_discharge', label: 'Eye discharge' },
+                  { value: 'seizure',       label: 'Seizure'       },
+                  { value: 'other',         label: 'Other'         },
+                ] as { value: SymptomType; label: string }[]).map(({ value, label: sl }) => (
+                  <button key={value} onClick={() => setSymptomType(value)} className={pillClass(symptomType === value)}>
+                    {sl}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Severity</p>
+              <div className="flex gap-2">
+                {(['mild', 'moderate', 'severe'] as SymptomSeverity[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setSymptomSeverity(s)}
+                    className={
+                      symptomSeverity === s
+                        ? s === 'severe'
+                          ? 'px-3 py-1.5 rounded-full text-sm font-medium border bg-red-500 text-white border-red-500 cursor-pointer'
+                          : s === 'moderate'
+                            ? 'px-3 py-1.5 rounded-full text-sm font-medium border bg-orange-500 text-white border-orange-500 cursor-pointer'
+                            : 'px-3 py-1.5 rounded-full text-sm font-medium border bg-yellow-500 text-white border-yellow-500 cursor-pointer'
+                        : 'px-3 py-1.5 rounded-full text-sm font-medium border border-border hover:bg-muted/60 cursor-pointer'
+                    }
+                  >
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

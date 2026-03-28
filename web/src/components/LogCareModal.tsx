@@ -21,26 +21,50 @@ import { useAuthStore } from '@/store/authStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type FoodType      = 'wet' | 'dry' | 'treats' | 'other'
-type WeightUnit    = 'kg' | 'g'
+type FoodType       = 'wet' | 'dry' | 'treats' | 'other'
+type WeightUnit     = 'kg' | 'g'
 type MedicationUnit = 'mg' | 'ml' | 'tablet'
-type GroomingType  = 'bath' | 'nail_trim' | 'full_groom' | 'other'
+type GroomingType   = 'bath' | 'nail_trim' | 'full_groom' | 'other'
+type SymptomType    = 'vomiting' | 'coughing' | 'asthma_attack' | 'sneezing' | 'diarrhea' | 'lethargy' | 'not_eating' | 'limping' | 'eye_discharge' | 'seizure' | 'other'
+type SymptomSeverity = 'mild' | 'moderate' | 'severe'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CARE_TYPES: { value: EventType; label: string }[] = [
-  { value: 'feeding',    label: 'Feeding'    },
-  { value: 'litter',     label: 'Litter'     },
-  { value: 'water',      label: 'Water'      },
-  { value: 'weight',     label: 'Weight'     },
-  { value: 'medication', label: 'Medication' },
-  { value: 'vet_visit',  label: 'Vet Visit'  },
-  { value: 'grooming',   label: 'Grooming'   },
-  { value: 'note',       label: 'Note'       },
+  { value: 'feeding',        label: 'Feeding'        },
+  { value: 'litter',         label: 'Litter'         },
+  { value: 'water',          label: 'Water'          },
+  { value: 'tooth_brushing', label: 'Toothbrushing'  },
+  { value: 'weight',         label: 'Weight'         },
+  { value: 'medication',     label: 'Medication'     },
+  { value: 'symptom',        label: 'Symptom'        },
+  { value: 'vet_visit',      label: 'Vet Visit'      },
+  { value: 'grooming',       label: 'Grooming'       },
+  { value: 'note',           label: 'Note'           },
+]
+
+const SYMPTOM_TYPES: { value: SymptomType; label: string }[] = [
+  { value: 'vomiting',      label: 'Vomiting'      },
+  { value: 'coughing',      label: 'Coughing'      },
+  { value: 'asthma_attack', label: 'Breathing issue' },
+  { value: 'sneezing',      label: 'Sneezing'      },
+  { value: 'diarrhea',      label: 'Diarrhea'      },
+  { value: 'lethargy',      label: 'Lethargy'      },
+  { value: 'not_eating',    label: 'Not eating'    },
+  { value: 'limping',       label: 'Limping'       },
+  { value: 'eye_discharge', label: 'Eye discharge' },
+  { value: 'seizure',       label: 'Seizure'       },
+  { value: 'other',         label: 'Other'         },
+]
+
+const SYMPTOM_SEVERITIES: { value: SymptomSeverity; label: string }[] = [
+  { value: 'mild',     label: 'Mild'     },
+  { value: 'moderate', label: 'Moderate' },
+  { value: 'severe',   label: 'Severe'   },
 ]
 
 // Free tier: only these event types are available
-const FREE_EVENT_TYPES: EventType[] = ['feeding', 'litter', 'water', 'note']
+const FREE_EVENT_TYPES: EventType[] = ['feeding', 'litter', 'water', 'tooth_brushing', 'note']
 
 function isFreeEventType(type: EventType): boolean {
   return FREE_EVENT_TYPES.includes(type)
@@ -129,7 +153,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
       tomorrow.setDate(tomorrow.getDate() + 1)
       return toLocalDateTimeInput(tomorrow)
     }
-    return toLocalDateTimeInput(new Date())
+    return toLocalDateTimeInput(new Date())  // feeding, litter, water, weight, note, symptom — all default to now
   })
 
   // Feeding
@@ -163,6 +187,17 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   // Grooming
   const [groomingType, setGroomingType] = useState<GroomingType>(
     (initDetails.grooming_type as GroomingType) ?? 'bath'
+  )
+
+  // Symptom
+  const [symptomType,     setSymptomType]     = useState<SymptomType>(
+    (initDetails.symptom_type as SymptomType) ?? 'vomiting'
+  )
+  const [symptomSeverity, setSymptomSeverity] = useState<SymptomSeverity>(
+    (initDetails.severity as SymptomSeverity) ?? 'mild'
+  )
+  const [symptomDuration, setSymptomDuration] = useState(
+    initDetails.duration_minutes != null ? String(initDetails.duration_minutes) : ''
   )
 
   // Delete confirmation
@@ -233,6 +268,14 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
     }
     if (eventType === 'grooming') {
       return { grooming_type: groomingType }
+    }
+    if (eventType === 'symptom') {
+      const dur = parseInt(symptomDuration, 10)
+      return {
+        symptom_type: symptomType,
+        severity:     symptomSeverity,
+        ...(symptomDuration !== '' && !isNaN(dur) ? { duration_minutes: dur } : {}),
+      }
     }
     return {}
   }
@@ -540,6 +583,71 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Symptom fields */}
+          {eventType === 'symptom' && (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">What happened?</p>
+                <div className="flex gap-2 flex-wrap">
+                  {SYMPTOM_TYPES.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setSymptomType(value)}
+                      className={pillClass(symptomType === value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Severity</p>
+                <div className="flex gap-2">
+                  {SYMPTOM_SEVERITIES.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setSymptomSeverity(value)}
+                      className={
+                        symptomSeverity === value
+                          ? value === 'severe'
+                            ? 'px-3 py-1.5 rounded-full text-sm font-medium border bg-red-500 text-white border-red-500 cursor-pointer'
+                            : value === 'moderate'
+                              ? 'px-3 py-1.5 rounded-full text-sm font-medium border bg-orange-500 text-white border-orange-500 cursor-pointer'
+                              : 'px-3 py-1.5 rounded-full text-sm font-medium border bg-yellow-500 text-white border-yellow-500 cursor-pointer'
+                          : 'px-3 py-1.5 rounded-full text-sm font-medium border border-border hover:bg-muted/60 cursor-pointer'
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">
+                  Duration <span className="text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 5"
+                    value={symptomDuration}
+                    onChange={(e) => setSymptomDuration(e.target.value)}
+                    className="w-28"
+                  />
+                  <span className="text-sm text-muted-foreground">minutes</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Toothbrushing hint */}
+          {eventType === 'tooth_brushing' && (
+            <p className="text-xs text-muted-foreground">
+              Records a toothbrushing session. Use the notes field for any observations.
+            </p>
           )}
 
           {/* Note hint */}

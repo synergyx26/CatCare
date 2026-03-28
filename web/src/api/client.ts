@@ -118,6 +118,7 @@ export const api = {
         feedings_per_day?: number
         track_water?: boolean
         track_litter?: boolean
+        track_toothbrushing?: boolean
         feeding_presets?: { wet: number[]; dry: number[]; treats: number[]; other: number[] }
       }
     }

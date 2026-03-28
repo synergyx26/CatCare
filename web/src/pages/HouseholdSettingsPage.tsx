@@ -14,7 +14,7 @@ import type { Cat, Household } from '@/types/api'
 
 type FoodKey = 'wet' | 'dry' | 'treats' | 'other'
 
-type CatCareField = 'feedings_per_day' | 'track_water' | 'track_litter'
+type CatCareField = 'feedings_per_day' | 'track_water' | 'track_litter' | 'track_toothbrushing'
 
 const FOOD_LABELS: Record<FoodKey, string> = {
   wet:    'Wet',
@@ -219,6 +219,13 @@ function CatCareCard({ cat, onFieldChange, onPresetsChange }: CatCareCardProps) 
               label="Litter"
               checked={cat.track_litter}
               onChange={(v) => onFieldChange(cat.id, 'track_litter', v)}
+            />
+
+            <TrackToggle
+              emoji="🦷"
+              label="Teeth"
+              checked={cat.track_toothbrushing}
+              onChange={(v) => onFieldChange(cat.id, 'track_toothbrushing', v)}
             />
           </div>
         </div>

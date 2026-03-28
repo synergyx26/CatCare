@@ -130,9 +130,10 @@ export function DashboardPage() {
 
   const needsAttentionCount = cats.filter((cat) => {
     const s = getCatTodayStatus(cat.id, todayEvents, memberMap, user?.id ?? -1, {
-      feedings_per_day: cat.feedings_per_day,
-      track_water: cat.track_water,
-      track_litter: cat.track_litter,
+      feedings_per_day:    cat.feedings_per_day,
+      track_water:         cat.track_water,
+      track_litter:        cat.track_litter,
+      track_toothbrushing: cat.track_toothbrushing,
     })
     return (
       s.feedCount < s.feedingsNeeded ||

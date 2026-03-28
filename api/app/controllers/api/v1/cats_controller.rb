@@ -104,6 +104,7 @@ module Api
           weight_series:   weight_series(events),
           by_member:       events_by_member(events),
           feeding_series:  feeding_series_by_day(events, start_time, days),
+          symptom_series:  symptom_series(events),
         })
       end
 
@@ -144,42 +145,49 @@ module Api
       end
 
       def cat_params
-        params.require(:cat).permit(
+        permitted = params.require(:cat).permit(
           :name, :species, :sex, :sterilized,
           :birthday, :breed, :microchip_number, :health_notes, :active, :deceased, :photo,
           :vet_name, :vet_clinic, :vet_phone, :vet_address, :care_instructions,
-          :feedings_per_day, :track_water, :track_litter,
+          :feedings_per_day, :track_water, :track_litter, :track_toothbrushing,
           feeding_presets: { wet: [], dry: [], treats: [], other: [] }
         )
+        if params[:cat].key?(:health_conditions)
+          raw = Array(params[:cat][:health_conditions]).map(&:to_s).reject(&:blank?).uniq
+          permitted[:health_conditions] = raw
+        end
+        permitted
       end
 
       def cat_json(cat)
         {
-          id:                cat.id,
-          household_id:      cat.household_id,
-          name:              cat.name,
-          species:           cat.species,
-          sex:               cat.sex,
-          sterilized:        cat.sterilized,
-          birthday:          cat.birthday,
-          breed:             cat.breed,
-          microchip_number:  cat.microchip_number,
-          health_notes:      cat.health_notes,
-          active:            cat.active,
-          deceased:          cat.deceased,
-          created_by:        cat.created_by_id,
-          photo_url:         photo_url_for(cat),
-          vet_name:          cat.vet_name,
-          vet_clinic:        cat.vet_clinic,
-          vet_phone:         cat.vet_phone,
-          vet_address:       cat.vet_address,
-          care_instructions: cat.care_instructions,
-          feedings_per_day:  cat.feedings_per_day,
-          track_water:       cat.track_water,
-          track_litter:      cat.track_litter,
-          feeding_presets:   cat.feeding_presets,
-          created_at:        cat.created_at,
-          updated_at:        cat.updated_at,
+          id:                  cat.id,
+          household_id:        cat.household_id,
+          name:                cat.name,
+          species:             cat.species,
+          sex:                 cat.sex,
+          sterilized:          cat.sterilized,
+          birthday:            cat.birthday,
+          breed:               cat.breed,
+          microchip_number:    cat.microchip_number,
+          health_notes:        cat.health_notes,
+          health_conditions:   cat.health_conditions,
+          active:              cat.active,
+          deceased:            cat.deceased,
+          created_by:          cat.created_by_id,
+          photo_url:           photo_url_for(cat),
+          vet_name:            cat.vet_name,
+          vet_clinic:          cat.vet_clinic,
+          vet_phone:           cat.vet_phone,
+          vet_address:         cat.vet_address,
+          care_instructions:   cat.care_instructions,
+          feedings_per_day:     cat.feedings_per_day,
+          track_water:          cat.track_water,
+          track_litter:         cat.track_litter,
+          track_toothbrushing:  cat.track_toothbrushing,
+          feeding_presets:     cat.feeding_presets,
+          created_at:          cat.created_at,
+          updated_at:          cat.updated_at,
         }
       end
 
@@ -264,6 +272,20 @@ module Api
         events.group_by(&:logged_by_id).map do |uid, user_events|
           { user_id: uid, name: users[uid]&.name || "Unknown", count: user_events.count }
         end
+      end
+
+      def symptom_series(events)
+        events
+          .select { |e| e.event_type == "symptom" }
+          .sort_by(&:occurred_at)
+          .map do |e|
+            {
+              occurred_at:      e.occurred_at.iso8601,
+              symptom_type:     e.details&.dig("symptom_type"),
+              severity:         e.details&.dig("severity"),
+              duration_minutes: e.details&.dig("duration_minutes"),
+            }
+          end
       end
     end
   end

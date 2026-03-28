@@ -1,6 +1,6 @@
 import type { ResponsiveLayouts } from 'react-grid-layout'
 
-export type ChartId = 'weight' | 'feeding' | 'care_breakdown' | 'member' | 'heatmap' | 'food_intake'
+export type ChartId = 'weight' | 'feeding' | 'care_breakdown' | 'member' | 'heatmap' | 'food_intake' | 'symptom_log'
 
 // 12-column grid, rowHeight=60px, margin=16px
 // Effective card height = h*60 + (h-1)*16
@@ -15,6 +15,7 @@ export const DEFAULT_LAYOUTS: ResponsiveLayouts = {
     { i: 'member',         x: 6, y: 5,  w: 6,  h: 5, minW: 5, minH: 3 },
     { i: 'heatmap',        x: 0, y: 10, w: 12, h: 7, minW: 8, minH: 5 },
     { i: 'food_intake',    x: 0, y: 17, w: 12, h: 6, minW: 8, minH: 5 },
+    { i: 'symptom_log',    x: 0, y: 23, w: 12, h: 6, minW: 8, minH: 5 },
   ],
   sm: [
     { i: 'weight',         x: 0, y: 0,  w: 12, h: 5, minW: 12, minH: 4 },
@@ -23,6 +24,7 @@ export const DEFAULT_LAYOUTS: ResponsiveLayouts = {
     { i: 'member',         x: 0, y: 15, w: 12, h: 4, minW: 12, minH: 3 },
     { i: 'heatmap',        x: 0, y: 19, w: 12, h: 7, minW: 12, minH: 5 },
     { i: 'food_intake',    x: 0, y: 26, w: 12, h: 6, minW: 12, minH: 5 },
+    { i: 'symptom_log',    x: 0, y: 32, w: 12, h: 6, minW: 12, minH: 5 },
   ],
 }
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_27_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_28_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -85,6 +85,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_27_120000) do
     t.boolean "deceased", default: false, null: false
     t.jsonb "feeding_presets", default: {"dry" => [80, 90, 100], "wet" => [50, 60, 70, 80], "other" => [], "treats" => []}, null: false
     t.integer "feedings_per_day", default: 1, null: false
+    t.jsonb "health_conditions", default: [], null: false
     t.text "health_notes"
     t.bigint "household_id", null: false
     t.string "microchip_number"
@@ -93,6 +94,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_27_120000) do
     t.integer "species", default: 0, null: false
     t.boolean "sterilized", default: false
     t.boolean "track_litter", default: true, null: false
+    t.boolean "track_toothbrushing", default: false, null: false
     t.boolean "track_water", default: true, null: false
     t.datetime "updated_at", null: false
     t.string "vet_address"
@@ -100,6 +102,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_27_120000) do
     t.string "vet_name"
     t.string "vet_phone"
     t.index ["active"], name: "index_cats_on_active"
+    t.index ["health_conditions"], name: "index_cats_on_health_conditions", using: :gin
     t.index ["household_id"], name: "index_cats_on_household_id"
   end
 

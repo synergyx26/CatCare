@@ -11,7 +11,9 @@ class CareEvent < ApplicationRecord
     note:       4,
     medication: 5,
     vet_visit:  6,
-    grooming:   7
+    grooming:       7,
+    symptom:        8,
+    tooth_brushing: 9,
   }
 
   validates :event_type, presence: true

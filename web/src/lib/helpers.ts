@@ -78,26 +78,49 @@ export function formatEventSummary(event: CareEvent): string {
     }
     case 'note':
       return 'Note'
+    case 'tooth_brushing':
+      return 'Toothbrushing'
+    case 'symptom': {
+      const symptomLabels: Record<string, string> = {
+        vomiting:      'Vomiting',
+        coughing:      'Coughing',
+        asthma_attack: 'Breathing issue',
+        sneezing:      'Sneezing',
+        diarrhea:      'Diarrhea',
+        lethargy:      'Lethargy',
+        not_eating:    'Not eating',
+        limping:       'Limping',
+        eye_discharge: 'Eye discharge',
+        seizure:       'Seizure',
+        other:         'Symptom',
+      }
+      const type     = symptomLabels[d.symptom_type as string] ?? 'Symptom'
+      const severity = d.severity ? ` · ${(d.severity as string).charAt(0).toUpperCase()}${(d.severity as string).slice(1)}` : ''
+      return `${type}${severity}`
+    }
     default:
       return event.event_type
   }
 }
 
 export const EVENT_TYPE_LABEL: Record<EventType, string> = {
-  feeding: 'Feeding',
-  litter: 'Litter',
-  water: 'Water',
-  weight: 'Weight',
-  note: 'Note',
+  feeding:   'Feeding',
+  litter:    'Litter',
+  water:     'Water',
+  weight:    'Weight',
+  note:      'Note',
   medication: 'Medication',
   vet_visit: 'Vet visit',
-  grooming: 'Grooming',
+  grooming:  'Grooming',
+  symptom:        'Symptom',
+  tooth_brushing: 'Toothbrushing',
 }
 
 export interface CatCareRequirements {
   feedings_per_day: number
   track_water: boolean
   track_litter: boolean
+  track_toothbrushing: boolean
 }
 
 export interface CatTodayStatus {
@@ -109,6 +132,9 @@ export interface CatTodayStatus {
   waterDoneAt: string | null
   trackWater: boolean
   trackLitter: boolean
+  trackToothbrushing: boolean
+  toothbrushingDoneAt: string | null
+  recentSymptomAt: string | null
 }
 
 export function getCatTodayStatus(
@@ -141,6 +167,20 @@ export function getCatTodayStatus(
         new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
     )[0]
 
+  const lastSymptom = catEvents
+    .filter((e) => e.event_type === 'symptom')
+    .sort(
+      (a, b) =>
+        new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+    )[0]
+
+  const lastToothbrushing = catEvents
+    .filter((e) => e.event_type === 'tooth_brushing')
+    .sort(
+      (a, b) =>
+        new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+    )[0]
+
   const lastFeeding = feedings[0]
   let lastFedBy: string | null = null
   if (lastFeeding) {
@@ -156,7 +196,10 @@ export function getCatTodayStatus(
     lastFedBy,
     litterDoneAt: lastLitter?.occurred_at ?? null,
     waterDoneAt: lastWater?.occurred_at ?? null,
-    trackWater: requirements?.track_water ?? true,
-    trackLitter: requirements?.track_litter ?? true,
+    trackWater:          requirements?.track_water ?? true,
+    trackLitter:         requirements?.track_litter ?? true,
+    trackToothbrushing:  requirements?.track_toothbrushing ?? false,
+    toothbrushingDoneAt: lastToothbrushing?.occurred_at ?? null,
+    recentSymptomAt:     lastSymptom?.occurred_at ?? null,
   }
 }
