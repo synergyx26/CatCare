@@ -1,5 +1,5 @@
 import { GoogleLogin } from '@react-oauth/google'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
@@ -19,6 +19,7 @@ interface Props {
 export function GoogleOAuthButton({ redirectTo }: Props) {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const queryClient = useQueryClient()
 
   const mutation = useMutation({
     mutationFn: (credential: string) => api.googleOAuth(credential),
@@ -26,6 +27,7 @@ export function GoogleOAuthButton({ redirectTo }: Props) {
       const token = res.headers['authorization']?.replace('Bearer ', '') ?? ''
       const user: User = res.data.data
       setAuth(user, token)
+      queryClient.clear()
       toast.success('Signed in with Google!')
       navigate(redirectTo, { replace: true })
     },

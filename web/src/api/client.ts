@@ -1,10 +1,12 @@
 import axios from 'axios'
+import { useAuthStore } from '@/store/authStore'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 export const apiClient = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 20000,
 })
 
 // ─── Request interceptor: attach JWT from localStorage ───────────────────────
@@ -28,8 +30,8 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('catcare_token')
-      // Redirect to login — covers expired tokens, revoked tokens, etc.
+      // Clear all auth state so Zustand + localStorage are consistent on reload
+      useAuthStore.getState().clearAuth()
       window.location.href = '/login'
     }
     return Promise.reject(error)

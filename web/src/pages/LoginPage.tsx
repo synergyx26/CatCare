@@ -2,7 +2,7 @@ import { usePageTitle } from '@/hooks/usePageTitle'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Cat, Mail, Lock } from 'lucide-react'
@@ -30,12 +30,15 @@ export function LoginPage() {
     resolver: zodResolver(schema),
   })
 
+  const queryClient = useQueryClient()
+
   const mutation = useMutation({
     mutationFn: (data: FormData) => api.login({ user: data }),
     onSuccess: (res) => {
       const token = res.headers['authorization']?.replace('Bearer ', '') ?? ''
       const user: User = res.data.data
       setAuth(user, token)
+      queryClient.clear()
       toast.success('Welcome back!')
       navigate(redirectTo, { replace: true })
     },
