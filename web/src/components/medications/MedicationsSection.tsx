@@ -5,17 +5,16 @@ import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { formatTime } from '@/lib/helpers'
-import type { ApiError, CareEvent, Cat, MemberRole } from '@/types/api'
+import type { ApiError, CareEvent, MemberRole } from '@/types/api'
 
 interface Props {
   householdId: number
   catId: number
-  cat: Cat
   currentRole: MemberRole | null
   onOpenModal: (opts: { prefillName?: string; initialEvent?: CareEvent }) => void
 }
 
-export function MedicationsSection({ householdId, catId, cat, currentRole, onOpenModal }: Props) {
+export function MedicationsSection({ householdId, catId, currentRole, onOpenModal }: Props) {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
   const tier = user?.subscription_tier ?? 'free'

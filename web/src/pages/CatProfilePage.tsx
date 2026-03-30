@@ -253,7 +253,6 @@ export function CatProfilePage() {
           <MedicationsSection
             householdId={Number(householdId)}
             catId={Number(catId)}
-            cat={cat}
             currentRole={currentRole}
             onOpenModal={(opts) => setLogModal({
               initialEvent: opts.initialEvent,
