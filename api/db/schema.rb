@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_28_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_30_194445) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -187,6 +187,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_28_000002) do
     t.string "encrypted_password", default: "", null: false
     t.string "jti", default: "", null: false
     t.string "name", default: "", null: false
+    t.jsonb "notification_preferences", default: {"push" => {"enabled" => false, "care_reminders" => true, "vet_appointments" => true, "medication_alerts" => true}, "email" => {"enabled" => true, "care_reminders" => true, "vet_appointments" => true, "medication_alerts" => true}, "in_app" => {"enabled" => true, "duration" => 4000, "position" => "top-right", "error_toasts" => true, "success_toasts" => true, "tier_limit_toasts" => true}}, null: false
     t.string "provider"
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
