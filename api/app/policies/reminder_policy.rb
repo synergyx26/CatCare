@@ -5,6 +5,12 @@ class ReminderPolicy < ApplicationPolicy
   # Only non-sitter members can create reminders
   def create? = non_sitter_member?
 
+  # Same rules as destroy: sitters can only edit their own
+  def update? = creator_or_non_sitter?
+
+  # show? is used by test_send authorization (membership check only)
+  def show? = active_member?
+
   # Sitters can only delete their own reminders; admins and members can delete any
   def destroy? = creator_or_non_sitter?
 

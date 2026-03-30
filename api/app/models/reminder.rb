@@ -1,5 +1,5 @@
 class Reminder < ApplicationRecord
-  belongs_to :cat
+  belongs_to :cat, optional: true
   belongs_to :household
   belongs_to :created_by, class_name: 'User', foreign_key: :created_by_id
 
@@ -14,6 +14,7 @@ class Reminder < ApplicationRecord
 
   validates :care_type, presence: true
   validates :schedule_type, presence: true
+  validates :cat_id, presence: true, unless: :all_cats?
 
   # Computes when this reminder should next fire.
   #

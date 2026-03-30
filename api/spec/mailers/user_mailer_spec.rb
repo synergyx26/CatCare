@@ -14,7 +14,7 @@ RSpec.describe UserMailer, type: :mailer do
         schedule_value: '08:00')
     end
 
-    subject(:mail) { described_class.reminder_notification(reminder, user) }
+    subject(:mail) { described_class.reminder_notification(reminder, user, cat) }
 
     it 'sends to the correct recipient' do
       expect(mail.to).to eq([user.email])

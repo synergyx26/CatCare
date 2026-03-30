@@ -183,7 +183,8 @@ export const api = {
 
   createReminder: (householdId: number, data: {
     reminder: {
-      cat_id: number
+      cat_id?: number | null
+      all_cats?: boolean
       care_type: string
       schedule_type: string
       schedule_value?: string
@@ -192,8 +193,22 @@ export const api = {
   }) =>
     apiClient.post(`/households/${householdId}/reminders`, data),
 
+  updateReminder: (householdId: number, reminderId: number, data: {
+    reminder: {
+      cat_id?: number | null
+      all_cats?: boolean
+      care_type?: string
+      schedule_type?: string
+      schedule_value?: string
+    }
+  }) =>
+    apiClient.patch(`/households/${householdId}/reminders/${reminderId}`, data),
+
   deleteReminder: (householdId: number, reminderId: number) =>
     apiClient.delete(`/households/${householdId}/reminders/${reminderId}`),
+
+  testSendReminder: (householdId: number, reminderId: number) =>
+    apiClient.post(`/households/${householdId}/reminders/${reminderId}/test_send`),
 
   // Member management (admin only)
   updateMemberRole: (householdId: number, membershipId: number, role: 'member' | 'admin' | 'sitter') =>

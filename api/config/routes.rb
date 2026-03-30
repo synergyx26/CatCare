@@ -30,7 +30,9 @@ Rails.application.routes.draw do
         end
         resources :care_events, only: [:index, :create, :update, :destroy]
         resources :care_notes,  only: [:index, :create, :update, :destroy]
-        resources :reminders,   only: [:index, :create, :destroy]
+        resources :reminders, only: [:index, :create, :update, :destroy] do
+          member { post :test_send }
+        end
         resources :invites,     only: [:index, :create, :destroy], controller: 'household_invites'
       end
 

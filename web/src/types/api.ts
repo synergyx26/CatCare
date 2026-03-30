@@ -212,7 +212,8 @@ export type ReminderScheduleType = 'daily' | 'interval' | 'weekly'
 
 export interface Reminder {
   id: number
-  cat_id: number
+  cat_id: number | null
+  all_cats: boolean
   household_id: number
   care_type: ReminderCareType
   // schedule_type + schedule_value semantics:

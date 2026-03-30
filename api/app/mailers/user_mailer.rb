@@ -19,10 +19,11 @@ class UserMailer < ApplicationMailer
   end
 
   # Sends a care reminder email to a household member.
-  def reminder_notification(reminder, user)
+  # `cat` is explicit so all_cats reminders can send one email per cat.
+  def reminder_notification(reminder, user, cat = nil)
     @reminder      = reminder
     @user          = user
-    @cat           = reminder.cat
+    @cat           = cat || reminder.cat
     @household     = reminder.household
     @dashboard_url = "#{ENV.fetch('FRONTEND_URL', 'http://localhost:5173')}/dashboard"
     @settings_url  = "#{ENV.fetch('FRONTEND_URL', 'http://localhost:5173')}/notification-settings"

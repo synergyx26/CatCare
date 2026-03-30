@@ -29,28 +29,40 @@ class ProcessPendingRemindersJob < ApplicationJob
   private
 
   def process_reminder(reminder)
-    # Smart suppression — skip if care was already logged for this cat+type today (UTC)
-    today_start = Time.current.utc.beginning_of_day
-    today_end   = Time.current.utc.end_of_day
-
-    already_logged = CareEvent.exists?(
-      cat_id:     reminder.cat_id,
-      event_type: CareEvent.event_types[reminder.care_type],
-      occurred_at: today_start..today_end
-    )
-
-    unless already_logged
-      recipients_for(reminder).each do |user|
-        next unless email_enabled_for?(user, reminder.care_type)
-        UserMailer.reminder_notification(reminder, user).deliver_later
-      end
+    cats_for_reminder(reminder).each do |cat|
+      fire_for_cat(reminder, cat)
     end
 
-    # Always advance the schedule, even when suppressed
+    # Always advance the schedule, even when all cats are suppressed
     reminder.update_columns(
       last_triggered_at: Time.current,
       next_trigger_at:   reminder.calculate_next_trigger_at(after_fire: true)
     )
+  end
+
+  def fire_for_cat(reminder, cat)
+    today_start = Time.current.utc.beginning_of_day
+    today_end   = Time.current.utc.end_of_day
+
+    already_logged = CareEvent.exists?(
+      cat_id:     cat.id,
+      event_type: CareEvent.event_types[reminder.care_type],
+      occurred_at: today_start..today_end
+    )
+    return if already_logged
+
+    recipients_for(reminder).each do |user|
+      next unless email_enabled_for?(user, reminder.care_type)
+      UserMailer.reminder_notification(reminder, user, cat).deliver_later
+    end
+  end
+
+  def cats_for_reminder(reminder)
+    if reminder.all_cats?
+      reminder.household.cats.where(active: true)
+    else
+      [reminder.cat].compact
+    end
   end
 
   def recipients_for(reminder)

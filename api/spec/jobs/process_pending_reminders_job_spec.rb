@@ -15,14 +15,14 @@ RSpec.describe ProcessPendingRemindersJob, type: :job do
 
   def build_reminder(attrs = {})
     create(:reminder,
-      cat:              cat,
-      household:        household,
-      care_type:        :feeding,
-      schedule_type:    :daily,
-      schedule_value:   '08:00',
-      active:           true,
+      cat:                cat,
+      household:          household,
+      care_type:          :feeding,
+      schedule_type:      :daily,
+      schedule_value:     '08:00',
+      active:             true,
       notify_all_members: true,
-      next_trigger_at:  due_time,
+      next_trigger_at:    due_time,
       **attrs)
   end
 
@@ -32,7 +32,7 @@ RSpec.describe ProcessPendingRemindersJob, type: :job do
         reminder = build_reminder
         expect {
           described_class.new.perform
-        }.to have_enqueued_mail(UserMailer, :reminder_notification).with(reminder, admin)
+        }.to have_enqueued_mail(UserMailer, :reminder_notification).with(reminder, admin, cat)
       end
 
       it 'updates last_triggered_at and next_trigger_at after firing' do
@@ -41,6 +41,31 @@ RSpec.describe ProcessPendingRemindersJob, type: :job do
         reminder.reload
         expect(reminder.last_triggered_at).not_to be_nil
         expect(reminder.next_trigger_at).to be > due_time
+      end
+    end
+
+    context 'when all_cats is true' do
+      let(:cat2) { create(:cat, household: household) }
+
+      it 'enqueues one email per active cat' do
+        cat2  # force creation
+        reminder = build_reminder(cat: nil, all_cats: true)
+        expect {
+          described_class.new.perform
+        }.to have_enqueued_mail(UserMailer, :reminder_notification).with(reminder, admin, cat)
+          .and have_enqueued_mail(UserMailer, :reminder_notification).with(reminder, admin, cat2)
+      end
+
+      it 'suppresses per-cat when that cat already has a care event today' do
+        cat2  # force creation
+        # log care for cat but not cat2
+        create(:care_event, cat: cat, household: household, event_type: :feeding,
+               occurred_at: Time.current.utc.beginning_of_day + 1.hour)
+        reminder = build_reminder(cat: nil, all_cats: true)
+        expect {
+          described_class.new.perform
+        }.to have_enqueued_mail(UserMailer, :reminder_notification).exactly(:once)
+          .and have_enqueued_mail(UserMailer, :reminder_notification).with(reminder, admin, cat2)
       end
     end
 
@@ -123,20 +148,17 @@ RSpec.describe ProcessPendingRemindersJob, type: :job do
         expect {
           described_class.new.perform
         }.to have_enqueued_mail(UserMailer, :reminder_notification).exactly(:once)
-          .and have_enqueued_mail(UserMailer, :reminder_notification).with(reminder, admin)
+          .and have_enqueued_mail(UserMailer, :reminder_notification).with(reminder, admin, cat)
       end
     end
 
     context 'when individual reminder processing raises an error' do
       it 'continues processing remaining reminders' do
         build_reminder
-        second_reminder = build_reminder
-        allow_any_instance_of(described_class)
-          .to receive(:process_reminder)
-          .and_call_original
+        build_reminder
 
         call_count = 0
-        allow_any_instance_of(described_class).to receive(:process_reminder) do |_instance, reminder|
+        allow_any_instance_of(described_class).to receive(:process_reminder) do |_instance, _reminder|
           call_count += 1
           raise StandardError, "boom" if call_count == 1
         end

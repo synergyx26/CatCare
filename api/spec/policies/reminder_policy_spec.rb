@@ -69,6 +69,48 @@ RSpec.describe ReminderPolicy, type: :policy do
     end
   end
 
+  # ── show? ──────────────────────────────────────────────────────────────────
+  # Any active member can view/test-send a reminder (super-admin gate is in controller).
+
+  describe "show?" do
+    it "permits an admin" do
+      expect(policy_for(admin, admin_reminder)).to permit_action(:show)
+    end
+
+    it "permits a sitter" do
+      expect(policy_for(sitter, admin_reminder)).to permit_action(:show)
+    end
+
+    it "denies an outsider" do
+      expect(policy_for(outsider, admin_reminder)).not_to permit_action(:show)
+    end
+  end
+
+  # ── update? ────────────────────────────────────────────────────────────────
+  # Same rules as destroy: non-sitters can edit any; sitters only their own.
+
+  describe "update?" do
+    it "permits an admin updating any reminder" do
+      expect(policy_for(admin, admin_reminder)).to permit_action(:update)
+    end
+
+    it "permits a member updating any reminder" do
+      expect(policy_for(member, admin_reminder)).to permit_action(:update)
+    end
+
+    it "permits a sitter updating their own reminder" do
+      expect(policy_for(sitter, sitter_reminder)).to permit_action(:update)
+    end
+
+    it "denies a sitter updating another user's reminder" do
+      expect(policy_for(sitter, admin_reminder)).not_to permit_action(:update)
+    end
+
+    it "denies an outsider with no membership" do
+      expect(policy_for(outsider, admin_reminder)).not_to permit_action(:update)
+    end
+  end
+
   # ── destroy? ───────────────────────────────────────────────────────────────
   # Admins/members can delete any reminder. Sitters can only delete their own.
 
