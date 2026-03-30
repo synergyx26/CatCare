@@ -223,9 +223,6 @@ export function RemindersSection({ householdId, catId, currentRole }: Props) {
             <p className="text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
               Reminders
             </p>
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-              Coming soon
-            </span>
           </div>
           {!isSitter && !showForm && (
             <button

@@ -17,4 +17,19 @@ class UserMailer < ApplicationMailer
 
     mail(to: invite.email, subject: "#{@invited_by} invited you to #{@household_name} on CatCare")
   end
+
+  # Sends a care reminder email to a household member.
+  def reminder_notification(reminder, user)
+    @reminder      = reminder
+    @user          = user
+    @cat           = reminder.cat
+    @household     = reminder.household
+    @dashboard_url = "#{ENV.fetch('FRONTEND_URL', 'http://localhost:5173')}/dashboard"
+    @settings_url  = "#{ENV.fetch('FRONTEND_URL', 'http://localhost:5173')}/notification-settings"
+
+    mail(
+      to:      user.email,
+      subject: "[CatCare] #{@cat.name} \u2013 #{reminder.care_type.humanize} reminder"
+    )
+  end
 end

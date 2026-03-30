@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1a1a1a; background: #f9fafb; margin: 0; padding: 0; }
+      .wrapper { max-width: 520px; margin: 40px auto; background: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; }
+      .header { background: #0ea5e9; padding: 32px; text-align: center; }
+      .header h1 { color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; }
+      .body { padding: 32px; }
+      .body p { line-height: 1.6; margin: 0 0 16px; color: #374151; }
+      .info-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 16px 20px; margin: 20px 0; }
+      .info-box p { margin: 0 0 6px; color: #374151; }
+      .info-box p:last-child { margin: 0; }
+      .info-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 2px !important; }
+      .info-value { font-weight: 600; color: #0369a1; font-size: 15px; }
+      .btn { display: inline-block; background: #0ea5e9; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 600; font-size: 15px; margin: 8px 0 20px; }
+      .footer { padding: 20px 32px; border-top: 1px solid #f3f4f6; text-align: center; }
+      .footer p { font-size: 12px; color: #9ca3af; margin: 0 0 4px; }
+      .footer a { color: #0ea5e9; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="header">
+        <h1>🐱 CatCare</h1>
+      </div>
+      <div class="body">
+        <p>Hi <%= @user.name %>,</p>
+        <p>This is a reminder to log care for <strong><%= @cat.name %></strong>.</p>
+
+        <div class="info-box">
+          <p class="info-label">Cat</p>
+          <p class="info-value"><%= @cat.name %></p>
+
+          <p class="info-label" style="margin-top: 12px !important;">Care type</p>
+          <p class="info-value"><%= @reminder.care_type.humanize %></p>
+
+          <p class="info-label" style="margin-top: 12px !important;">Schedule</p>
+          <p class="info-value">
+            <%
+              schedule_text = case @reminder.schedule_type
+              when "daily"
+                h, m = @reminder.schedule_value.split(":").map(&:to_i)
+                "Daily at #{format('%02d:%02d UTC', h, m)}"
+              when "interval"
+                n = @reminder.schedule_value.to_i
+                n == 1 ? "Every hour" : "Every #{n} hours"
+              when "weekly"
+                parts = @reminder.schedule_value.split(":")
+                time  = parts.length >= 3 ? " at #{parts[1]}:#{parts[2]} UTC" : ""
+                "Every #{parts[0].capitalize}#{time}"
+              end
+            %>
+            <%= schedule_text %>
+          </p>
+        </div>
+
+        <p style="text-align: center;">
+          <a href="<%= @dashboard_url %>" class="btn">Log care for <%= @cat.name %></a>
+        </p>
+      </div>
+      <div class="footer">
+        <p>CatCare &mdash; Helping you care for your feline friends</p>
+        <p><a href="<%= @settings_url %>">Manage notification settings</a></p>
+      </div>
+    </div>
+  </body>
+</html>

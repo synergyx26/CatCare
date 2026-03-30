@@ -12,6 +12,7 @@ module Api
       def create
         reminder = @household.reminders.build(reminder_params)
         reminder.created_by_id = current_user.id
+        reminder.next_trigger_at = reminder.calculate_next_trigger_at
         authorize reminder
 
         if reminder.save

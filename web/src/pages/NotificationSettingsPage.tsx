@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
-import { Bell, Mail, Smartphone, Info, Lock } from 'lucide-react'
+import { Bell, Mail, Smartphone, Lock } from 'lucide-react'
 import { api } from '@/api/client'
 import { useNotificationStore } from '@/store/notificationStore'
 import type { NotificationPreferences } from '@/types/api'
@@ -372,14 +372,6 @@ function EmailTab() {
           />
         </div>
       </SectionCard>
-
-      {/* Coming soon banner */}
-      <div className="flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-950/20 p-3.5 mt-4">
-        <Info className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-        <p className="text-xs text-amber-700 dark:text-amber-300">
-          Email delivery is in development. Your preferences are saved and will activate when email delivery launches.
-        </p>
-      </div>
 
       {/* Notification types */}
       <div className={enabled ? undefined : 'pointer-events-none opacity-40'}>

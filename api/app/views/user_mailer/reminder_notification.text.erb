@@ -1,0 +1,28 @@
+Hi <%= @user.name %>,
+
+This is a reminder to log care for <%= @cat.name %>.
+
+Cat:       <%= @cat.name %>
+Care type: <%= @reminder.care_type.humanize %>
+Schedule:  <%=
+  case @reminder.schedule_type
+  when "daily"
+    h, m = @reminder.schedule_value.split(":").map(&:to_i)
+    "Daily at #{format('%02d:%02d UTC', h, m)}"
+  when "interval"
+    n = @reminder.schedule_value.to_i
+    n == 1 ? "Every hour" : "Every #{n} hours"
+  when "weekly"
+    parts = @reminder.schedule_value.split(":")
+    time  = parts.length >= 3 ? " at #{parts[1]}:#{parts[2]} UTC" : ""
+    "Every #{parts[0].capitalize}#{time}"
+  end
+%>
+
+Log care for <%= @cat.name %>:
+<%= @dashboard_url %>
+
+Manage notification settings:
+<%= @settings_url %>
+
+— CatCare
