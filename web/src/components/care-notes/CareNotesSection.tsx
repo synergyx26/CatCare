@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Plus, X, StickyNote } from 'lucide-react'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -71,10 +71,10 @@ function AddNoteForm({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['care_notes', householdId] })
-      toast.success('Note added')
+      notify.success('Note added')
       onSuccess()
     },
-    onError: () => toast.error('Failed to add note'),
+    onError: () => notify.error('Failed to add note'),
   })
 
   return (

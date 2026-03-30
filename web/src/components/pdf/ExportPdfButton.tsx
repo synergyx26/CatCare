@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { FileDown, Loader2, Lock } from 'lucide-react'
 import { pdf } from '@react-pdf/renderer'
 import { api } from '@/api/client'
@@ -81,11 +81,11 @@ export function ExportPdfButton({ cat, householdId, range, tier }: Props) {
         a.click()
         URL.revokeObjectURL(url)
         setIsExporting(false)
-        toast.success('PDF downloaded')
+        notify.success('PDF downloaded')
       })
       .catch(() => {
         setIsExporting(false)
-        toast.error('Failed to generate PDF')
+        notify.error('Failed to generate PDF')
       })
   }
 
@@ -95,7 +95,7 @@ export function ExportPdfButton({ cat, householdId, range, tier }: Props) {
   )
   if (hasError && isExporting) {
     setIsExporting(false)
-    toast.error('Failed to load data for export')
+    notify.error('Failed to load data for export')
   }
 
   function handleClick() {
@@ -103,7 +103,7 @@ export function ExportPdfButton({ cat, householdId, range, tier }: Props) {
       const hint = tier === 'free'
         ? 'Upgrade to Pro or Premium to export vet visit summaries.'
         : 'Upgrade to Premium to export 90-day summaries.'
-      toast.error(hint)
+      notify.error(hint)
       return
     }
     setIsExporting(true)

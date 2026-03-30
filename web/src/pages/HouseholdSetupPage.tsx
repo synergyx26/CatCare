@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Home } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
@@ -33,13 +33,13 @@ export function HouseholdSetupPage() {
     onSuccess: (res) => {
       const householdId: number = res.data.data.id
       setHousehold(householdId)
-      toast.success('Household created!')
+      notify.success('Household created!')
       navigate(`/households/${householdId}/add-cat`, { replace: true })
     },
     onError: (err) => {
       const message = (err as AxiosError<ApiError>).response?.data?.message
         ?? 'Something went wrong. Please try again.'
-      toast.error(message)
+      notify.error(message)
     },
   })
 

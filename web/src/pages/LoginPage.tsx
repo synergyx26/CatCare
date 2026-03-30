@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Cat, Mail, Lock } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -39,11 +39,11 @@ export function LoginPage() {
       const user: User = res.data.data
       setAuth(user, token)
       queryClient.clear()
-      toast.success('Welcome back!')
+      notify.success('Welcome back!')
       navigate(redirectTo, { replace: true })
     },
     onError: () => {
-      toast.error('Invalid email or password.')
+      notify.error('Invalid email or password.')
     },
   })
 

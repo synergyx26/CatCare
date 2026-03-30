@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,10 +33,10 @@ export function EmergencyContactSection({
     onSuccess: () => {
       setShowForm(false)
       queryClient.invalidateQueries({ queryKey: ['households'] })
-      toast.success('Emergency contact saved!')
+      notify.success('Emergency contact saved!')
     },
     onError: () => {
-      toast.error('Failed to save. Please try again.')
+      notify.error('Failed to save. Please try again.')
     },
   })
 

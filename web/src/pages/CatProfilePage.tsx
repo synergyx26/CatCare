@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { useParams, useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
@@ -64,14 +64,14 @@ export function CatProfilePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cats', Number(householdId)] })
       queryClient.invalidateQueries({ queryKey: ['cat', householdId, catId] })
-      toast.success('Cat restored.')
+      notify.success('Cat restored.')
       navigate('/dashboard')
     },
     onError: (err: AxiosError<ApiError>) => {
       if (err.response?.data?.error === 'TIER_LIMIT') {
-        toast.error('Cat limit reached for your plan. Upgrade to restore this cat.')
+        notify.tierLimit('Cat limit reached for your plan. Upgrade to restore this cat.')
       } else {
-        toast.error('Something went wrong. Please try again.')
+        notify.error('Something went wrong. Please try again.')
       }
     },
   })
@@ -86,10 +86,10 @@ export function CatProfilePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cats', Number(householdId)] })
       queryClient.invalidateQueries({ queryKey: ['cat', householdId, catId] })
-      toast.success(archiveDialog === 'deceased' ? 'Rest in peace.' : 'Cat archived.')
+      notify.success(archiveDialog === 'deceased' ? 'Rest in peace.' : 'Cat archived.')
       navigate('/dashboard')
     },
-    onError: () => toast.error('Something went wrong. Please try again.'),
+    onError: () => notify.error('Something went wrong. Please try again.'),
   })
 
   usePageTitle((data?.data?.data as Cat | undefined)?.name ?? '')

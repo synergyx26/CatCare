@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Controller } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -116,13 +116,13 @@ export function EditCatPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cat', householdId, catId] })
       queryClient.invalidateQueries({ queryKey: ['cats', Number(householdId)] })
-      toast.success('Changes saved!')
+      notify.success('Changes saved!')
       navigate(`/households/${householdId}/cats/${catId}`, { replace: true })
     },
     onError: (err) => {
       const message = (err as AxiosError<ApiError>).response?.data?.message
         ?? 'Something went wrong. Please try again.'
-      toast.error(message)
+      notify.error(message)
     },
   })
 

@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Cat } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
@@ -39,13 +39,13 @@ export function AddCatPage() {
       api.createCat(Number(householdId), { cat: { species: 'cat', ...data } }),
     onSuccess: (res) => {
       const catId: number = res.data.data.id
-      toast.success('Cat added!')
+      notify.success('Cat added!')
       navigate(`/households/${householdId}/cats/${catId}`, { replace: true })
     },
     onError: (err) => {
       const message = (err as AxiosError<ApiError>).response?.data?.message
         ?? 'Something went wrong. Please try again.'
-      toast.error(message)
+      notify.error(message)
     },
   })
 

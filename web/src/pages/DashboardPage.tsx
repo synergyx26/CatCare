@@ -17,7 +17,7 @@ import { CareLogSkeleton } from '@/components/skeletons/CareLogSkeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { isToday, isSameLocalDay, getCatTodayStatus } from '@/lib/helpers'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X, Lock } from 'lucide-react'
 
 function getTimeGreeting(name: string): string {
@@ -200,9 +200,9 @@ export function DashboardPage() {
     onSuccess: (label) => {
       queryClient.invalidateQueries({ queryKey: ['care_events', primaryHousehold?.id] })
       const names = cats.map((c) => c.name).join(', ')
-      toast.success(`${label} logged for ${names}`)
+      notify.success(`${label} logged for ${names}`)
     },
-    onError: () => toast.error('Something went wrong. Please try again.'),
+    onError: () => notify.error('Something went wrong. Please try again.'),
   })
 
   // ── Modal helpers ────────────────────────────────────────────
@@ -284,7 +284,7 @@ export function DashboardPage() {
                 const hint = tier === 'pro'
                   ? 'Upgrade to Premium to add more than 3 cats.'
                   : 'Upgrade to Pro or Premium to add more cats.'
-                toast.error(`Plan limit reached. ${hint}`)
+                notify.tierLimit(`Plan limit reached. ${hint}`)
               } else {
                 navigate(`/households/${primaryHousehold.id}/add-cat`)
               }
@@ -348,7 +348,7 @@ export function DashboardPage() {
                         <button
                           onClick={() => {
                             if (!actionAllowed) {
-                              toast.error('Upgrade to Pro or Premium to use this quick action.')
+                              notify.tierLimit('Upgrade to Pro or Premium to use this quick action.')
                               return
                             }
                             batchMutation.mutate(action)

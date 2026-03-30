@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { PawPrint, User as UserIcon, Mail, Lock } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
@@ -42,13 +42,13 @@ export function RegisterPage() {
       const token = res.headers['authorization']?.replace('Bearer ', '') ?? ''
       const user: User = res.data.data
       setAuth(user, token)
-      toast.success('Account created!')
+      notify.success('Account created!')
       navigate(redirectTo ?? '/setup', { replace: true })
     },
     onError: (err) => {
       const message = (err as AxiosError<ApiError>).response?.data?.message
         ?? 'Something went wrong. Please try again.'
-      toast.error(message)
+      notify.error(message)
     },
   })
 

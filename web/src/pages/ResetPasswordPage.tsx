@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Cat, Lock } from 'lucide-react'
 import { api } from '@/api/client'
 import { Input } from '@/components/ui/input'
@@ -32,14 +32,14 @@ export function ResetPasswordPage() {
     mutationFn: (data: FormData) =>
       api.resetPassword(token!, data.password, data.password_confirmation),
     onSuccess: () => {
-      toast.success('Password updated! Please sign in with your new password.')
+      notify.success('Password updated! Please sign in with your new password.')
       navigate('/login', { replace: true })
     },
     onError: (err: unknown) => {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message
         ?? 'Reset link is invalid or has expired.'
-      toast.error(message)
+      notify.error(message)
     },
   })
 

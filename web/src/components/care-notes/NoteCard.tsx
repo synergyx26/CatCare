@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Pencil, Trash2, X, Check } from 'lucide-react'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -51,19 +51,19 @@ export function NoteCard({ note, householdId, currentRole, cats }: Props) {
       api.updateCareNote(householdId, note.id, { care_note: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['care_notes', householdId] })
-      toast.success('Note updated')
+      notify.success('Note updated')
       setEditing(false)
     },
-    onError: () => toast.error('Failed to update note'),
+    onError: () => notify.error('Failed to update note'),
   })
 
   const deleteMutation = useMutation({
     mutationFn: () => api.deleteCareNote(householdId, note.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['care_notes', householdId] })
-      toast.success('Note deleted')
+      notify.success('Note deleted')
     },
-    onError: () => toast.error('Failed to delete note'),
+    onError: () => notify.error('Failed to delete note'),
   })
 
   const categoryColor = CARE_NOTE_CATEGORY_COLORS[note.category]

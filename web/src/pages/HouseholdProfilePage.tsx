@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
@@ -91,10 +91,10 @@ export function HouseholdProfilePage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['membership', hid] })
-      toast.success('Profile saved!')
+      notify.success('Profile saved!')
     },
     onError: () => {
-      toast.error('Failed to save. Please try again.')
+      notify.error('Failed to save. Please try again.')
     },
   })
 

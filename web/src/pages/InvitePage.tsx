@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Users } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -23,11 +23,11 @@ export function InvitePage() {
   const mutation = useMutation({
     mutationFn: () => api.acceptInvite(token!),
     onSuccess: () => {
-      toast.success('You joined the household!')
+      notify.success('You joined the household!')
       navigate('/dashboard', { replace: true })
     },
     onError: () => {
-      toast.error('Something went wrong. Please try again.')
+      notify.error('Something went wrong. Please try again.')
     },
   })
 

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Bell, Plus, Trash2 } from 'lucide-react'
 import { api } from '@/api/client'
 import { EVENT_COLORS, EVENT_LABELS } from '@/lib/eventColors'
@@ -82,10 +82,10 @@ function AddReminderForm({ householdId, catId, onSuccess, onCancel }: AddFormPro
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders', householdId] })
-      toast.success('Reminder created')
+      notify.success('Reminder created')
       onSuccess()
     },
-    onError: () => toast.error('Failed to create reminder'),
+    onError: () => notify.error('Failed to create reminder'),
   })
 
   const scheduleValuePlaceholder: Record<ReminderScheduleType, string> = {
@@ -209,9 +209,9 @@ export function RemindersSection({ householdId, catId, currentRole }: Props) {
     mutationFn: (reminderId: number) => api.deleteReminder(householdId, reminderId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders', householdId] })
-      toast.success('Reminder removed')
+      notify.success('Reminder removed')
     },
-    onError: () => toast.error('Failed to remove reminder'),
+    onError: () => notify.error('Failed to remove reminder'),
   })
 
   return (

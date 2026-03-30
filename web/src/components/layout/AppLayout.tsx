@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Outlet, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
+import { useNotificationStore } from '@/store/notificationStore'
 import { api } from '@/api/client'
 import type { SubscriptionTier } from '@/types/api'
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/types/api'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -32,6 +34,7 @@ import {
   Moon,
   Monitor,
   ShieldCheck,
+  Bell,
 } from 'lucide-react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
 import type { Household } from '@/types/api'
@@ -45,6 +48,7 @@ const TIER_LABELS: Record<SubscriptionTier, string> = { free: 'Free', pro: 'Pro'
 export function AppLayout() {
   const navigate = useNavigate()
   const { user, clearAuth, setAuth } = useAuthStore()
+  const { setPreferences } = useNotificationStore()
   const queryClient = useQueryClient()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [tierSwitching, setTierSwitching] = useState(false)
@@ -57,7 +61,10 @@ export function AppLayout() {
     queryFn: async () => {
       const res = await api.me()
       const fresh = (res as any)?.data?.data
-      if (fresh && user) setAuth(fresh, localStorage.getItem('catcare_token') ?? '')
+      if (fresh && user) {
+        setAuth(fresh, localStorage.getItem('catcare_token') ?? '')
+        setPreferences(fresh.notification_preferences ?? DEFAULT_NOTIFICATION_PREFERENCES)
+      }
       return fresh
     },
     staleTime: 60_000,
@@ -151,6 +158,16 @@ export function AppLayout() {
                       Care Settings
                     </button>
                   )}
+                  <button
+                    onClick={() => {
+                      navigate('/notification-settings')
+                      setMobileOpen(false)
+                    }}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
+                  >
+                    <Bell className="size-4" />
+                    Notification Settings
+                  </button>
                 </nav>
                 <div className="mt-auto border-t px-4 py-4">
                   <div className="flex items-center gap-3">
@@ -283,6 +300,10 @@ export function AppLayout() {
                     Household Settings
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onClick={() => navigate('/notification-settings')}>
+                  <Bell className="size-4" />
+                  Notification Settings
+                </DropdownMenuItem>
                 {user?.is_super_admin && (
                   <>
                     <DropdownMenuSeparator />

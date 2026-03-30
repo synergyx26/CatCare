@@ -2,6 +2,62 @@
 
 export type SubscriptionTier = 'free' | 'pro' | 'premium'
 
+export type NotificationPosition =
+  | 'top-left' | 'top-center' | 'top-right'
+  | 'bottom-left' | 'bottom-center' | 'bottom-right'
+
+export interface InAppPreferences {
+  enabled: boolean
+  position: NotificationPosition
+  duration: 2000 | 4000 | 6000 | 8000
+  success_toasts: boolean
+  error_toasts: boolean
+  tier_limit_toasts: boolean
+}
+
+export interface EmailPreferences {
+  enabled: boolean
+  care_reminders: boolean
+  medication_alerts: boolean
+  vet_appointments: boolean
+}
+
+export interface PushPreferences {
+  enabled: boolean
+  care_reminders: boolean
+  medication_alerts: boolean
+  vet_appointments: boolean
+}
+
+export interface NotificationPreferences {
+  in_app: InAppPreferences
+  email: EmailPreferences
+  push: PushPreferences
+}
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  in_app: {
+    enabled: true,
+    position: 'top-right',
+    duration: 4000,
+    success_toasts: true,
+    error_toasts: true,
+    tier_limit_toasts: true,
+  },
+  email: {
+    enabled: true,
+    care_reminders: true,
+    medication_alerts: true,
+    vet_appointments: true,
+  },
+  push: {
+    enabled: false,
+    care_reminders: true,
+    medication_alerts: true,
+    vet_appointments: true,
+  },
+}
+
 export interface User {
   id: number
   email: string
@@ -9,6 +65,7 @@ export interface User {
   subscription_tier: SubscriptionTier
   is_super_admin?: boolean
   created_at?: string
+  notification_preferences?: NotificationPreferences
 }
 
 export interface AuthResponse {

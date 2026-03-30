@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { X, Lock } from 'lucide-react'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { BatchAction } from '@/lib/batchActions'
@@ -121,7 +121,7 @@ export function BatchActionModal({ onSave, onClose }: Props) {
                   key={value}
                   onClick={() => {
                     if (!allowed) {
-                      toast.error('Upgrade to Pro or Premium to use this event type.')
+                      notify.tierLimit('Upgrade to Pro or Premium to use this event type.')
                       return
                     }
                     setEventType(value)

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Lock, Pencil, Plus } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
@@ -65,11 +65,11 @@ export function MedicationsSection({ householdId, catId, currentRole, onOpenModa
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['care_events', householdId, catId, 'medication'] })
-      toast.success('Medication stopped')
+      notify.success('Medication stopped')
     },
     onError: (err: AxiosError<ApiError>) => {
       const msg = err.response?.data?.message ?? 'Failed to stop medication'
-      toast.error(msg)
+      notify.error(msg)
     },
   })
 
@@ -83,17 +83,17 @@ export function MedicationsSection({ householdId, catId, currentRole, onOpenModa
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['care_events', householdId, catId, 'medication'] })
-      toast.success('Medication reactivated')
+      notify.success('Medication reactivated')
     },
     onError: (err: AxiosError<ApiError>) => {
       const msg = err.response?.data?.message ?? 'Failed to reactivate medication'
-      toast.error(msg)
+      notify.error(msg)
     },
   })
 
   function handleLogClick() {
     if (!canLog) {
-      toast.error('Upgrade to Pro or Premium to log medications.')
+      notify.tierLimit('Upgrade to Pro or Premium to log medications.')
       return
     }
     onOpenModal({})
@@ -137,7 +137,7 @@ export function MedicationsSection({ householdId, catId, currentRole, onOpenModa
                 <>
                   <button
                     onClick={() => {
-                      if (!canLog) { toast.error('Upgrade to Pro or Premium to log medications.'); return }
+                      if (!canLog) { notify.tierLimit('Upgrade to Pro or Premium to log medications.'); return }
                       onOpenModal({ prefillName: name })
                     }}
                     className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-medium"

@@ -1,7 +1,7 @@
 import { GoogleLogin } from '@react-oauth/google'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Loader2 } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -28,11 +28,11 @@ export function GoogleOAuthButton({ redirectTo }: Props) {
       const user: User = res.data.data
       setAuth(user, token)
       queryClient.clear()
-      toast.success('Signed in with Google!')
+      notify.success('Signed in with Google!')
       navigate(redirectTo, { replace: true })
     },
     onError: () => {
-      toast.error('Google sign-in failed. Please try again.')
+      notify.error('Google sign-in failed. Please try again.')
     },
   })
 
@@ -50,7 +50,7 @@ export function GoogleOAuthButton({ redirectTo }: Props) {
       onSuccess={(response) => {
         if (response.credential) mutation.mutate(response.credential)
       }}
-      onError={() => toast.error('Google sign-in was cancelled or failed.')}
+      onError={() => notify.error('Google sign-in was cancelled or failed.')}
       width={400}
       theme="outline"
       size="large"

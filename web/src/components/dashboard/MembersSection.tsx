@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,10 +57,10 @@ export function MembersSection({
       setGeneratedLink(link)
       setInviteEmail('')
       queryClient.invalidateQueries({ queryKey: ['invites', household.id] })
-      toast.success('Invite link generated!')
+      notify.success('Invite link generated!')
     },
     onError: () => {
-      toast.error('Failed to generate invite. Please try again.')
+      notify.error('Failed to generate invite. Please try again.')
     },
   })
 
@@ -68,10 +68,10 @@ export function MembersSection({
     mutationFn: (inviteId: number) => api.revokeInvite(household.id, inviteId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invites', household.id] })
-      toast.success('Invite revoked')
+      notify.success('Invite revoked')
     },
     onError: () => {
-      toast.error('Failed to revoke invite.')
+      notify.error('Failed to revoke invite.')
     },
   })
 
@@ -80,12 +80,12 @@ export function MembersSection({
       api.updateMemberRole(household.id, membershipId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['households'] })
-      toast.success('Role updated')
+      notify.success('Role updated')
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })
         ?.response?.data?.message
-      toast.error(msg ?? 'Failed to update role.')
+      notify.error(msg ?? 'Failed to update role.')
     },
   })
 
@@ -95,12 +95,12 @@ export function MembersSection({
     onSuccess: () => {
       setRemovingMember(null)
       queryClient.invalidateQueries({ queryKey: ['households'] })
-      toast.success('Member removed')
+      notify.success('Member removed')
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })
         ?.response?.data?.message
-      toast.error(msg ?? 'Failed to remove member.')
+      notify.error(msg ?? 'Failed to remove member.')
     },
   })
 
@@ -116,7 +116,7 @@ export function MembersSection({
           <button
             onClick={() => {
               if (atMemberLimit) {
-                toast.error('Plan limit reached. Upgrade to Pro or Premium to invite more members.')
+                notify.tierLimit('Plan limit reached. Upgrade to Pro or Premium to invite more members.')
                 return
               }
               setShowInviteForm((v) => !v)
@@ -244,7 +244,7 @@ export function MembersSection({
                     onClick={() => {
                       const link = `${window.location.origin}/invites/${inv.token}`
                       navigator.clipboard.writeText(link)
-                      toast.success('Link copied!')
+                      notify.success('Link copied!')
                     }}
                     className="text-xs text-sky-600 dark:text-sky-400 font-medium hover:underline"
                   >
@@ -312,7 +312,7 @@ export function MembersSection({
                   onClick={() => {
                     navigator.clipboard.writeText(generatedLink)
                     linkRef.current?.select()
-                    toast.success('Link copied!')
+                    notify.success('Link copied!')
                   }}
                 >
                   Copy

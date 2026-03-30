@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { X, Lock } from 'lucide-react'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -299,15 +299,15 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
       queryClient.invalidateQueries({ queryKey: ['care_events'] })
       queryClient.invalidateQueries({ queryKey: ['upcoming_appointments'] })
       const typeLabel = CARE_TYPES.find((t) => t.value === eventType)?.label.toLowerCase() ?? ''
-      toast.success(isEditing ? 'Changes saved!' : `${cat.name}: ${typeLabel} logged`)
+      notify.success(isEditing ? 'Changes saved!' : `${cat.name}: ${typeLabel} logged`)
       onClose()
     },
     onError: (err: unknown) => {
       const status = (err as { response?: { status?: number } })?.response?.status
       if (status === 403) {
-        toast.error("You can only edit entries you logged.")
+        notify.error("You can only edit entries you logged.")
       } else {
-        toast.error('Something went wrong. Please try again.')
+        notify.error('Something went wrong. Please try again.')
       }
     },
   })
@@ -317,15 +317,15 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['care_events'] })
       queryClient.invalidateQueries({ queryKey: ['upcoming_appointments'] })
-      toast.success('Entry deleted')
+      notify.success('Entry deleted')
       onClose()
     },
     onError: (err: unknown) => {
       const status = (err as { response?: { status?: number } })?.response?.status
       if (status === 403) {
-        toast.error("You can only delete entries you logged.")
+        notify.error("You can only delete entries you logged.")
       } else {
-        toast.error('Failed to delete. Please try again.')
+        notify.error('Failed to delete. Please try again.')
       }
     },
   })
@@ -381,7 +381,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                       key={value}
                       onClick={() => {
                         if (!allowed) {
-                          toast.error('Upgrade to Pro or Premium to log this event type.')
+                          notify.tierLimit('Upgrade to Pro or Premium to log this event type.')
                           return
                         }
                         setEventType(value)

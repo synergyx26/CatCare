@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useApplyTheme } from '@/hooks/useApplyTheme'
+import { useNotificationStore } from '@/store/notificationStore'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { HouseholdSetupPage } from '@/pages/HouseholdSetupPage'
@@ -16,6 +17,7 @@ import { EditCatPage } from '@/pages/EditCatPage'
 import { HouseholdProfilePage } from '@/pages/HouseholdProfilePage'
 import { HouseholdSettingsPage } from '@/pages/HouseholdSettingsPage'
 import { HouseholdNotesPage } from '@/pages/HouseholdNotesPage'
+import { NotificationSettingsPage } from '@/pages/NotificationSettingsPage'
 import { LandingPage } from '@/pages/LandingPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
@@ -28,10 +30,15 @@ const queryClient = new QueryClient({
 
 export default function App() {
   useApplyTheme()
+  const { preferences } = useNotificationStore()
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster richColors position="top-right" />
+      <Toaster
+        richColors
+        position={preferences.in_app.position}
+        toastOptions={{ duration: preferences.in_app.duration }}
+      />
       <BrowserRouter>
         <Routes>
           {/* Public */}
@@ -77,6 +84,7 @@ export default function App() {
                 path="/households/:householdId/notes"
                 element={<HouseholdNotesPage />}
               />
+              <Route path="/notification-settings" element={<NotificationSettingsPage />} />
             </Route>
           </Route>
 

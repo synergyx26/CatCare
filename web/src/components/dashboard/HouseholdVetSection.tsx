@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,10 +36,10 @@ export function HouseholdVetSection({ household, currentRole }: HouseholdVetSect
     onSuccess: () => {
       setShowForm(false)
       queryClient.invalidateQueries({ queryKey: ['households'] })
-      toast.success('Household vet saved!')
+      notify.success('Household vet saved!')
     },
     onError: () => {
-      toast.error('Failed to save. Please try again.')
+      notify.error('Failed to save. Please try again.')
     },
   })
 

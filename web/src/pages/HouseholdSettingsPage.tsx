@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { notify } from '@/lib/notify'
 import { Plus, X } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -91,7 +91,7 @@ export function HouseholdSettingsPage() {
       if (context?.previousData !== undefined) {
         queryClient.setQueryData(['cats', hid], context.previousData)
       }
-      toast.error('Failed to save. Please try again.')
+      notify.error('Failed to save. Please try again.')
     },
 
     onSettled: () => {
