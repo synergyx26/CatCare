@@ -194,7 +194,8 @@ function InAppTab() {
     { value: 8000 as const, label: '8 seconds' },
   ]
 
-  function handlePositionChange(val: string) {
+  function handlePositionChange(val: string | null) {
+    if (!val) return
     const pos = val as InAppForm['position']
     form.setValue('position', pos)
     mergePreferences({ in_app: { position: pos } })
