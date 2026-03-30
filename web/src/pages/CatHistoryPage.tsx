@@ -141,6 +141,47 @@ export function CatHistoryPage() {
   const topMember       = stats?.by_member.slice().sort((a, b) => b.count - a.count)[0]
   const hasFoodIntake   = stats?.feeding_series.some((d) => d.wet + d.dry + d.treats + d.other > 0) ?? false
   const hasSymptoms     = (stats?.symptom_series.length ?? 0) > 0
+  const careTypeCount   = stats
+    ? Object.values(stats.by_type).filter(v => (v ?? 0) > 0).length
+    : 0
+
+  // Enforce minimum grid cell heights for horizontal bar charts whose height is
+  // driven by row count. Only ever grows a cell — never shrinks user-resized ones.
+  // Must be placed after stats/careTypeCount are defined (no TDZ access in deps).
+  useEffect(() => {
+    if (!stats) return
+
+    const ROW    = 60
+    const MARGIN = 16
+    // ChartCard overhead: accent(4px) + header(~56px) + chart padding(20px) + buffer(16px)
+    const OVERHEAD = 96
+
+    function toGridH(chartPx: number) {
+      return Math.ceil((chartPx + OVERHEAD) / (ROW + MARGIN))
+    }
+
+    const breakdownH = toGridH(Math.max(120, careTypeCount * 38 + 16))
+    const memberH    = toGridH(Math.max(72, stats.by_member.length * 52))
+
+    setLayouts(prev => {
+      let changed = false
+      const next: ResponsiveLayouts = {}
+      for (const [bp, items] of Object.entries(prev)) {
+        next[bp] = items.map(item => {
+          if (item.i === 'care_breakdown' && item.h < breakdownH) {
+            changed = true
+            return { ...item, h: breakdownH, minH: Math.max(item.minH ?? 4, breakdownH) }
+          }
+          if (item.i === 'member' && item.h < memberH) {
+            changed = true
+            return { ...item, h: memberH, minH: Math.max(item.minH ?? 3, memberH) }
+          }
+          return item
+        })
+      }
+      return changed ? next : prev
+    })
+  }, [stats, careTypeCount])
 
   // Period navigation
   const maxOffset    = tierMaxOffset(tier, range)
@@ -417,7 +458,7 @@ export function CatHistoryPage() {
                     <FeedingFrequencyChart data={stats.by_day} />
                   </ChartCard>
                 </div>
-                <div className="h-[300px]">
+                <div style={{ height: Math.max(200, careTypeCount * 38 + 16 + 96) }}>
                   <ChartCard
                     className="h-full"
                     title="Care breakdown"
