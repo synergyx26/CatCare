@@ -21,6 +21,7 @@ import { CareActivityHeatmap } from '@/components/charts/CareActivityHeatmap'
 import { DailyFoodIntakeChart } from '@/components/charts/DailyFoodIntakeChart'
 import { SymptomLogChart } from '@/components/charts/SymptomLogChart'
 import { ChartCard } from '@/components/charts/ChartCard'
+import { ExportPdfButton } from '@/components/pdf/ExportPdfButton'
 import {
   DEFAULT_LAYOUTS,
   loadLayouts,
@@ -263,8 +264,16 @@ export function CatHistoryPage() {
             </div>
           </div>
 
-          {/* Controls: range selector + reset layout */}
+          {/* Controls: range selector + reset layout + export */}
           <div className="flex items-center gap-2 sm:shrink-0 flex-wrap">
+            {cat && (
+              <ExportPdfButton
+                cat={cat}
+                householdId={Number(householdId)}
+                range={range}
+                tier={tier}
+              />
+            )}
             {!isMobile && (
               <button
                 onClick={handleResetLayout}

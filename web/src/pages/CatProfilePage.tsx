@@ -1,20 +1,22 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { AxiosError } from 'axios'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, Pencil } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
 import { CareNotesSection } from '@/components/care-notes/CareNotesSection'
+import { MedicationsSection } from '@/components/medications/MedicationsSection'
+import { RemindersSection } from '@/components/reminders/RemindersSection'
 import { ArchiveConfirmDialog } from '@/components/ui/ArchiveConfirmDialog'
 import { LogCareModal } from '@/components/LogCareModal'
 import { usePageTitle } from '@/hooks/usePageTitle'
-import { formatTime } from '@/lib/helpers'
 import { formatPhoneDisplay } from '@/components/ui/phone-input'
-import type { Cat, CareEvent, Household, EventType } from '@/types/api'
+import type { Cat, CareEvent, Household, EventType, ApiError } from '@/types/api'
+// CareEvent imported for LogCareModal's initialEvent prop type (used in onOpenModal callback)
 
 const SEX_LABEL: Record<string, string> = {
   unknown: 'Unknown',
@@ -40,12 +42,6 @@ export function CatProfilePage() {
     queryFn: () => api.getHousehold(Number(householdId)),
   })
 
-  const { data: careEventsData } = useQuery({
-    queryKey: ['care_events', householdId, catId],
-    queryFn: () => api.getCareEvents(Number(householdId), { catId: Number(catId) }),
-    enabled: !!householdId && !!catId,
-  })
-
   const { data: upcomingVetData } = useQuery({
     queryKey: ['upcoming_appointments', householdId, catId],
     queryFn: () => api.getCareEvents(Number(householdId), {
@@ -57,6 +53,28 @@ export function CatProfilePage() {
     staleTime: 60_000,
   })
   const nextVetVisit: CareEvent | null = (upcomingVetData?.data?.data ?? [])[0] ?? null
+
+  const restoreMutation = useMutation({
+    mutationFn: () => {
+      const fd = new FormData()
+      fd.append('cat[active]', 'true')
+      fd.append('cat[deceased]', 'false')
+      return api.updateCat(Number(householdId), Number(catId), fd)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cats', Number(householdId)] })
+      queryClient.invalidateQueries({ queryKey: ['cat', householdId, catId] })
+      toast.success('Cat restored.')
+      navigate('/dashboard')
+    },
+    onError: (err: AxiosError<ApiError>) => {
+      if (err.response?.data?.error === 'TIER_LIMIT') {
+        toast.error('Cat limit reached for your plan. Upgrade to restore this cat.')
+      } else {
+        toast.error('Something went wrong. Please try again.')
+      }
+    },
+  })
 
   const archiveMutation = useMutation({
     mutationFn: (payload: { active: boolean; deceased: boolean }) => {
@@ -94,27 +112,6 @@ export function CatProfilePage() {
   const isSitter = currentRole === 'sitter'
 
   const hasSitterInfo = !!(cat.care_instructions || cat.vet_name || cat.vet_clinic || cat.vet_phone)
-
-  // Derive active medications from recent care events
-  const allCatEvents: CareEvent[] = careEventsData?.data?.data ?? []
-  const medicationEvents = allCatEvents
-    .filter((e) => e.event_type === 'medication')
-    .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
-  // Group by medication name — keep only the most recent entry per name
-  const medicationMap = new Map<string, { lastAt: string; dosage: string; unit: string; event: CareEvent }>()
-  for (const event of medicationEvents) {
-    const d = event.details as Record<string, unknown>
-    const name = (d.medication_name as string) || 'Unknown medication'
-    if (!medicationMap.has(name)) {
-      medicationMap.set(name, {
-        lastAt: event.occurred_at,
-        dosage: (d.dosage as string) ?? '',
-        unit:   (d.unit   as string) ?? '',
-        event,
-      })
-    }
-  }
-  const medications = Array.from(medicationMap.entries())
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -253,56 +250,26 @@ export function CatProfilePage() {
           )}
 
           {/* Medications */}
-          <div className="rounded-2xl bg-card ring-1 ring-border/60 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-                  Medications
-                </p>
-                <button
-                  onClick={() => setLogModal({})}
-                  className="flex items-center gap-1 text-xs text-sky-600 dark:text-sky-400 hover:underline font-medium"
-                >
-                  <Plus className="size-3" />
-                  Log medication
-                </button>
-              </div>
-              {medications.length === 0 && (
-                <p className="text-xs text-muted-foreground py-1">No medications logged yet.</p>
-              )}
-              {medications.map(([name, { lastAt, dosage, unit, event }]) => (
-                <div key={name} className="flex items-start justify-between gap-3 text-sm">
-                  <div>
-                    <p className="font-medium">{name}</p>
-                    {dosage && (
-                      <p className="text-xs text-muted-foreground">
-                        {dosage} {unit}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-muted-foreground">Last: {formatTime(lastAt)}</span>
-                    <button
-                      onClick={() => setLogModal({ prefillName: name })}
-                      className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-medium"
-                    >
-                      Log dose
-                    </button>
-                    <button
-                      onClick={() => setLogModal({ initialEvent: event })}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label={`Edit ${name}`}
-                    >
-                      <Pencil className="size-3" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <MedicationsSection
+            householdId={Number(householdId)}
+            catId={Number(catId)}
+            cat={cat}
+            currentRole={currentRole}
+            onOpenModal={(opts) => setLogModal({
+              initialEvent: opts.initialEvent,
+              prefillName:  opts.prefillName,
+            })}
+          />
 
           {/* Care notes */}
           <CareNotesSection
+            householdId={Number(householdId)}
+            catId={Number(catId)}
+            currentRole={currentRole}
+          />
+
+          {/* Reminders */}
+          <RemindersSection
             householdId={Number(householdId)}
             catId={Number(catId)}
             currentRole={currentRole}
@@ -335,21 +302,16 @@ export function CatProfilePage() {
 
       {/* Restore — for archived/deceased cats */}
       {!isSitter && !cat.active && (
-        <div className="rounded-2xl border border-border/60 bg-card shadow-sm p-4">
+        <div className="rounded-2xl border border-border/60 bg-card shadow-sm p-4 space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Manage
+          </p>
           <button
-            onClick={() => {
-              const fd = new FormData()
-              fd.append('cat[active]', 'true')
-              fd.append('cat[deceased]', 'false')
-              api.updateCat(Number(householdId), Number(catId), fd).then(() => {
-                queryClient.invalidateQueries({ queryKey: ['cats', Number(householdId)] })
-                queryClient.invalidateQueries({ queryKey: ['cat', householdId, catId] })
-                toast.success(`${cat.name} restored.`)
-              })
-            }}
-            className="text-sm text-sky-600 dark:text-sky-400 hover:underline"
+            onClick={() => restoreMutation.mutate()}
+            disabled={restoreMutation.isPending}
+            className="text-left text-sm text-sky-600 dark:text-sky-400 hover:underline disabled:opacity-50"
           >
-            Restore {cat.name}
+            {restoreMutation.isPending ? 'Restoring…' : `Restore ${cat.name}`}
           </button>
         </div>
       )}

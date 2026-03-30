@@ -128,19 +128,25 @@ export function DashboardPage() {
   const catLimit = tier === 'premium' ? Infinity : tier === 'pro' ? 3 : 1
   const atCatLimit = cats.length >= catLimit
 
-  const needsAttentionCount = cats.filter((cat) => {
-    const s = getCatTodayStatus(cat.id, todayEvents, memberMap, user?.id ?? -1, {
-      feedings_per_day:    cat.feedings_per_day,
-      track_water:         cat.track_water,
-      track_litter:        cat.track_litter,
-      track_toothbrushing: cat.track_toothbrushing,
+  // Derive per-cat attention status — includes toothbrushing so the banner and
+  // status badges are in sync. recentSymptomAt is intentionally excluded (informational).
+  const catsNeedingAttention = cats
+    .map((cat) => {
+      const s = getCatTodayStatus(cat.id, todayEvents, memberMap, user?.id ?? -1, {
+        feedings_per_day:    cat.feedings_per_day,
+        track_water:         cat.track_water,
+        track_litter:        cat.track_litter,
+        track_toothbrushing: cat.track_toothbrushing,
+      })
+      const missing: string[] = []
+      if (s.feedCount < s.feedingsNeeded)
+        missing.push(s.feedingsNeeded > 1 ? `${s.feedCount}/${s.feedingsNeeded} feedings` : 'feeding')
+      if (s.trackWater && !s.waterDoneAt)                 missing.push('water')
+      if (s.trackLitter && !s.litterDoneAt)               missing.push('litter')
+      if (s.trackToothbrushing && !s.toothbrushingDoneAt) missing.push('teeth')
+      return { cat, missing }
     })
-    return (
-      s.feedCount < s.feedingsNeeded ||
-      (s.trackWater && !s.waterDoneAt) ||
-      (s.trackLitter && !s.litterDoneAt)
-    )
-  }).length
+    .filter(({ missing }) => missing.length > 0)
 
   const { data: invitesData } = useQuery({
     queryKey: ['invites', primaryHousehold?.id],
@@ -264,12 +270,8 @@ export function DashboardPage() {
           <h1 className="text-xl font-bold tracking-tight">
             {getTimeGreeting(user?.name ?? 'there')} 👋
           </h1>
-          {cats.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {needsAttentionCount > 0
-                ? `${needsAttentionCount} ${needsAttentionCount === 1 ? 'cat needs' : 'cats need'} attention today`
-                : 'All cats are cared for today'}
-            </p>
+          {cats.length > 0 && catsNeedingAttention.length === 0 && (
+            <p className="text-sm text-muted-foreground">All cats are cared for today</p>
           )}
         </div>
         {primaryHousehold && currentRole !== 'sitter' && (
@@ -382,6 +384,29 @@ export function DashboardPage() {
                     <Settings2 className="size-3" />
                     Add
                   </button>
+                </div>
+              )}
+
+              {/* Needs attention banner — shown above cat cards when any cat has pending tasks */}
+              {catsNeedingAttention.length > 0 && (
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-950/10 p-4 space-y-2">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                    Needs attention today
+                  </p>
+                  {catsNeedingAttention.map(({ cat, missing }) => (
+                    <div key={cat.id} className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm font-medium truncate">{cat.name}</span>
+                        <span className="text-xs text-muted-foreground">{missing.join(' · ')}</span>
+                      </div>
+                      <button
+                        onClick={() => openNewLog(cat)}
+                        className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline"
+                      >
+                        Log
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
 

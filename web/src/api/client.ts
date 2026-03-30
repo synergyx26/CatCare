@@ -176,6 +176,24 @@ export const api = {
   deleteCareNote: (householdId: number, noteId: number) =>
     apiClient.delete(`/households/${householdId}/care_notes/${noteId}`),
 
+  // Reminders
+  getReminders: (householdId: number) =>
+    apiClient.get(`/households/${householdId}/reminders`),
+
+  createReminder: (householdId: number, data: {
+    reminder: {
+      cat_id: number
+      care_type: string
+      schedule_type: string
+      schedule_value?: string
+      notify_all_members?: boolean
+    }
+  }) =>
+    apiClient.post(`/households/${householdId}/reminders`, data),
+
+  deleteReminder: (householdId: number, reminderId: number) =>
+    apiClient.delete(`/households/${householdId}/reminders/${reminderId}`),
+
   // Member management (admin only)
   updateMemberRole: (householdId: number, membershipId: number, role: 'member' | 'admin' | 'sitter') =>
     apiClient.patch(`/households/${householdId}/memberships/${membershipId}`, { membership: { role } }),

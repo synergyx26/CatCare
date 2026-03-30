@@ -145,6 +145,31 @@ export interface ApiError {
   message: string
 }
 
+// ─── Reminders ────────────────────────────────────────────────────────────────
+
+export type ReminderCareType =
+  | 'feeding' | 'litter' | 'water' | 'weight'
+  | 'note' | 'medication' | 'vet_visit' | 'grooming'
+
+export type ReminderScheduleType = 'daily' | 'interval' | 'weekly'
+
+export interface Reminder {
+  id: number
+  cat_id: number
+  household_id: number
+  care_type: ReminderCareType
+  // schedule_type + schedule_value semantics:
+  //   daily:    schedule_value = "HH:MM"  (e.g. "07:00")
+  //   interval: schedule_value = "<hours>" (e.g. "48")
+  //   weekly:   schedule_value = "<day>"  or "<day>:<HH:MM>" (e.g. "monday" / "monday:09:00")
+  schedule_type: ReminderScheduleType
+  schedule_value: string | null
+  notify_all_members: boolean
+  active: boolean
+  next_trigger_at: string | null
+  created_at: string
+}
+
 // ─── Care Notes ───────────────────────────────────────────────────────────────
 
 export type CareNoteCategory =

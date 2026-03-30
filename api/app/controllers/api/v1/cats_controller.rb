@@ -52,6 +52,20 @@ module Api
       # PATCH /api/v1/households/:household_id/cats/:id
       def update
         authorize @cat
+
+        # Tier guard: restoring an archived cat counts against the active cat limit
+        if !@cat.active && cat_params[:active].to_s == "true"
+          active_count = current_household.cats.where(active: true).count
+          limit = tier_cat_limit
+          if active_count >= limit
+            return render_error(
+              "TIER_LIMIT",
+              "Your plan allows #{limit} active #{limit == 1 ? 'cat' : 'cats'}. Upgrade to restore more.",
+              status: :forbidden
+            )
+          end
+        end
+
         if @cat.update(cat_params)
           render json: { data: cat_json(@cat) }
         else

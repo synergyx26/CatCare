@@ -4,6 +4,7 @@ module Api
       before_action :set_household
 
       def index
+        authorize @household, policy_class: ReminderPolicy
         reminders = @household.reminders.where(active: true).order(created_at: :desc)
         render_success(reminders.map { |r| serialize_reminder(r) })
       end
@@ -11,6 +12,7 @@ module Api
       def create
         reminder = @household.reminders.build(reminder_params)
         reminder.created_by_id = current_user.id
+        authorize reminder
 
         if reminder.save
           render_success(serialize_reminder(reminder), status: :created)
@@ -21,6 +23,7 @@ module Api
 
       def destroy
         reminder = @household.reminders.find(params[:id])
+        authorize reminder
         reminder.update!(active: false)
         head :no_content
       end

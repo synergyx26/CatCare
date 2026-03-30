@@ -286,7 +286,8 @@ api/app/policies/
   cat_policy.rb                    — sitter: read-only; admin/member: full CRUD
   care_event_policy.rb             — sitter: create + own events; others: full
   household_invite_policy.rb       — admin only for create; non-sitter for index/destroy
-  household_membership_policy.rb   — own record: show/update; admin: manage_update/manage_destroy (no specs yet)
+  household_membership_policy.rb   — own record: show/update; admin: manage_update/manage_destroy
+  reminder_policy.rb               — index: any active member; create: non-sitter; destroy: creator or non-sitter
 
 api/config/initializers/
   sentry.rb                 — Sentry error tracking; reads SENTRY_DSN env var
@@ -295,7 +296,7 @@ api/spec/
   rails_helper.rb           — RSpec + FactoryBot + shoulda-matchers + pundit-matchers
   spec_helper.rb
   models/                   — User, Cat, CareEvent, HouseholdMembership specs
-  policies/                 — CatPolicy, CareEventPolicy, HouseholdInvitePolicy specs
+  policies/                 — CatPolicy, CareEventPolicy, HouseholdInvitePolicy, HouseholdMembershipPolicy, ReminderPolicy specs
   factories/                — FactoryBot factories for all models
 
 .github/workflows/
@@ -331,12 +332,21 @@ web/src/
       PageSkeleton.tsx      — generic page loading skeleton (header + content blocks)
       CatCardSkeleton.tsx   — cat card shape skeleton
       CareLogSkeleton.tsx   — care log rows skeleton
+    medications/
+      MedicationsSection.tsx — focused medication query; active/stopped split; Stop + Reactivate mutations; tier guard on Log
+    reminders/
+      RemindersSection.tsx  — reminder list + inline RHF+Zod create form; sitter=read-only; "Coming soon" badge
+    pdf/
+      VetSummaryDocument.tsx — @react-pdf/renderer A4 document (weight, meds, vet visits, symptoms, care summary, notes)
+      ExportPdfButton.tsx   — isExporting state machine; 4 parallel queries; tier gate (Free=locked, Pro=30d, Premium=all)
     charts/                 — WeightTrend, FeedingFrequency, CareTypeBreakdown,
                               MemberContribution, CareActivityHeatmap, ChartCard
   lib/
     eventColors.ts          — EVENT_COLORS and EVENT_LABELS per event type
     helpers.ts              — date formatting, status helpers
     chartLayout.ts          — ChartId type, DEFAULT_LAYOUTS, loadLayouts/saveLayouts/clearLayouts
+    reminderHelpers.ts      — formatSchedule(), SCHEDULE_TYPE_OPTIONS for daily/interval/weekly
+    vetExport.ts            — assembleVetSummary(), formatDateRange(); assembles 4 query results → VetSummaryData
   pages/
     DashboardPage.tsx       — today's care, cat cards, archived cats toggle, quick-log buttons
     CatProfilePage.tsx      — cat details + sitter info + archive/deceased actions
