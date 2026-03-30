@@ -51,7 +51,7 @@ export function CareTypeBreakdownChart({ byType }: Props) {
           tick={{ fill: 'var(--color-foreground)', fontSize: 12, fontWeight: 500 }}
           axisLine={false}
           tickLine={false}
-          width={78}
+          width={100}
         />
         <Tooltip
           contentStyle={{
