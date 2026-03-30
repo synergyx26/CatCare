@@ -167,7 +167,7 @@ export function CatHistoryPage() {
       let changed = false
       const next: ResponsiveLayouts = {}
       for (const [bp, items] of Object.entries(prev)) {
-        next[bp] = items.map(item => {
+        next[bp] = (items ?? []).map(item => {
           if (item.i === 'care_breakdown' && item.h < breakdownH) {
             changed = true
             return { ...item, h: breakdownH, minH: Math.max(item.minH ?? 4, breakdownH) }
