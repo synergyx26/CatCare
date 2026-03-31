@@ -52,23 +52,16 @@ Rails.application.configure do
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST"), protocol: "https" }
 
-  # Gmail SMTP delivery — active only when credentials are present.
-  # Without them the app boots normally but emails are logged instead of sent.
-  if ENV["GMAIL_USERNAME"].present? && ENV["GMAIL_APP_PASSWORD"].present?
+  # Resend delivery — HTTPS API, no SMTP port restrictions.
+  # Without the key the app boots normally but emails are logged instead of sent.
+  if ENV["RESEND_API_KEY"].present?
+    require "resend/mailer"
+    Resend.api_key = ENV["RESEND_API_KEY"]
     config.action_mailer.raise_delivery_errors = true
-    config.action_mailer.delivery_method = :smtp
-    config.action_mailer.smtp_settings = {
-      address: "smtp.gmail.com",
-      port: 587,
-      domain: "gmail.com",
-      user_name: ENV["GMAIL_USERNAME"],
-      password: ENV["GMAIL_APP_PASSWORD"],
-      authentication: :plain,
-      enable_starttls_auto: true
-    }
+    config.action_mailer.delivery_method = :resend
   else
     config.action_mailer.delivery_method = :logger
-    Rails.logger.warn "[CatCare] GMAIL_USERNAME or GMAIL_APP_PASSWORD not set — emails will be logged, not sent"
+    Rails.logger.warn "[CatCare] RESEND_API_KEY not set — emails will be logged, not sent"
   end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to

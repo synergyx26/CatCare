@@ -60,6 +60,9 @@ gem "solid_cache"
 gem "sentry-ruby"
 gem "sentry-rails"
 
+# Transactional email — HTTPS API, avoids SMTP port blocks on Render
+gem "resend"
+
 group :development, :test do
   gem "dotenv-rails"                   # loads api/.env in development and test
   gem "bullet"                         # N+1 query detection
