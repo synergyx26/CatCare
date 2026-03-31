@@ -1,5 +1,33 @@
 import type { CareEvent, EventType } from '@/types/api'
 
+// Checks whether today (local time) is a cat's birthday (same month + day).
+// Parses birthday as a local date to avoid UTC-midnight timezone shifts.
+export function isCatBirthday(birthday: string | null): boolean {
+  if (!birthday) return false
+  const today = new Date()
+  const parts = birthday.split('-').map(Number)
+  if (parts.length < 3) return false
+  const [, month, day] = parts
+  return month === today.getMonth() + 1 && day === today.getDate()
+}
+
+// Returns the cat's age in full years, or null if birthday is unknown.
+export function getCatAge(birthday: string | null): number | null {
+  if (!birthday) return null
+  const parts = birthday.split('-').map(Number)
+  if (parts.length < 3) return null
+  const [year, month, day] = parts
+  const today = new Date()
+  let age = today.getFullYear() - year
+  if (
+    today.getMonth() + 1 < month ||
+    (today.getMonth() + 1 === month && today.getDate() < day)
+  ) {
+    age--
+  }
+  return age >= 0 ? age : null
+}
+
 export function isToday(isoString: string): boolean {
   const d = new Date(isoString)
   const now = new Date()

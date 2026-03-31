@@ -5,12 +5,14 @@ import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { LogCareModal } from '@/components/LogCareModal'
 import { CatCard } from '@/components/dashboard/CatCard'
+import { BirthdayBanner } from '@/components/dashboard/BirthdayBanner'
 import { TodayCareLog } from '@/components/dashboard/TodayCareLog'
 import { MembersSection } from '@/components/dashboard/MembersSection'
 import { EmergencyContactSection } from '@/components/dashboard/EmergencyContactSection'
 import { HouseholdVetSection } from '@/components/dashboard/HouseholdVetSection'
 import { HouseholdNotesSection } from '@/components/dashboard/HouseholdNotesSection'
 import { UpcomingAppointmentsSection } from '@/components/dashboard/UpcomingAppointmentsSection'
+import { RemindersSection } from '@/components/reminders/RemindersSection'
 import { Button } from '@/components/ui/button'
 import { CatCardSkeleton } from '@/components/skeletons/CatCardSkeleton'
 import { CareLogSkeleton } from '@/components/skeletons/CareLogSkeleton'
@@ -387,6 +389,9 @@ export function DashboardPage() {
                 </div>
               )}
 
+              {/* Birthday banner — shown when any active cat has a birthday today */}
+              <BirthdayBanner cats={cats} onLog={openNewLog} />
+
               {/* Needs attention banner — shown above cat cards when any cat has pending tasks */}
               {catsNeedingAttention.length > 0 && (
                 <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-950/10 p-4 space-y-2">
@@ -467,6 +472,15 @@ export function DashboardPage() {
               currentRole={currentRole}
               pendingInvites={pendingInvites}
               tier={tier}
+            />
+          )}
+
+          {/* Reminders */}
+          {primaryHousehold && (
+            <RemindersSection
+              householdId={primaryHousehold.id}
+              currentRole={currentRole}
+              cats={cats}
             />
           )}
         </div>

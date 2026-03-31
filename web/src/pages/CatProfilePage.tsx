@@ -15,6 +15,7 @@ import { ArchiveConfirmDialog } from '@/components/ui/ArchiveConfirmDialog'
 import { LogCareModal } from '@/components/LogCareModal'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { formatPhoneDisplay } from '@/components/ui/phone-input'
+import { isCatBirthday, getCatAge } from '@/lib/helpers'
 import type { Cat, CareEvent, Household, EventType, ApiError } from '@/types/api'
 // CareEvent imported for LogCareModal's initialEvent prop type (used in onOpenModal callback)
 
@@ -110,6 +111,14 @@ export function CatProfilePage() {
   const household: Household | undefined = householdData?.data?.data
   const currentRole = household?.members.find((m) => m.id === user?.id)?.role ?? null
   const isSitter = currentRole === 'sitter'
+  const isBirthday = isCatBirthday(cat.birthday)
+  const catAge = getCatAge(cat.birthday)
+  const birthdayLabel =
+    catAge === 0
+      ? 'First birthday!'
+      : catAge !== null
+        ? `Turning ${catAge} today`
+        : 'Happy Birthday!'
 
   const hasSitterInfo = !!(cat.care_instructions || cat.vet_name || cat.vet_clinic || cat.vet_phone)
 
@@ -149,19 +158,53 @@ export function CatProfilePage() {
         {/* ── Left column: photo hero + basic info ────────────── */}
         <div className="space-y-6">
           {/* Photo + name hero */}
-          <div className="flex flex-col items-center gap-3 rounded-2xl bg-gradient-to-b from-sky-50 to-transparent dark:from-sky-950/10 dark:to-transparent p-6">
-            {cat.photo_url ? (
-              <img
-                src={cat.photo_url}
-                alt={cat.name}
-                className="size-24 rounded-2xl object-cover border-2 border-sky-100 dark:border-sky-900/40 shadow-md"
-              />
-            ) : (
-              <div className="flex size-24 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-100 to-cyan-100 dark:from-sky-900/30 dark:to-cyan-900/30 text-sky-600 dark:text-sky-400 shadow-md">
-                <span className="text-3xl font-bold">{cat.name.charAt(0).toUpperCase()}</span>
+          <div
+            className={`flex flex-col items-center gap-3 rounded-2xl p-6 ${
+              isBirthday
+                ? 'bg-gradient-to-b from-rose-50 via-pink-50/60 to-transparent dark:from-rose-950/25 dark:via-pink-950/15 dark:to-transparent'
+                : 'bg-gradient-to-b from-sky-50 to-transparent dark:from-sky-950/10 dark:to-transparent'
+            }`}
+          >
+            <div className="relative">
+              {cat.photo_url ? (
+                <img
+                  src={cat.photo_url}
+                  alt={cat.name}
+                  className={`size-24 rounded-2xl object-cover shadow-md ${
+                    isBirthday
+                      ? 'border-2 border-rose-200 dark:border-rose-800/40 ring-4 ring-rose-300/50 dark:ring-rose-700/40'
+                      : 'border-2 border-sky-100 dark:border-sky-900/40'
+                  }`}
+                />
+              ) : (
+                <div
+                  className={`flex size-24 items-center justify-center rounded-2xl shadow-md ${
+                    isBirthday
+                      ? 'bg-gradient-to-br from-rose-100 to-pink-100 dark:from-rose-900/30 dark:to-pink-900/30 text-rose-600 dark:text-rose-400 ring-4 ring-rose-300/50 dark:ring-rose-700/40'
+                      : 'bg-gradient-to-br from-sky-100 to-cyan-100 dark:from-sky-900/30 dark:to-cyan-900/30 text-sky-600 dark:text-sky-400'
+                  }`}
+                >
+                  <span className="text-3xl font-bold">{cat.name.charAt(0).toUpperCase()}</span>
+                </div>
+              )}
+              {isBirthday && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-4 -right-4 text-3xl drop-shadow-sm pointer-events-none select-none"
+                >
+                  🎂
+                </span>
+              )}
+            </div>
+            <h2 className="text-2xl font-bold">{cat.name}</h2>
+            {isBirthday && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-100 dark:bg-rose-900/40 border border-rose-200 dark:border-rose-800/30">
+                <span aria-hidden="true" className="text-sm leading-none">🎉</span>
+                <span className="text-xs font-semibold text-rose-700 dark:text-rose-300">
+                  {birthdayLabel}
+                </span>
               </div>
             )}
-            <h2 className="text-2xl font-bold">{cat.name}</h2>
             {cat.breed && <p className="text-muted-foreground text-sm">{cat.breed}</p>}
           </div>
 

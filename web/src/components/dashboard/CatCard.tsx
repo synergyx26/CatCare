@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { CatStatusBadges } from './CatStatusBadges'
-import { getCatTodayStatus, type CatTodayStatus } from '@/lib/helpers'
+import { getCatTodayStatus, isCatBirthday, getCatAge, type CatTodayStatus } from '@/lib/helpers'
 import { UtensilsCrossed, Droplets, Trash2, Plus } from 'lucide-react'
 import type { Cat, CareEvent, EventType } from '@/types/api'
 
@@ -47,42 +47,74 @@ export function CatCard({
     }
   )
   const { text: statusText, allGood } = getStatusLine(status)
+  const isBirthday = isCatBirthday(cat.birthday)
+  const catAge = getCatAge(cat.birthday)
+  const birthdayStatusText =
+    catAge === 0
+      ? 'First birthday!'
+      : catAge !== null
+        ? `Turning ${catAge} today`
+        : 'Happy Birthday!'
 
   return (
-    <div className="rounded-2xl bg-card ring-1 ring-border/60 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden">
+    <div
+      className={`rounded-2xl bg-card shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden ${
+        isBirthday
+          ? 'ring-2 ring-rose-300 dark:ring-rose-700/60'
+          : 'ring-1 ring-border/60'
+      }`}
+    >
+      {isBirthday && (
+        <div className="bg-gradient-to-r from-rose-50 via-pink-50 to-amber-50/70 dark:from-rose-950/20 dark:via-pink-950/15 dark:to-amber-950/10 px-4 py-1.5 flex items-center gap-1.5 border-b border-rose-100 dark:border-rose-800/20">
+          <span aria-hidden="true" className="text-sm leading-none">🎂</span>
+          <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+            {catAge === 0 ? 'First birthday!' : catAge !== null ? `${catAge} years old today` : 'Birthday today!'}
+          </span>
+        </div>
+      )}
       <div className="p-4 space-y-3">
         {/* Top row: avatar + name + status line + chips */}
         <button
           onClick={() => navigate(`/households/${householdId}/cats/${cat.id}`)}
           className="flex w-full items-center gap-3 text-left"
         >
-          {cat.photo_url ? (
-            <img
-              src={cat.photo_url}
-              alt={cat.name}
-              className="size-10 shrink-0 rounded-xl border border-border/40 object-cover"
-            />
-          ) : (
-            <div
-              className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-base font-bold ${
-                allGood
-                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                  : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-              }`}
-            >
-              {cat.name.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <div className="relative shrink-0 size-10">
+            {cat.photo_url ? (
+              <img
+                src={cat.photo_url}
+                alt={cat.name}
+                className={`size-10 rounded-xl border object-cover ${
+                  isBirthday
+                    ? 'border-rose-300 dark:border-rose-700 ring-2 ring-rose-400/70 ring-offset-1 dark:ring-rose-600/70'
+                    : 'border-border/40'
+                }`}
+              />
+            ) : (
+              <div
+                className={`flex size-10 items-center justify-center rounded-xl text-base font-bold ${
+                  isBirthday
+                    ? 'bg-gradient-to-br from-rose-100 to-pink-100 text-rose-700 dark:from-rose-900/30 dark:to-pink-900/30 dark:text-rose-400 ring-2 ring-rose-400/70 ring-offset-1 dark:ring-rose-600/70'
+                    : allGood
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                }`}
+              >
+                {cat.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-sm leading-none">{cat.name}</p>
             <p
               className={`text-xs font-medium mt-0.5 ${
-                allGood
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-amber-600 dark:text-amber-400'
+                isBirthday
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : allGood
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-amber-600 dark:text-amber-400'
               }`}
             >
-              {statusText}
+              {isBirthday ? birthdayStatusText : statusText}
             </p>
             <CatStatusBadges status={status} />
           </div>
