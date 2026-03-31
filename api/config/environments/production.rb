@@ -61,7 +61,6 @@ Rails.application.configure do
     config.action_mailer.delivery_method = :resend
   else
     config.action_mailer.delivery_method = :logger
-    Rails.logger.warn "[CatCare] RESEND_API_KEY not set — emails will be logged, not sent"
   end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
