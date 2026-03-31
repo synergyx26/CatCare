@@ -1,0 +1,4 @@
+process_pending_reminders:
+  cron: "* * * * *"
+  class: "ProcessPendingRemindersJob"
+  queue: reminders
