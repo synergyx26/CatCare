@@ -320,7 +320,8 @@ web/src/
       AppLayout.tsx         — sticky navbar, user dropdown, theme toggle, mobile sheet
       PageHeader.tsx        — reusable title + subtitle + back link + action slot
     dashboard/
-      CatCard.tsx           — cat card with status badges + quick-action buttons
+      BirthdayBanner.tsx    — rose/pink gradient banner; shown when any active cat has a birthday today; "Send love" button opens note-log modal; dismissable per-session
+      CatCard.tsx           — cat card with status badges + quick-action buttons; birthday cats get rose ring + gradient header stripe + age label
       CatStatusBadges.tsx   — fed/litter/water status badges
       TodayCareLog.tsx      — today's care event list
       MembersSection.tsx    — member list + role management + invite form (admin only); accepts `tier` prop to enforce Free 2-member limit
@@ -343,7 +344,7 @@ web/src/
                               MemberContribution, CareActivityHeatmap, ChartCard
   lib/
     eventColors.ts          — EVENT_COLORS and EVENT_LABELS per event type
-    helpers.ts              — date formatting, status helpers
+    helpers.ts              — date formatting, status helpers; `isCatBirthday(birthday)` (local date, avoids UTC shift), `getCatAge(birthday)` → age in full years
     chartLayout.ts          — ChartId type, DEFAULT_LAYOUTS, loadLayouts/saveLayouts/clearLayouts
     reminderHelpers.ts      — formatSchedule(), SCHEDULE_TYPE_OPTIONS for daily/interval/weekly
     vetExport.ts            — assembleVetSummary(), formatDateRange(); assembles 4 query results → VetSummaryData
