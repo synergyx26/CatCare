@@ -8,6 +8,11 @@ class Rack::Attack
       req.ip if req.path == "/api/v1/sessions" && req.post?
     end
 
+    # Throttle Google OAuth attempts: 5 per minute per IP
+    throttle("oauth_google/ip", limit: 5, period: 1.minute) do |req|
+      req.ip if req.path == "/api/v1/auth/google" && req.post?
+    end
+
     # Throttle registration attempts: 3 per hour per IP
     throttle("registrations/ip", limit: 3, period: 1.hour) do |req|
       req.ip if req.path == "/api/v1/registrations" && req.post?

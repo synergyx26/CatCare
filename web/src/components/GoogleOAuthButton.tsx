@@ -26,6 +26,10 @@ export function GoogleOAuthButton({ redirectTo }: Props) {
     onSuccess: (res) => {
       const token = res.headers['authorization']?.replace('Bearer ', '') ?? ''
       const user: User = res.data.data
+      if (!token) {
+        notify.error('Sign-in failed: no session token received. Please try again.')
+        return
+      }
       setAuth(user, token)
       queryClient.clear()
       notify.success('Signed in with Google!')

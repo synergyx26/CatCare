@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { googleLogout } from '@react-oauth/google'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
 import { api } from '@/api/client'
@@ -93,10 +94,13 @@ export function AppLayout() {
   const currentRole = primaryHousehold?.members?.find((m) => m.id === user?.id)?.role ?? null
 
   function handleLogout() {
-    api.logout().finally(() => {
-      clearAuth()
-      navigate('/login', { replace: true })
-    })
+    // Clear client state immediately so the user is logged out regardless of
+    // network conditions. Server-side JTI rotation is best-effort in the background.
+    clearAuth()
+    queryClient.clear()
+    googleLogout()
+    navigate('/login', { replace: true })
+    api.logout().catch(() => {})
   }
 
   return (

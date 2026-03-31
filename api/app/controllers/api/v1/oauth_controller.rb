@@ -32,11 +32,16 @@ module Api
         token, _payload = Warden::JWTAuth::UserEncoder.new.call(user, :user, nil)
         response.set_header("Authorization", "Bearer #{token}")
 
+        admin_email = ENV["SUPER_ADMIN_EMAIL"].to_s.strip
         render json: {
           data: {
-            id: user.id,
-            email: user.email,
-            name: user.name
+            id:                       user.id,
+            email:                    user.email,
+            name:                     user.name,
+            subscription_tier:        user.subscription_tier,
+            is_super_admin:           admin_email.present? && user.email == admin_email,
+            created_at:               user.created_at,
+            notification_preferences: user.notification_preferences
           }
         }, status: :ok
       end
@@ -68,6 +73,11 @@ module Api
 
         unless payload["aud"] == ENV["GOOGLE_CLIENT_ID"]
           Rails.logger.error("[OauthController] aud mismatch: #{payload['aud']} vs #{ENV['GOOGLE_CLIENT_ID']&.truncate(30)}")
+          return nil
+        end
+
+        unless payload["email_verified"] == "true" || payload["email_verified"] == true
+          Rails.logger.error("[OauthController] email_verified is false for sub=#{payload['sub']}")
           return nil
         end
 

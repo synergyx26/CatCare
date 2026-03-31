@@ -20,7 +20,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { isToday, isSameLocalDay, getCatTodayStatus } from '@/lib/helpers'
 import { notify } from '@/lib/notify'
-import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X, Lock } from 'lucide-react'
+import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X, Lock, WifiOff, RefreshCw } from 'lucide-react'
 
 function getTimeGreeting(name: string): string {
   const hour = new Date().getHours()
@@ -53,7 +53,7 @@ export function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date())
 
   // ── Queries ──────────────────────────────────────────────────
-  const { data: householdsData, isLoading } = useQuery({
+  const { data: householdsData, isLoading, isError: householdsError, refetch: refetchHouseholds } = useQuery({
     queryKey: ['households'],
     queryFn: () => api.getHouseholds(),
     // Backfill primaryHouseholdId for existing users after a successful fetch
@@ -242,6 +242,31 @@ export function DashboardPage() {
           <CatCardSkeleton />
         </div>
         <CareLogSkeleton />
+      </div>
+    )
+  }
+
+  // ── Load error — server unreachable or timed out ─────────────
+  if (householdsError) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="mx-auto max-w-sm space-y-4 text-center">
+          <div className="flex justify-center">
+            <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+              <WifiOff className="size-6 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="font-semibold">Couldn't reach the server</p>
+            <p className="text-sm text-muted-foreground">
+              Your data is safe — the server may be starting up. Give it a moment and try again.
+            </p>
+          </div>
+          <Button onClick={() => refetchHouseholds()} className="gap-2">
+            <RefreshCw className="size-4" />
+            Try again
+          </Button>
+        </div>
       </div>
     )
   }
