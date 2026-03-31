@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/sonner'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { GuestRoute } from '@/components/GuestRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useApplyTheme } from '@/hooks/useApplyTheme'
 import { useNotificationStore } from '@/store/notificationStore'
@@ -41,10 +42,14 @@ export default function App() {
       />
       <BrowserRouter>
         <Routes>
-          {/* Public */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          {/* Guest-only: redirect to /dashboard if already authenticated */}
+          <Route element={<GuestRoute />}>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
+
+          {/* Public — accessible regardless of auth state */}
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/invites/:token" element={<InvitePage />} />
