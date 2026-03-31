@@ -63,7 +63,7 @@ module Api
         end
 
         cats.each do |cat|
-          UserMailer.reminder_notification(reminder, current_user, cat).deliver_later
+          UserMailer.reminder_notification(reminder, current_user, cat).deliver_now
         end
 
         render_success({ sent_to: current_user.email, cats: cats.map(&:name) })
