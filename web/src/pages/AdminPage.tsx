@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import type { AdminUser, AdminStats, SubscriptionTier } from '@/types/api'
+import { useNavigate } from 'react-router-dom'
 import {
   Users, Home, Cat as CatIcon, ClipboardList,
-  Search, ChevronLeft, ChevronRight, Shield,
+  Search, ChevronLeft, ChevronRight, Shield, ArrowLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -63,7 +64,8 @@ function TierBadge({ tier }: { tier: SubscriptionTier }) {
 export function AdminPage() {
   usePageTitle('Admin')
 
-  const queryClient = useQueryClient()
+  const navigate     = useNavigate()
+  const queryClient  = useQueryClient()
 
   // Filters
   const [search, setSearch]     = useState('')
@@ -142,6 +144,13 @@ export function AdminPage() {
             <h1 className="text-lg font-bold leading-none">Admin Dashboard</h1>
             <p className="text-xs text-muted-foreground mt-0.5">CatCare internal</p>
           </div>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-3.5" />
+            Back to app
+          </button>
         </div>
       </div>
 
