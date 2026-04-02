@@ -8,7 +8,6 @@ import {
   CheckCircle,
   XCircle,
   ClipboardList,
-  Stethoscope,
   ArrowRight,
   Sparkles,
   TrendingUp,
