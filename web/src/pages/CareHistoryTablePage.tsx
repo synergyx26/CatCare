@@ -315,12 +315,12 @@ export function CareHistoryTablePage() {
           {/* Start date */}
           <div className="space-y-1 min-w-0">
             <label className="text-xs text-muted-foreground">From</label>
-            <Input
+            <input
               type="date"
               value={startDate}
               max={endDate || DEFAULT_END}
               onChange={(e) => setStartDate(e.target.value)}
-              className="text-sm h-8 w-full min-w-0"
+              className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm min-w-0 block"
             />
             {startDate !== DEFAULT_START && (
               <ClearBtn onClick={() => setStartDate(DEFAULT_START)} />
@@ -330,13 +330,13 @@ export function CareHistoryTablePage() {
           {/* End date */}
           <div className="space-y-1 min-w-0">
             <label className="text-xs text-muted-foreground">To</label>
-            <Input
+            <input
               type="date"
               value={endDate}
               min={startDate}
               max={DEFAULT_END}
               onChange={(e) => setEndDate(e.target.value)}
-              className="text-sm h-8 w-full min-w-0"
+              className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm min-w-0 block"
             />
             {endDate !== DEFAULT_END && (
               <ClearBtn onClick={() => setEndDate(DEFAULT_END)} />
