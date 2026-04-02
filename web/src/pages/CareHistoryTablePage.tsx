@@ -290,7 +290,7 @@ export function CareHistoryTablePage() {
       />
 
       {/* ── Filters ──────────────────────────────────────────── */}
-      <div className="rounded-2xl border bg-card p-4 space-y-3">
+      <div className="rounded-2xl border bg-card p-4 space-y-3 overflow-hidden">
 
         {/* Filter header row */}
         <div className="flex items-center justify-between">
@@ -310,17 +310,17 @@ export function CareHistoryTablePage() {
         </div>
 
         {/* Row 1: date range + cat + type + member */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 min-w-0">
 
           {/* Start date */}
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <label className="text-xs text-muted-foreground">From</label>
             <Input
               type="date"
               value={startDate}
               max={endDate || DEFAULT_END}
               onChange={(e) => setStartDate(e.target.value)}
-              className="text-sm h-8"
+              className="text-sm h-8 w-full"
             />
             {startDate !== DEFAULT_START && (
               <ClearBtn onClick={() => setStartDate(DEFAULT_START)} />
@@ -328,7 +328,7 @@ export function CareHistoryTablePage() {
           </div>
 
           {/* End date */}
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <label className="text-xs text-muted-foreground">To</label>
             <Input
               type="date"
@@ -336,7 +336,7 @@ export function CareHistoryTablePage() {
               min={startDate}
               max={DEFAULT_END}
               onChange={(e) => setEndDate(e.target.value)}
-              className="text-sm h-8"
+              className="text-sm h-8 w-full"
             />
             {endDate !== DEFAULT_END && (
               <ClearBtn onClick={() => setEndDate(DEFAULT_END)} />
@@ -344,7 +344,7 @@ export function CareHistoryTablePage() {
           </div>
 
           {/* Cat */}
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <label className="text-xs text-muted-foreground">Cat</label>
             <select
               value={catFilter}
@@ -362,7 +362,7 @@ export function CareHistoryTablePage() {
           </div>
 
           {/* Event type */}
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <label className="text-xs text-muted-foreground">Type</label>
             <select
               value={typeFilter}
@@ -380,7 +380,7 @@ export function CareHistoryTablePage() {
           </div>
 
           {/* Logged by */}
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <label className="text-xs text-muted-foreground">Logged by</label>
             <select
               value={memberFilter}
@@ -401,7 +401,7 @@ export function CareHistoryTablePage() {
         {/* Row 2: sub-type filter — only shown when selected type has sub-types */}
         {subtypeConfig && (
           <div className="pt-1 border-t border-border/40 flex items-end gap-3">
-            <div className="space-y-1 w-56">
+            <div className="space-y-1 w-full sm:w-56 min-w-0">
               <label className="text-xs text-muted-foreground">{subtypeConfig.label}</label>
               {subtypeConfig.kind === 'select' ? (
                 <select
