@@ -36,6 +36,7 @@ import {
   Monitor,
   ShieldCheck,
   Bell,
+  TableProperties,
 } from 'lucide-react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
 import type { Household } from '@/types/api'
@@ -172,6 +173,18 @@ export function AppLayout() {
                     <Bell className="size-4" />
                     Notification Settings
                   </button>
+                  {primaryHousehold && user?.subscription_tier === 'premium' && (
+                    <button
+                      onClick={() => {
+                        navigate(`/households/${primaryHousehold.id}/care-history`)
+                        setMobileOpen(false)
+                      }}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
+                    >
+                      <TableProperties className="size-4" />
+                      Care History
+                    </button>
+                  )}
                 </nav>
                 <div className="mt-auto border-t px-4 py-4">
                   <div className="flex items-center gap-3">
@@ -244,6 +257,17 @@ export function AppLayout() {
                   onClick={() => navigate(`/households/${primaryHousehold.id}/settings`)}
                 >
                   Care Settings
+                </Button>
+              )}
+              {primaryHousehold && user?.subscription_tier === 'premium' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => navigate(`/households/${primaryHousehold.id}/care-history`)}
+                >
+                  <TableProperties className="size-3.5" />
+                  Care History
                 </Button>
               )}
             </nav>

@@ -51,7 +51,7 @@ const features: {
     icon: CheckCircle,
     title: 'Always know who fed the cat',
     description:
-      'See exactly what care happened today — feeding, water, litter, medication — updated in real time by everyone in your household.',
+      'See exactly what care happened today — updated in real time by everyone in your household. Treats are tracked separately so they never falsely mark a feeding as done.',
     color: 'text-sky-500',
     bg: 'bg-sky-50 dark:bg-sky-950/30',
     tier: undefined,
@@ -67,9 +67,9 @@ const features: {
   },
   {
     icon: ChartLine,
-    title: 'Care history dashboard',
+    title: 'Care history & export',
     description:
-      'Five interactive charts: weight trends, feeding frequency, care type breakdown, member contributions, and a weekly activity heatmap. Drag and resize them however you like.',
+      'Interactive charts for weight trends, feeding frequency, and more — plus a full filterable event table. Filter by cat, type, date, or logged-by member, then export to CSV for your vet.',
     color: 'text-emerald-500',
     bg: 'bg-emerald-50 dark:bg-emerald-950/30',
     tier: 'premium',
@@ -93,10 +93,10 @@ const features: {
     tier: 'pro' as FeatureTier,
   },
   {
-    icon: Stethoscope,
-    title: 'Vet info at your fingertips',
+    icon: TrendingUp,
+    title: 'One tap to log care for everyone',
     description:
-      "Store your vet's name, clinic, phone number, and per-cat care instructions. Sitters see exactly what they need to keep your cat safe.",
+      "Create custom quick-action buttons — 'Morning meds', 'Evening kibble' — and log the same event for all your cats at once. Actions sync across all your devices automatically.",
     color: 'text-teal-500',
     bg: 'bg-teal-50 dark:bg-teal-950/30',
     tier: undefined,
@@ -165,6 +165,7 @@ const plans: Plan[] = [
       { label: '7-day care history', included: true },
       { label: 'Vet info & care instructions', included: true },
       { label: 'Pet sitter role', included: true },
+      { label: 'Exportable care history table', included: false },
       { label: 'Email reminders', included: false },
       { label: 'Persistent photo storage', included: false },
     ],
@@ -188,6 +189,7 @@ const plans: Plan[] = [
       { label: 'All 5 analytics charts', included: true },
       { label: 'Vet info & care instructions', included: true },
       { label: 'Weight, medication, vet & grooming logs', included: true },
+      { label: 'Exportable care history table', included: false },
       { label: 'Email reminders', included: false },
       { label: 'Persistent photo storage', included: false },
     ],
@@ -209,6 +211,7 @@ const plans: Plan[] = [
       { label: 'Unlimited household members', included: true },
       { label: '90-day care history', included: true },
       { label: 'All 5 analytics charts', included: true },
+      { label: 'Exportable care history table with filters', included: true },
       { label: 'Email reminders', included: true, note: 'Coming soon' },
       { label: 'Persistent photo storage', included: true },
       { label: 'Priority support', included: true },
@@ -251,6 +254,16 @@ const faqItems = [
     question: 'Do pet sitters need their own account?',
     answer:
       "Yes — you'll invite them with a link. They sign up for a free account and join your household with the sitter role. Their account doesn't count against your plan's cat limit.",
+  },
+  {
+    question: 'Can I export my care history?',
+    answer:
+      'Yes, on the Premium plan. The care history table lets you filter by date range, cat, event type, sub-type (e.g. wet vs. dry feeding, specific symptoms), and household member — then download everything as a CSV. Useful for sharing a full record with your vet.',
+  },
+  {
+    question: 'Do treats count as a feeding?',
+    answer:
+      "No. When you log a treat, it's recorded as a feeding event with food type 'Treats', but it doesn't count toward your cat's daily feeding requirement. Your feeding status badge and 'needs attention' alerts stay accurate.",
   },
 ]
 

@@ -7,6 +7,7 @@ class Household < ApplicationRecord
   has_many :care_events, dependent: :destroy
   has_many :reminders, dependent: :destroy
   has_many :care_notes, dependent: :destroy
+  has_many :household_batch_actions, dependent: :destroy
 
   validates :name, presence: true
 end

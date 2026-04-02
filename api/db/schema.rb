@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_30_220358) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_02_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -104,6 +104,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_30_220358) do
     t.index ["active"], name: "index_cats_on_active"
     t.index ["health_conditions"], name: "index_cats_on_health_conditions", using: :gin
     t.index ["household_id"], name: "index_cats_on_household_id"
+  end
+
+  create_table "household_batch_actions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "default_notes"
+    t.jsonb "details", default: {}, null: false
+    t.string "event_type", null: false
+    t.bigint "household_id", null: false
+    t.string "label", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id"], name: "index_household_batch_actions_on_household_id"
   end
 
   create_table "household_invites", force: :cascade do |t|
@@ -209,6 +221,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_30_220358) do
   add_foreign_key "care_notes", "cats"
   add_foreign_key "care_notes", "households"
   add_foreign_key "cats", "households"
+  add_foreign_key "household_batch_actions", "households"
   add_foreign_key "household_invites", "households"
   add_foreign_key "household_memberships", "households"
   add_foreign_key "household_memberships", "users"

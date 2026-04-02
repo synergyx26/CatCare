@@ -9,6 +9,14 @@ module Api
 
         events = events.where(cat_id: params[:cat_id]) if params[:cat_id].present?
         events = events.where(event_type: params[:event_types]) if params[:event_types].present?
+        events = events.where(logged_by_id: params[:logged_by_id]) if params[:logged_by_id].present?
+
+        if params[:start_date].present?
+          events = events.where('occurred_at >= ?', Time.zone.parse(params[:start_date]).beginning_of_day)
+        end
+        if params[:end_date].present?
+          events = events.where('occurred_at <= ?', Time.zone.parse(params[:end_date]).end_of_day)
+        end
 
         if params[:upcoming] == 'true'
           events = events.where('occurred_at > ?', Time.current).order(occurred_at: :asc)

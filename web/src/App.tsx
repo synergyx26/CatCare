@@ -19,6 +19,7 @@ import { HouseholdProfilePage } from '@/pages/HouseholdProfilePage'
 import { HouseholdSettingsPage } from '@/pages/HouseholdSettingsPage'
 import { HouseholdNotesPage } from '@/pages/HouseholdNotesPage'
 import { NotificationSettingsPage } from '@/pages/NotificationSettingsPage'
+import { CareHistoryTablePage } from '@/pages/CareHistoryTablePage'
 import { LandingPage } from '@/pages/LandingPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
@@ -90,6 +91,10 @@ export default function App() {
                 element={<HouseholdNotesPage />}
               />
               <Route path="/notification-settings" element={<NotificationSettingsPage />} />
+              <Route
+                path="/households/:householdId/care-history"
+                element={<CareHistoryTablePage />}
+              />
             </Route>
           </Route>
 

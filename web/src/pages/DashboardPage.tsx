@@ -19,18 +19,14 @@ import { CareLogSkeleton } from '@/components/skeletons/CareLogSkeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { isToday, isSameLocalDay, getCatTodayStatus } from '@/lib/helpers'
+import { Link } from 'react-router-dom'
 import { notify } from '@/lib/notify'
-import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X, Lock, WifiOff, RefreshCw } from 'lucide-react'
+import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X, Lock, WifiOff, RefreshCw, Pencil, TableProperties } from 'lucide-react'
 
-function getTimeGreeting(name: string): string {
-  const hour = new Date().getHours()
-  const salutation = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-  return `${salutation}, ${name}`
-}
-import { loadBatchActions, saveBatchActions } from '@/lib/batchActions'
 import { BatchActionModal } from '@/components/dashboard/BatchActionModal'
-import type { BatchAction } from '@/lib/batchActions'
+import type { BatchActionPayload } from '@/components/dashboard/BatchActionModal'
 import type {
+  HouseholdBatchAction,
   Household,
   Cat,
   CareEvent,
@@ -38,6 +34,12 @@ import type {
   HouseholdInvite,
   MemberRole,
 } from '@/types/api'
+
+function getTimeGreeting(name: string): string {
+  const hour = new Date().getHours()
+  const salutation = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  return `${salutation}, ${name}`
+}
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -165,34 +167,77 @@ export function DashboardPage() {
   const archivedCats: Cat[] = archivedCatsData?.data?.data ?? []
 
   // ── Batch logging ─────────────────────────────────────────────
-  const [showBatchModal, setShowBatchModal] = useState(false)
-  const [customActions, setCustomActions] = useState<BatchAction[]>(() =>
-    primaryHousehold ? loadBatchActions(primaryHousehold.id) : []
-  )
+  const [showBatchModal, setShowBatchModal]     = useState(false)
+  const [editingAction, setEditingAction]       = useState<HouseholdBatchAction | null>(null)
 
-  function addCustomAction(action: Omit<BatchAction, 'id'>) {
-    const newAction: BatchAction = { ...action, id: crypto.randomUUID() }
-    const updated = [...customActions, newAction]
-    setCustomActions(updated)
-    if (primaryHousehold) saveBatchActions(primaryHousehold.id, updated)
-  }
+  const { data: batchActionsData } = useQuery({
+    queryKey: ['batch_actions', primaryHousehold?.id],
+    queryFn:  () => api.getBatchActions(primaryHousehold!.id),
+    enabled:  !!primaryHousehold,
+  })
+  const customActions: HouseholdBatchAction[] = batchActionsData?.data?.data ?? []
 
-  function removeCustomAction(id: string) {
-    const updated = customActions.filter((a) => a.id !== id)
-    setCustomActions(updated)
-    if (primaryHousehold) saveBatchActions(primaryHousehold.id, updated)
+  const createBatchActionMutation = useMutation({
+    mutationFn: (payload: BatchActionPayload) =>
+      api.createBatchAction(primaryHousehold!.id, {
+        household_batch_action: {
+          label:         payload.label,
+          event_type:    payload.event_type,
+          details:       payload.details,
+          default_notes: payload.default_notes,
+          position:      customActions.length,
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['batch_actions', primaryHousehold?.id] })
+      notify.success('Quick action saved.')
+    },
+    onError: () => notify.error('Failed to save quick action.'),
+  })
+
+  const updateBatchActionMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: BatchActionPayload }) =>
+      api.updateBatchAction(primaryHousehold!.id, id, {
+        household_batch_action: {
+          label:         payload.label,
+          event_type:    payload.event_type,
+          details:       payload.details,
+          default_notes: payload.default_notes,
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['batch_actions', primaryHousehold?.id] })
+      notify.success('Quick action updated.')
+    },
+    onError: () => notify.error('Failed to update quick action.'),
+  })
+
+  const deleteBatchActionMutation = useMutation({
+    mutationFn: (id: number) => api.deleteBatchAction(primaryHousehold!.id, id),
+    onSuccess:  () => queryClient.invalidateQueries({ queryKey: ['batch_actions', primaryHousehold?.id] }),
+    onError:    () => notify.error('Failed to remove quick action.'),
+  })
+
+  function handleBatchActionSave(payload: BatchActionPayload) {
+    if (editingAction) {
+      updateBatchActionMutation.mutate({ id: editingAction.id, payload })
+    } else {
+      createBatchActionMutation.mutate(payload)
+    }
+    setEditingAction(null)
   }
 
   const batchMutation = useMutation({
-    mutationFn: async (action: { label: string; event_type: EventType; details: Record<string, unknown> }) => {
+    mutationFn: async (action: { label: string; event_type: EventType; details: Record<string, unknown>; default_notes?: string | null }) => {
       await Promise.all(
         cats.map((cat) =>
           api.createCareEvent(primaryHousehold!.id, {
             care_event: {
-              cat_id: cat.id,
-              event_type: action.event_type,
+              cat_id:      cat.id,
+              event_type:  action.event_type,
               occurred_at: new Date().toISOString(),
-              details: action.details,
+              details:     action.details,
+              notes:       action.default_notes || undefined,
             },
           })
         )
@@ -368,7 +413,7 @@ export function DashboardPage() {
                   </button>
                   {/* Custom actions */}
                   {customActions.map((action) => {
-                    const FREE_TYPES: string[] = ['feeding', 'litter', 'water', 'note']
+                    const FREE_TYPES: string[] = ['feeding', 'litter', 'water', 'note', 'tooth_brushing']
                     const actionAllowed = tier === 'pro' || tier === 'premium' || FREE_TYPES.includes(action.event_type)
                     return (
                       <span key={action.id} className="relative group flex items-center">
@@ -392,9 +437,18 @@ export function DashboardPage() {
                           {!actionAllowed && <Lock className="size-3 shrink-0" />}
                           {action.label}
                         </button>
+                        {/* Edit button — top-left on hover */}
                         <button
-                          onClick={() => removeCustomAction(action.id)}
-                          className="absolute -top-1.5 -right-1.5 hidden group-hover:flex items-center justify-center size-4 rounded-full bg-destructive text-destructive-foreground"
+                          onClick={() => { setEditingAction(action); setShowBatchModal(true) }}
+                          className="absolute -top-1.5 -left-1.5 hidden group-hover:flex items-center justify-center size-4 rounded-full bg-sky-500 text-white"
+                          aria-label={`Edit ${action.label}`}
+                        >
+                          <Pencil className="size-2.5" />
+                        </button>
+                        {/* Delete button — top-right on hover */}
+                        <button
+                          onClick={() => deleteBatchActionMutation.mutate(action.id)}
+                          className="absolute -top-1.5 -right-1.5 hidden group-hover:flex items-center justify-center size-4 rounded-full bg-red-500 text-white"
                           aria-label={`Remove ${action.label}`}
                         >
                           <X className="size-2.5" />
@@ -538,6 +592,17 @@ export function DashboardPage() {
             />
           )}
 
+          {/* Care history table link — premium only */}
+          {primaryHousehold && tier === 'premium' && (
+            <Link
+              to={`/households/${primaryHousehold.id}/care-history`}
+              className="flex items-center gap-2 text-sm text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
+            >
+              <TableProperties className="size-4" />
+              Full care history table &rarr;
+            </Link>
+          )}
+
           {primaryHousehold && (
             <HouseholdVetSection
               household={primaryHousehold}
@@ -572,11 +637,12 @@ export function DashboardPage() {
         />
       )}
 
-      {/* Batch action creator */}
+      {/* Batch action creator / editor */}
       {showBatchModal && (
         <BatchActionModal
-          onSave={addCustomAction}
-          onClose={() => setShowBatchModal(false)}
+          initialAction={editingAction ?? undefined}
+          onSave={handleBatchActionSave}
+          onClose={() => { setShowBatchModal(false); setEditingAction(null) }}
         />
       )}
     </>

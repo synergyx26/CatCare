@@ -3,7 +3,8 @@ import { X, Lock } from 'lucide-react'
 import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { BatchAction } from '@/lib/batchActions'
+import { Textarea } from '@/components/ui/textarea'
+import type { HouseholdBatchAction } from '@/types/api'
 import type { EventType, SubscriptionTier } from '@/types/api'
 import { useAuthStore } from '@/store/authStore'
 
@@ -33,8 +34,17 @@ function isBatchTypeAllowed(type: EventType, tier: SubscriptionTier): boolean {
   return FREE_BATCH_TYPES.includes(type)
 }
 
+export interface BatchActionPayload {
+  label: string
+  event_type: EventType
+  details: Record<string, unknown>
+  default_notes: string | null
+}
+
 interface Props {
-  onSave: (action: Omit<BatchAction, 'id'>) => void
+  /** When provided the modal is in edit mode and pre-fills from this action. */
+  initialAction?: HouseholdBatchAction
+  onSave: (action: BatchActionPayload) => void
   onClose: () => void
 }
 
@@ -45,19 +55,37 @@ const pillClass = (active: boolean) =>
       : 'border-border hover:bg-sky-50 dark:hover:bg-sky-950/20'
   }`
 
-export function BatchActionModal({ onSave, onClose }: Props) {
+function detailsToState(d: Record<string, unknown>) {
+  return {
+    foodType:        (d.food_type       as FoodType)        ?? 'wet',
+    amountGrams:     d.amount_grams != null ? String(d.amount_grams) : '',
+    medName:         (d.medication_name as string)          ?? '',
+    medDosage:       (d.dosage          as string)          ?? '',
+    medUnit:         (d.unit            as MedUnit)         ?? 'mg',
+    groomType:       (d.grooming_type   as GroomingType)    ?? 'bath',
+    symptomType:     (d.symptom_type    as SymptomType)     ?? 'vomiting',
+    symptomSeverity: (d.severity        as SymptomSeverity) ?? 'mild',
+  }
+}
+
+export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
   const { user } = useAuthStore()
   const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
-  const [label,           setLabel]           = useState('')
-  const [eventType,       setEventType]       = useState<EventType>('water')
-  const [foodType,        setFoodType]        = useState<FoodType>('wet')
-  const [amountGrams,     setAmountGrams]     = useState('')
-  const [medName,         setMedName]         = useState('')
-  const [medDosage,       setMedDosage]       = useState('')
-  const [medUnit,         setMedUnit]         = useState<MedUnit>('mg')
-  const [groomType,       setGroomType]       = useState<GroomingType>('bath')
-  const [symptomType,     setSymptomType]     = useState<SymptomType>('vomiting')
-  const [symptomSeverity, setSymptomSeverity] = useState<SymptomSeverity>('mild')
+  const isEditing = !!initialAction
+
+  const prefill = initialAction ? detailsToState(initialAction.details) : null
+
+  const [label,           setLabel]           = useState(initialAction?.label ?? '')
+  const [eventType,       setEventType]       = useState<EventType>(initialAction?.event_type ?? 'water')
+  const [foodType,        setFoodType]        = useState<FoodType>(prefill?.foodType ?? 'wet')
+  const [amountGrams,     setAmountGrams]     = useState(prefill?.amountGrams ?? '')
+  const [medName,         setMedName]         = useState(prefill?.medName ?? '')
+  const [medDosage,       setMedDosage]       = useState(prefill?.medDosage ?? '')
+  const [medUnit,         setMedUnit]         = useState<MedUnit>(prefill?.medUnit ?? 'mg')
+  const [groomType,       setGroomType]       = useState<GroomingType>(prefill?.groomType ?? 'bath')
+  const [symptomType,     setSymptomType]     = useState<SymptomType>(prefill?.symptomType ?? 'vomiting')
+  const [symptomSeverity, setSymptomSeverity] = useState<SymptomSeverity>(prefill?.symptomSeverity ?? 'mild')
+  const [defaultNotes,    setDefaultNotes]    = useState(initialAction?.default_notes ?? '')
 
   function buildDetails(): Record<string, unknown> {
     if (eventType === 'feeding') {
@@ -82,7 +110,12 @@ export function BatchActionModal({ onSave, onClose }: Props) {
 
   function handleSave() {
     if (!canSave) return
-    onSave({ label: label.trim(), event_type: eventType, details: buildDetails() })
+    onSave({
+      label: label.trim(),
+      event_type: eventType,
+      details: buildDetails(),
+      default_notes: defaultNotes.trim() || null,
+    })
     onClose()
   }
 
@@ -93,7 +126,9 @@ export function BatchActionModal({ onSave, onClose }: Props) {
 
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-base">New quick action</h2>
+          <h2 className="font-semibold text-base">
+            {isEditing ? 'Edit quick action' : 'New quick action'}
+          </h2>
           <Button variant="ghost" size="icon-sm" onClick={onClose}>
             <X className="size-4" />
           </Button>
@@ -281,8 +316,22 @@ export function BatchActionModal({ onSave, onClose }: Props) {
           </div>
         )}
 
+        {/* Default notes */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">
+            Auto-note <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <Textarea
+            placeholder="Added automatically to every event logged with this button…"
+            value={defaultNotes}
+            onChange={(e) => setDefaultNotes(e.target.value)}
+            rows={2}
+            className="resize-none text-sm"
+          />
+        </div>
+
         <Button className="w-full" onClick={handleSave} disabled={!canSave}>
-          Save quick action
+          {isEditing ? 'Save changes' : 'Save quick action'}
         </Button>
       </div>
     </div>

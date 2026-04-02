@@ -9,7 +9,7 @@ import { api } from '@/api/client'
 import { CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
-import { Cat as CatIcon, ChevronLeft, ChevronRight, Inbox, LayoutGrid, Lock } from 'lucide-react'
+import { Cat as CatIcon, ChevronLeft, ChevronRight, Inbox, LayoutGrid, Lock, TableProperties } from 'lucide-react'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { useAuthStore } from '@/store/authStore'
 import type { Cat, CatStats, SubscriptionTier } from '@/types/api'
@@ -273,6 +273,16 @@ export function CatHistoryPage() {
                 range={range}
                 tier={tier}
               />
+            )}
+            {tier === 'premium' && catId && (
+              <button
+                onClick={() => navigate(`/households/${householdId}/care-history?catId=${catId}`)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/50 transition-colors"
+                title="View full event log for this cat"
+              >
+                <TableProperties className="size-3.5" />
+                Event table
+              </button>
             )}
             {!isMobile && (
               <button

@@ -132,11 +132,21 @@ export const api = {
     apiClient.get(`/households/${householdId}/cats/${catId}/stats`, { params: { range, offset } }),
 
   // Care events
-  getCareEvents: (householdId: number, options?: { catId?: number; upcoming?: boolean; eventTypes?: string[] }) => {
+  getCareEvents: (householdId: number, options?: {
+    catId?: number
+    upcoming?: boolean
+    eventTypes?: string[]
+    startDate?: string
+    endDate?: string
+    loggedById?: number
+  }) => {
     const params: Record<string, unknown> = {}
     if (options?.catId) params.cat_id = options.catId
     if (options?.upcoming) params.upcoming = true
     if (options?.eventTypes?.length) params['event_types[]'] = options.eventTypes
+    if (options?.startDate) params.start_date = options.startDate
+    if (options?.endDate) params.end_date = options.endDate
+    if (options?.loggedById) params.logged_by_id = options.loggedById
     return apiClient.get(`/households/${householdId}/care_events`, { params })
   },
 
@@ -148,6 +158,35 @@ export const api = {
 
   deleteCareEvent: (householdId: number, eventId: number) =>
     apiClient.delete(`/households/${householdId}/care_events/${eventId}`),
+
+  // Batch quick actions
+  getBatchActions: (householdId: number) =>
+    apiClient.get(`/households/${householdId}/batch_actions`),
+
+  createBatchAction: (householdId: number, data: {
+    household_batch_action: {
+      label: string
+      event_type: string
+      details: Record<string, unknown>
+      default_notes?: string | null
+      position?: number
+    }
+  }) =>
+    apiClient.post(`/households/${householdId}/batch_actions`, data),
+
+  updateBatchAction: (householdId: number, actionId: number, data: {
+    household_batch_action: {
+      label?: string
+      event_type?: string
+      details?: Record<string, unknown>
+      default_notes?: string | null
+      position?: number
+    }
+  }) =>
+    apiClient.patch(`/households/${householdId}/batch_actions/${actionId}`, data),
+
+  deleteBatchAction: (householdId: number, actionId: number) =>
+    apiClient.delete(`/households/${householdId}/batch_actions/${actionId}`),
 
   // Care Notes
   getCareNotes: (householdId: number, params?: { cat_id?: number; category?: string }) =>

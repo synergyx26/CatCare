@@ -202,6 +202,17 @@ export interface ApiError {
   message: string
 }
 
+// ─── Batch Quick Actions ──────────────────────────────────────────────────────
+
+export interface HouseholdBatchAction {
+  id: number
+  label: string
+  event_type: EventType
+  details: Record<string, unknown>
+  default_notes: string | null
+  position: number
+}
+
 // ─── Reminders ────────────────────────────────────────────────────────────────
 
 export type ReminderCareType =

@@ -175,7 +175,12 @@ export function getCatTodayStatus(
   const catEvents = todayEvents.filter((e) => e.cat_id === catId)
 
   const feedings = catEvents
-    .filter((e) => e.event_type === 'feeding')
+    .filter((e) => {
+      if (e.event_type !== 'feeding') return false
+      // Treats are a supplement — they don't count toward the daily feeding requirement
+      const d = e.details as Record<string, unknown>
+      return d?.food_type !== 'treats'
+    })
     .sort(
       (a, b) =>
         new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()

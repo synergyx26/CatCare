@@ -33,6 +33,8 @@ Rails.application.routes.draw do
         resources :reminders, only: [:index, :create, :update, :destroy] do
           member { post :test_send }
         end
+        resources :batch_actions, only: [:index, :create, :update, :destroy],
+                                  controller: 'household_batch_actions'
         resources :invites,     only: [:index, :create, :destroy], controller: 'household_invites'
       end
 
