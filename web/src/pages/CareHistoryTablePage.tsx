@@ -320,7 +320,7 @@ export function CareHistoryTablePage() {
               value={startDate}
               max={endDate || DEFAULT_END}
               onChange={(e) => setStartDate(e.target.value)}
-              className="text-sm h-8 w-full"
+              className="text-sm h-8 w-full min-w-0"
             />
             {startDate !== DEFAULT_START && (
               <ClearBtn onClick={() => setStartDate(DEFAULT_START)} />
@@ -336,7 +336,7 @@ export function CareHistoryTablePage() {
               min={startDate}
               max={DEFAULT_END}
               onChange={(e) => setEndDate(e.target.value)}
-              className="text-sm h-8 w-full"
+              className="text-sm h-8 w-full min-w-0"
             />
             {endDate !== DEFAULT_END && (
               <ClearBtn onClick={() => setEndDate(DEFAULT_END)} />
