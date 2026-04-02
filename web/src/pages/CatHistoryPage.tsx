@@ -225,155 +225,167 @@ export function CatHistoryPage() {
     <div className="space-y-6">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div className="space-y-1 min-w-0">
-            {/* Breadcrumb */}
-            <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="hover:text-foreground transition-colors"
-              >
-                Dashboard
-              </button>
-              <span className="opacity-40">/</span>
-              <button
-                onClick={() => navigate(`/households/${householdId}/cats/${catId}`)}
-                className="hover:text-foreground transition-colors"
-              >
-                {cat?.name ?? '...'}
-              </button>
-              <span className="opacity-40">/</span>
-              <span className="text-foreground font-medium">Care History</span>
-            </nav>
+        <div className="space-y-3">
 
-            <div className="flex items-center gap-3">
-              {cat?.photo_url ? (
-                <img
-                  src={cat.photo_url}
-                  alt={cat.name}
-                  className="w-9 h-9 rounded-xl object-cover border-2 border-sky-100 dark:border-sky-900/40"
+          {/* Row 1: breadcrumb + title + utility actions */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              {/* Breadcrumb */}
+              <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="hover:text-foreground transition-colors"
+                >
+                  Dashboard
+                </button>
+                <span className="opacity-40">/</span>
+                <button
+                  onClick={() => navigate(`/households/${householdId}/cats/${catId}`)}
+                  className="hover:text-foreground transition-colors"
+                >
+                  {cat?.name ?? '...'}
+                </button>
+                <span className="opacity-40">/</span>
+                <span className="text-foreground font-medium">Care History</span>
+              </nav>
+
+              <div className="flex items-center gap-3">
+                {cat?.photo_url ? (
+                  <img
+                    src={cat.photo_url}
+                    alt={cat.name}
+                    className="w-9 h-9 rounded-xl object-cover border-2 border-sky-100 dark:border-sky-900/40"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-100 to-cyan-100 dark:from-sky-900/30 dark:to-cyan-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400">
+                    <CatIcon className="size-5" />
+                  </div>
+                )}
+                <h1 className="text-2xl font-bold tracking-tight">
+                  {cat ? `${cat.name}'s Care History` : 'Care History'}
+                </h1>
+              </div>
+            </div>
+
+            {/* Utility actions — export, event table, reset layout */}
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+              {cat && (
+                <ExportPdfButton
+                  cat={cat}
+                  householdId={Number(householdId)}
+                  range={range}
+                  tier={tier}
                 />
-              ) : (
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-100 to-cyan-100 dark:from-sky-900/30 dark:to-cyan-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400">
-                  <CatIcon className="size-5" />
-                </div>
               )}
-              <h1 className="text-2xl font-bold tracking-tight">
-                {cat ? `${cat.name}'s Care History` : 'Care History'}
-              </h1>
+              {tier === 'premium' && catId && (
+                <button
+                  onClick={() => navigate(`/households/${householdId}/care-history?catId=${catId}`)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/50 transition-colors"
+                  title="View full event log for this cat"
+                >
+                  <TableProperties className="size-3.5" />
+                  <span className="hidden sm:inline">Event table</span>
+                </button>
+              )}
+              {!isMobile && (
+                <button
+                  onClick={handleResetLayout}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/50 transition-colors"
+                  title="Reset chart layout to default"
+                >
+                  <LayoutGrid className="size-3.5" />
+                  <span className="hidden sm:inline">Reset layout</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Controls: range selector + reset layout + export */}
-          <div className="flex items-center gap-2 sm:shrink-0 flex-wrap">
-            {cat && (
-              <ExportPdfButton
-                cat={cat}
-                householdId={Number(householdId)}
-                range={range}
-                tier={tier}
-              />
-            )}
-            {tier === 'premium' && catId && (
-              <button
-                onClick={() => navigate(`/households/${householdId}/care-history?catId=${catId}`)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/50 transition-colors"
-                title="View full event log for this cat"
-              >
-                <TableProperties className="size-3.5" />
-                Event table
-              </button>
-            )}
-            {!isMobile && (
-              <button
-                onClick={handleResetLayout}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-xl ring-1 ring-border/60 bg-card hover:bg-muted/50 transition-colors"
-                title="Reset chart layout to default"
-              >
-                <LayoutGrid className="size-3.5" />
-                Reset layout
-              </button>
-            )}
+          {/* Row 2: Filter bar — container-responsive via @container */}
+          <div className="@container">
+            <div className="flex flex-col @sm:flex-row @sm:items-center gap-2">
 
-            {/* ── Period navigator ── */}
-            <div className="flex items-center rounded-xl ring-1 ring-border/60 bg-card overflow-hidden text-sm">
-              {/* Older */}
-              <button
-                onClick={() => setOffset((o) => o + 1)}
-                disabled={!canGoOlder}
-                title={atTierLimit ? upgradeHint(tier) : 'Previous period'}
-                className={[
-                  'flex items-center justify-center w-8 h-9 transition-colors',
-                  canGoOlder
-                    ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    : atTierLimit
-                      ? 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 cursor-not-allowed'
-                      : 'text-muted-foreground/30 cursor-not-allowed',
-                ].join(' ')}
-              >
-                {atTierLimit
-                  ? <Lock className="size-3.5" />
-                  : <ChevronLeft className="size-4" />
-                }
-              </button>
-
-              {/* Current window label — double-click or tap "Today" to reset */}
-              <div className="flex flex-col items-center justify-center px-3 py-1 min-w-[110px]">
-                <span className="text-xs font-medium text-foreground whitespace-nowrap">
-                  {currentLabel}
-                </span>
-                {offset > 0 && (
-                  <button
-                    onClick={() => setOffset(0)}
-                    className="text-[10px] text-sky-500 hover:text-sky-600 dark:hover:text-sky-400 font-medium mt-0.5 leading-none transition-colors"
-                  >
-                    Back to today
-                  </button>
-                )}
+              {/* Range selector — grid on narrow, inline flex on wider */}
+              <div className="grid grid-cols-3 @sm:flex rounded-xl overflow-hidden ring-1 ring-border/60 text-sm">
+                {(['7d', '30d', '90d'] as Range[]).map((r) => {
+                  const allowed = allowedRanges.includes(r)
+                  return (
+                    <button
+                      key={r}
+                      onClick={() => allowed && setRange(r)}
+                      disabled={!allowed}
+                      title={!allowed ? upgradeHint(tier) : undefined}
+                      className={[
+                        'flex items-center justify-center gap-1.5 px-3 py-2.5 font-medium transition-colors',
+                        range === r
+                          ? 'bg-sky-500 text-white'
+                          : allowed
+                            ? 'bg-card text-muted-foreground hover:text-foreground hover:bg-sky-50 dark:hover:bg-sky-950/20'
+                            : 'bg-card text-muted-foreground/40 cursor-not-allowed',
+                      ].join(' ')}
+                    >
+                      {!allowed && <Lock className="size-2.5 shrink-0" />}
+                      {r}
+                    </button>
+                  )
+                })}
               </div>
 
-              {/* Newer */}
-              <button
-                onClick={() => setOffset((o) => o - 1)}
-                disabled={!canGoNewer}
-                title={canGoNewer ? 'Next period' : 'Already at current period'}
-                className={[
-                  'flex items-center justify-center w-8 h-9 transition-colors',
-                  canGoNewer
-                    ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    : 'text-muted-foreground/30 cursor-not-allowed',
-                ].join(' ')}
-              >
-                <ChevronRight className="size-4" />
-              </button>
-            </div>
+              {/* Period navigator — full width on narrow, auto on wider */}
+              <div className="flex items-center rounded-xl ring-1 ring-border/60 bg-card overflow-hidden text-sm">
+                {/* Older */}
+                <button
+                  onClick={() => setOffset((o) => o + 1)}
+                  disabled={!canGoOlder}
+                  title={atTierLimit ? upgradeHint(tier) : 'Previous period'}
+                  className={[
+                    'flex items-center justify-center w-9 h-10 flex-none transition-colors',
+                    canGoOlder
+                      ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      : atTierLimit
+                        ? 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 cursor-not-allowed'
+                        : 'text-muted-foreground/30 cursor-not-allowed',
+                  ].join(' ')}
+                >
+                  {atTierLimit
+                    ? <Lock className="size-3.5" />
+                    : <ChevronLeft className="size-4" />
+                  }
+                </button>
 
-            {/* ── Range selector ── */}
-            <div className="flex rounded-xl overflow-hidden ring-1 ring-border/60 text-sm">
-              {(['7d', '30d', '90d'] as Range[]).map((r) => {
-                const allowed = allowedRanges.includes(r)
-                return (
-                  <button
-                    key={r}
-                    onClick={() => allowed && setRange(r)}
-                    disabled={!allowed}
-                    title={!allowed ? upgradeHint(tier) : undefined}
-                    className={[
-                      'px-4 py-2 font-medium transition-colors flex items-center gap-1',
-                      range === r
-                        ? 'bg-sky-500 text-white'
-                        : allowed
-                          ? 'bg-card text-muted-foreground hover:text-foreground hover:bg-sky-50 dark:hover:bg-sky-950/20'
-                          : 'bg-card text-muted-foreground/40 cursor-not-allowed',
-                    ].join(' ')}
-                  >
-                    {!allowed && <Lock className="size-2.5 shrink-0" />}
-                    {r}
-                  </button>
-                )
-              })}
+                {/* Current window label */}
+                <div className="flex flex-col items-center justify-center px-3 py-1.5 flex-1 min-w-0">
+                  <span className="text-xs font-medium text-foreground whitespace-nowrap">
+                    {currentLabel}
+                  </span>
+                  {offset > 0 && (
+                    <button
+                      onClick={() => setOffset(0)}
+                      className="text-[10px] text-sky-500 hover:text-sky-600 dark:hover:text-sky-400 font-medium mt-0.5 leading-none transition-colors"
+                    >
+                      Back to today
+                    </button>
+                  )}
+                </div>
+
+                {/* Newer */}
+                <button
+                  onClick={() => setOffset((o) => o - 1)}
+                  disabled={!canGoNewer}
+                  title={canGoNewer ? 'Next period' : 'Already at current period'}
+                  className={[
+                    'flex items-center justify-center w-9 h-10 flex-none transition-colors',
+                    canGoNewer
+                      ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      : 'text-muted-foreground/30 cursor-not-allowed',
+                  ].join(' ')}
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+
             </div>
           </div>
+
         </div>
 
         {/* ── Summary cards ───────────────────────────────────────────────── */}
