@@ -310,7 +310,7 @@ export function CareHistoryTablePage() {
         </div>
 
         {/* Row 1: date range + cat + type + member */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 min-w-0">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 min-w-0">
 
           {/* Start date */}
           <div className="space-y-1 min-w-0">
@@ -380,7 +380,7 @@ export function CareHistoryTablePage() {
           </div>
 
           {/* Logged by */}
-          <div className="space-y-1 min-w-0">
+          <div className="space-y-1 min-w-0 col-span-2 lg:col-span-1">
             <label className="text-xs text-muted-foreground">Logged by</label>
             <select
               value={memberFilter}
