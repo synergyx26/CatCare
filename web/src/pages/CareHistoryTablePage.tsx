@@ -310,7 +310,7 @@ export function CareHistoryTablePage() {
         </div>
 
         {/* Row 1: date range + cat + type + member */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
 
           {/* Start date */}
           <div className="space-y-1">
@@ -444,59 +444,101 @@ export function CareHistoryTablePage() {
           description="Try adjusting your filters or date range."
         />
       ) : (
-        <div className="rounded-2xl border overflow-hidden">
-          {isFetching && <div className="h-0.5 bg-sky-500 animate-pulse" />}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground whitespace-nowrap">Date / Time</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Cat</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Type</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Details</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Notes</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground whitespace-nowrap">Logged by</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {events.map((event) => {
-                  const color      = EVENT_COLORS[event.event_type]
-                  const catName    = catMap.get(event.cat_id) ?? '—'
-                  const loggerName = memberMap.get(event.logged_by_id)
-                    ?? (event.logged_by_id === user?.id ? 'You' : String(event.logged_by_id))
-                  return (
-                    <tr key={event.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap tabular-nums text-xs">
-                        {formatDateTime(event.occurred_at)}
-                      </td>
-                      <td className="px-4 py-2.5 font-medium">{catName}</td>
-                      <td className="px-4 py-2.5">
-                        <span
-                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
-                          style={{ backgroundColor: `${color}20`, color }}
-                        >
-                          {EVENT_TYPE_LABEL[event.event_type] ?? event.event_type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-muted-foreground">
-                        {formatEventSummary(event) || '—'}
-                      </td>
-                      <td
-                        className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate"
-                        title={event.notes ?? undefined}
-                      >
-                        {event.notes || '—'}
-                      </td>
-                      <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
-                        {loggerName}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+        <>
+          {isFetching && <div className="h-0.5 bg-sky-500 animate-pulse rounded-full" />}
+
+          {/* Mobile: card list */}
+          <div className="sm:hidden space-y-2">
+            {events.map((event) => {
+              const color      = EVENT_COLORS[event.event_type]
+              const catName    = catMap.get(event.cat_id) ?? '—'
+              const loggerName = memberMap.get(event.logged_by_id)
+                ?? (event.logged_by_id === user?.id ? 'You' : String(event.logged_by_id))
+              const summary    = formatEventSummary(event)
+              return (
+                <div key={event.id} className="rounded-xl border bg-card p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold shrink-0"
+                      style={{ backgroundColor: `${color}20`, color }}
+                    >
+                      {EVENT_TYPE_LABEL[event.event_type] ?? event.event_type}
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {formatDateTime(event.occurred_at)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="font-medium truncate">{catName}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{loggerName}</span>
+                  </div>
+                  {(summary || event.notes) && (
+                    <div className="text-xs text-muted-foreground space-y-0.5 border-t border-border/40 pt-2">
+                      {summary && <p>{summary}</p>}
+                      {event.notes && (
+                        <p className="truncate" title={event.notes}>{event.notes}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
-        </div>
+
+          {/* Desktop: full table */}
+          <div className="hidden sm:block rounded-2xl border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-[640px] w-full text-sm">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground whitespace-nowrap">Date / Time</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Cat</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Type</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Details</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Notes</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground whitespace-nowrap">Logged by</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {events.map((event) => {
+                    const color      = EVENT_COLORS[event.event_type]
+                    const catName    = catMap.get(event.cat_id) ?? '—'
+                    const loggerName = memberMap.get(event.logged_by_id)
+                      ?? (event.logged_by_id === user?.id ? 'You' : String(event.logged_by_id))
+                    return (
+                      <tr key={event.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap tabular-nums text-xs">
+                          {formatDateTime(event.occurred_at)}
+                        </td>
+                        <td className="px-4 py-2.5 font-medium">{catName}</td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+                            style={{ backgroundColor: `${color}20`, color }}
+                          >
+                            {EVENT_TYPE_LABEL[event.event_type] ?? event.event_type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-muted-foreground">
+                          {formatEventSummary(event) || '—'}
+                        </td>
+                        <td
+                          className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate"
+                          title={event.notes ?? undefined}
+                        >
+                          {event.notes || '—'}
+                        </td>
+                        <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
+                          {loggerName}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
