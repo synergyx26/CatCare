@@ -41,6 +41,13 @@ Rails.application.routes.draw do
       # Token-based invite routes (show is public, accept requires auth)
       get  'invites/:token',        to: 'household_invites#show'
       post 'invites/:token/accept', to: 'household_invites#accept'
+
+      # Super-admin endpoints
+      namespace :admin do
+        get  'stats',      to: 'stats#show'
+        get  'users',      to: 'users#index'
+        patch 'users/:id', to: 'users#update'
+      end
     end
   end
 

@@ -51,11 +51,6 @@ module Api
 
       private
 
-      def super_admin?
-        admin_email = ENV["SUPER_ADMIN_EMAIL"].to_s.strip
-        admin_email.present? && current_user.email == admin_email
-      end
-
       def notification_preferences_params
         params.require(:notification_preferences).permit(
           in_app: [ :enabled, :position, :duration, :success_toasts, :error_toasts, :tier_limit_toasts ],

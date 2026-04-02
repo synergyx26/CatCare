@@ -258,6 +258,27 @@ export interface CareNote {
   updated_at: string
 }
 
+// ─── Admin ────────────────────────────────────────────────────────────────────
+
+export interface AdminUser {
+  id: number
+  name: string
+  email: string
+  subscription_tier: SubscriptionTier
+  provider: string | null
+  household_count: number
+  created_at: string
+}
+
+export interface AdminStats {
+  total_users: number
+  total_households: number
+  total_cats: number
+  total_care_events: number
+  tier_breakdown: { free: number; pro: number; premium: number }
+  signups_by_day: { date: string; count: number }[]
+}
+
 // ─── Cat Stats ────────────────────────────────────────────────────────────────
 
 export interface DayStats {

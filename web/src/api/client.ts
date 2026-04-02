@@ -274,4 +274,14 @@ export const api = {
 
   updateNotificationPreferences: (prefs: Partial<NotificationPreferences>) =>
     apiClient.patch('/me/notification_preferences', { notification_preferences: prefs }),
+
+  // Super-admin
+  adminStats: () =>
+    apiClient.get('/admin/stats'),
+
+  adminUsers: (params?: { page?: number; per?: number; search?: string; tier?: string }) =>
+    apiClient.get('/admin/users', { params }),
+
+  adminUpdateUserTier: (userId: number, tier: string) =>
+    apiClient.patch(`/admin/users/${userId}`, { subscription_tier: tier }),
 }

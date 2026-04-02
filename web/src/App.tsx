@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/sonner'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { GuestRoute } from '@/components/GuestRoute'
+import { AdminRoute } from '@/components/AdminRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useApplyTheme } from '@/hooks/useApplyTheme'
 import { useNotificationStore } from '@/store/notificationStore'
@@ -20,6 +21,7 @@ import { HouseholdSettingsPage } from '@/pages/HouseholdSettingsPage'
 import { HouseholdNotesPage } from '@/pages/HouseholdNotesPage'
 import { NotificationSettingsPage } from '@/pages/NotificationSettingsPage'
 import { CareHistoryTablePage } from '@/pages/CareHistoryTablePage'
+import { AdminPage } from '@/pages/AdminPage'
 import { LandingPage } from '@/pages/LandingPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
@@ -96,6 +98,11 @@ export default function App() {
                 element={<CareHistoryTablePage />}
               />
             </Route>
+          </Route>
+
+          {/* Super-admin — requires is_super_admin on the user object */}
+          <Route element={<AdminRoute />}>
+            <Route path="/admin" element={<AdminPage />} />
           </Route>
 
           {/* Fallback */}
