@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
 import type { NotificationPreferences } from '@/types/api'
 
@@ -24,7 +25,7 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-// ─── Response interceptor: extract token, handle 401 ─────────────────────────
+// ─── Response interceptor: extract token, handle 401, cold-start retry ───────
 apiClient.interceptors.response.use(
   (response) => {
     // devise-jwt sends the token in the Authorization response header
@@ -32,14 +33,47 @@ apiClient.interceptors.response.use(
     if (token) {
       localStorage.setItem('catcare_token', token)
     }
+    // Dismiss the cold-start toast if a request eventually succeeds
+    toast.dismiss('cold-start')
     return response
   },
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
       // Clear all auth state so Zustand + localStorage are consistent on reload
       useAuthStore.getState().clearAuth()
       window.location.href = '/login'
+      return Promise.reject(error)
     }
+
+    // Cold-start retry: Render free tier spins down after inactivity. When
+    // waking up, the reverse proxy is ready before Puma, so all requests get
+    // 502 for ~60–90 seconds. Retry with backoff and notify the user.
+    const status = error.response?.status
+    if ((status === 502 || status === 503 || status === 504) && error.config) {
+      const config = error.config as typeof error.config & { _retryCount?: number }
+      const retryCount = config._retryCount ?? 0
+      const maxRetries = 8
+
+      if (retryCount < maxRetries) {
+        config._retryCount = retryCount + 1
+
+        if (retryCount === 0) {
+          toast.loading('Server is starting up, please wait…', {
+            id: 'cold-start',
+            duration: Infinity,
+          })
+        }
+
+        // Backoff: 3s, 5s, 7s … capped at 15s
+        const delay = Math.min(3000 + retryCount * 2000, 15000)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        return apiClient(config)
+      }
+
+      toast.dismiss('cold-start')
+      toast.error('Server is unavailable. Please try again in a moment.')
+    }
+
     return Promise.reject(error)
   }
 )
