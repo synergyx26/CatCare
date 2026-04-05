@@ -52,6 +52,7 @@ const DETAIL_FIELDS: Partial<Record<KnownEventType, {
     { key: 'medication_name', label: 'Medication name', required: true },
     { key: 'dosage', label: 'Dosage', required: false },
     { key: 'unit', label: 'Unit', required: false, fixedOptions: ['mg', 'ml', 'tablet'] },
+    { key: 'stopped', label: 'Mark as historical (stopped)', required: false, fixedOptions: ['true', 'false'] },
   ],
   vet_visit: [
     { key: 'reason', label: 'Reason', required: false },
@@ -192,7 +193,7 @@ export function AdminImportPage() {
     eventTypeMode: 'column',
     dateColumn: '',
     notesColumn: '',
-    detailMappings: { severity: { mode: 'fixed', value: 'mild' } },
+    detailMappings: { severity: { mode: 'fixed', value: 'mild' }, stopped: { mode: 'fixed', value: 'true' } },
   })
 
   // typeMap: raw string in file → CatCare event type
@@ -231,7 +232,7 @@ export function AdminImportPage() {
       eventTypeMode: 'fixed',
       dateColumn: cols[2] ?? '',
       notesColumn: '',
-      detailMappings: { severity: { mode: 'fixed', value: 'mild' } },
+      detailMappings: { severity: { mode: 'fixed', value: 'mild' }, stopped: { mode: 'fixed', value: 'true' } },
     })
     setTypeMap({})
     setCatMap({})
@@ -327,7 +328,10 @@ export function AdminImportPage() {
           const dm = mapping.detailMappings[fieldDef.key]
           if (!dm) continue
           if (dm.mode === 'fixed') {
-            if (dm.value) details[fieldDef.key] = dm.value
+            if (dm.value) {
+              const booleanKeys = ['stopped']
+              details[fieldDef.key] = booleanKeys.includes(fieldDef.key) ? dm.value === 'true' : dm.value
+            }
           } else if (dm.mode === 'column' && dm.column) {
             const v = cellStr(row, dm.column)
             if (v) {
@@ -335,7 +339,14 @@ export function AdminImportPage() {
               const transform = detailValueMaps[fieldDef.key]
               const transformed = transform?.[v] ?? v
               const numericKeys = ['weight_value', 'amount_grams']
-              details[fieldDef.key] = numericKeys.includes(fieldDef.key) ? parseNumeric(transformed) : transformed
+              const booleanKeys = ['stopped']
+              if (numericKeys.includes(fieldDef.key)) {
+                details[fieldDef.key] = parseNumeric(transformed)
+              } else if (booleanKeys.includes(fieldDef.key)) {
+                details[fieldDef.key] = transformed === 'true'
+              } else {
+                details[fieldDef.key] = transformed
+              }
             }
           } else if (dm.mode === 'event_type_col' && mapping.eventTypeColumn) {
             // Read the same column that drives event type; apply this field's own value transform.
