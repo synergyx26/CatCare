@@ -334,3 +334,19 @@ export interface CatStats {
   feeding_series: FeedingDayStat[]
   symptom_series: SymptomPoint[]
 }
+
+// ─── Import ───────────────────────────────────────────────────────────────────
+
+export interface ImportCareEventRow {
+  cat_id: number
+  event_type: string
+  occurred_at: string // ISO8601, UTC
+  notes?: string | null
+  details?: Record<string, unknown>
+}
+
+export interface ImportResult {
+  imported: number
+  failed: { row: number; error: string }[]
+}
+

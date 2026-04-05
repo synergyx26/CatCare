@@ -47,6 +47,7 @@ Rails.application.routes.draw do
         get  'stats',      to: 'stats#show'
         get  'users',      to: 'users#index'
         patch 'users/:id', to: 'users#update'
+        post 'imports/care_events', to: 'imports#care_events'
       end
     end
   end

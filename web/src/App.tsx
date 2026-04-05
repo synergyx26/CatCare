@@ -22,6 +22,7 @@ import { HouseholdNotesPage } from '@/pages/HouseholdNotesPage'
 import { NotificationSettingsPage } from '@/pages/NotificationSettingsPage'
 import { CareHistoryTablePage } from '@/pages/CareHistoryTablePage'
 import { AdminPage } from '@/pages/AdminPage'
+import { AdminImportPage } from '@/pages/AdminImportPage'
 import { LandingPage } from '@/pages/LandingPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
@@ -103,6 +104,7 @@ export default function App() {
           {/* Super-admin — requires is_super_admin on the user object */}
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/import" element={<AdminImportPage />} />
           </Route>
 
           {/* Fallback */}

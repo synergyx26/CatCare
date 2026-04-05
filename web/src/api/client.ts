@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
-import type { NotificationPreferences } from '@/types/api'
+import type { NotificationPreferences, ImportCareEventRow } from '@/types/api'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
@@ -318,4 +318,7 @@ export const api = {
 
   adminUpdateUserTier: (userId: number, tier: string) =>
     apiClient.patch(`/admin/users/${userId}`, { subscription_tier: tier }),
+
+  adminImportCareEvents: (events: ImportCareEventRow[]) =>
+    apiClient.post('/admin/imports/care_events', { events }),
 }
