@@ -338,7 +338,7 @@ export function AdminImportPage() {
   const invalidRows = previewRows.filter(r => r.errors.length > 0)
 
   // ── Step 4: Import mutation (batched, 500 rows per request) ───────────────
-  const BATCH_SIZE = 500
+  const BATCH_SIZE = 100
 
   const importMutation = useMutation({
     mutationFn: async () => {

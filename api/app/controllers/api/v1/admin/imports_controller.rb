@@ -12,8 +12,10 @@ module Api
 
         def care_events
           events = params.require(:events)
-          imported = 0
           failed = []
+          to_insert = []
+          now = Time.current
+          event_type_map = CareEvent.event_types # {"feeding"=>0, "litter"=>1, ...}
 
           events.each_with_index do |row, i|
             cat = current_household.cats.find_by(id: row[:cat_id])
@@ -22,21 +24,42 @@ module Api
               next
             end
 
-            event = CareEvent.new(
-              cat: cat,
-              household: current_household,
-              logged_by_id: current_user.id,
-              event_type: row[:event_type],
-              occurred_at: row[:occurred_at],
-              notes: row[:notes].presence,
-              details: row[:details].present? ? row[:details].to_unsafe_h : {}
-            )
-
-            if event.save
-              imported += 1
-            else
-              failed << { row: i + 1, error: event.errors.full_messages.join(", ") }
+            event_type_int = event_type_map[row[:event_type].to_s]
+            unless event_type_int
+              failed << { row: i + 1, error: "Unknown event type: #{row[:event_type]}" }
+              next
             end
+
+            occurred_at = begin
+              Time.parse(row[:occurred_at].to_s).utc
+            rescue ArgumentError, TypeError
+              nil
+            end
+
+            unless occurred_at
+              failed << { row: i + 1, error: "Invalid occurred_at: #{row[:occurred_at]}" }
+              next
+            end
+
+            details = row[:details].present? ? row[:details].to_unsafe_h : {}
+
+            to_insert << {
+              cat_id:        cat.id,
+              household_id:  current_household.id,
+              logged_by_id:  current_user.id,
+              event_type:    event_type_int,
+              occurred_at:   occurred_at,
+              notes:         row[:notes].presence,
+              details:       details,
+              created_at:    now,
+              updated_at:    now,
+            }
+          end
+
+          imported = 0
+          if to_insert.any?
+            result = CareEvent.insert_all(to_insert)
+            imported = result.length
           end
 
           render json: { imported: imported, failed: failed }
