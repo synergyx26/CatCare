@@ -111,12 +111,13 @@ interface Props {
   initialEvent?:          CareEvent
   initialType?:           EventType
   initialMedicationName?: string
+  activeMedication?:      boolean
   onClose:                () => void
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function LogCareModal({ cat, householdId, initialEvent, initialType, initialMedicationName, onClose }: Props) {
+export function LogCareModal({ cat, householdId, initialEvent, initialType, initialMedicationName, activeMedication, onClose }: Props) {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
   const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
@@ -257,6 +258,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
       return {
         medication_name: medicationName.trim(),
         ...(medicationDosage ? { dosage: medicationDosage, unit: medicationUnit } : {}),
+        ...(activeMedication ? { active_medication: true } : {}),
       }
     }
     if (eventType === 'vet_visit') {

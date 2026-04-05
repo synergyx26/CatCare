@@ -31,7 +31,7 @@ export function CatProfilePage() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
   const [archiveDialog, setArchiveDialog] = useState<'archive' | 'deceased' | null>(null)
-  const [logModal, setLogModal] = useState<{ prefillName?: string; initialEvent?: CareEvent; initialType?: EventType } | null>(null)
+  const [logModal, setLogModal] = useState<{ prefillName?: string; initialEvent?: CareEvent; initialType?: EventType; activeMedication?: boolean } | null>(null)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['cat', householdId, catId],
@@ -298,8 +298,9 @@ export function CatProfilePage() {
             catId={Number(catId)}
             currentRole={currentRole}
             onOpenModal={(opts) => setLogModal({
-              initialEvent: opts.initialEvent,
-              prefillName:  opts.prefillName,
+              initialEvent:     opts.initialEvent,
+              prefillName:      opts.prefillName,
+              activeMedication: true,
             })}
           />
 
@@ -365,6 +366,7 @@ export function CatProfilePage() {
           initialEvent={logModal.initialEvent}
           initialType={logModal.initialEvent ? undefined : 'medication'}
           initialMedicationName={logModal.prefillName}
+          activeMedication={logModal.activeMedication}
           onClose={() => setLogModal(null)}
         />
       )}

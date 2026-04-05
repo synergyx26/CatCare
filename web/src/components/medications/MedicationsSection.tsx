@@ -35,14 +35,15 @@ export function MedicationsSection({ householdId, catId, currentRole, onOpenModa
   )
 
   // Group by medication name — keep only the most recent entry per name.
-  // Skip historical imports (historical: true); those appear only in the care log.
+  // Only show medications explicitly started from the Medications section
+  // (active_medication: true). Care log entries and imports are excluded.
   const medicationMap = new Map<
     string,
     { lastAt: string; dosage: string; unit: string; event: CareEvent; stopped: boolean }
   >()
   for (const event of medicationEvents) {
     const d = event.details as Record<string, unknown>
-    if (d.historical === true) continue
+    if (d.active_medication !== true) continue
     const name = (d.medication_name as string) || 'Unknown medication'
     if (!medicationMap.has(name)) {
       medicationMap.set(name, {

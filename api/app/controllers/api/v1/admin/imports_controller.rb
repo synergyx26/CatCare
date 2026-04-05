@@ -43,13 +43,6 @@ module Api
 
             details = row[:details].present? ? row[:details].to_unsafe_h : {}
 
-            # Medication events imported via this tool are historical dose logs.
-            # Mark them so MedicationsSection excludes them from the active/stopped
-            # display — they appear only in the care event timeline.
-            if event_type_int == event_type_map["medication"]
-              details = details.merge("historical" => true, "stopped" => true)
-            end
-
             to_insert << {
               cat_id:        cat.id,
               household_id:  current_household.id,
