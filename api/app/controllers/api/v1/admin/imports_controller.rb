@@ -2,6 +2,14 @@ module Api
   module V1
     module Admin
       class ImportsController < BaseController
+        private
+
+        def current_household
+          @current_household ||= current_user.households.first
+        end
+
+        public
+
         def care_events
           events = params.require(:events)
           imported = 0
