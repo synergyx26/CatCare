@@ -45,7 +45,8 @@ const DETAIL_FIELDS: Partial<Record<KnownEventType, {
   ],
   feeding: [
     { key: 'food_type', label: 'Food type', required: false, fixedOptions: ['wet', 'dry', 'treats', 'other'] },
-    { key: 'amount_grams', label: 'Amount (grams)', required: false },
+    { key: 'amount_grams', label: 'Amount', required: false },
+    { key: 'unit', label: 'Unit (grams, packs, etc.)', required: false },
   ],
   medication: [
     { key: 'medication_name', label: 'Medication name', required: true },
@@ -187,6 +188,13 @@ export function AdminImportPage() {
   // catMap: raw cat name in file → cat id (null = skip)
   const [catMap, setCatMap] = useState<Record<string, number | null>>({})
 
+  // detailValueMaps: for detail fields with fixedOptions mapped from a column,
+  // transforms raw spreadsheet values → CatCare values (e.g. "Trauma" → "treats")
+  const [detailValueMaps, setDetailValueMaps] = useState<Record<string, Record<string, string>>>({})
+
+  // dateOnly: when true, strip the time from DateAdded and use midnight UTC
+  const [dateOnly, setDateOnly] = useState(false)
+
   // ── Import result state ────────────────────────────────────────────────────
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
 
@@ -216,6 +224,8 @@ export function AdminImportPage() {
       })
       setTypeMap({})
       setCatMap({})
+      setDetailValueMaps({})
+      setDateOnly(false)
       setImportResult(null)
       setStep(2)
     }
@@ -277,7 +287,11 @@ export function AdminImportPage() {
 
       // Date
       const rawDate = row[mapping.dateColumn]
-      const occurredAt = parseDate(rawDate as string | number | null)
+      let occurredAt = parseDate(rawDate as string | number | null)
+      if (occurredAt && dateOnly) {
+        const d = new Date(occurredAt)
+        occurredAt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString()
+      }
       if (!occurredAt) errors.push('Invalid or missing date')
 
       // Notes
@@ -294,7 +308,13 @@ export function AdminImportPage() {
             if (dm.value) details[fieldDef.key] = dm.value
           } else if (dm.mode === 'column' && dm.column) {
             const v = cellStr(row, dm.column)
-            if (v) details[fieldDef.key] = fieldDef.key === 'weight_value' || fieldDef.key === 'amount_grams' ? Number(v) : v
+            if (v) {
+              // Apply value transform if one exists for this field (e.g. "Trauma" → "treats")
+              const transform = detailValueMaps[fieldDef.key]
+              const transformed = transform?.[v] ?? v
+              const numericKeys = ['weight_value', 'amount_grams']
+              details[fieldDef.key] = numericKeys.includes(fieldDef.key) ? Number(transformed) : transformed
+            }
           }
         }
       }
@@ -470,15 +490,26 @@ export function AdminImportPage() {
               </div>
 
               {/* Date column */}
-              <div className="grid grid-cols-2 gap-4 items-center">
-                <label className="text-sm font-medium">Date / time column <span className="text-destructive">*</span></label>
-                <select
-                  className="rounded-lg border bg-background px-3 py-2 text-sm"
-                  value={mapping.dateColumn}
-                  onChange={e => setMapping(m => ({ ...m, dateColumn: e.target.value }))}
-                >
-                  {colOptions(false)}
-                </select>
+              <div className="grid grid-cols-2 gap-4 items-start">
+                <label className="text-sm font-medium pt-2">Date / time column <span className="text-destructive">*</span></label>
+                <div className="space-y-2">
+                  <select
+                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                    value={mapping.dateColumn}
+                    onChange={e => setMapping(m => ({ ...m, dateColumn: e.target.value }))}
+                  >
+                    {colOptions(false)}
+                  </select>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={dateOnly}
+                      onChange={e => setDateOnly(e.target.checked)}
+                      className="rounded"
+                    />
+                    Date only — strip time, use midnight UTC
+                  </label>
+                </div>
               </div>
 
               {/* Notes column (optional) */}
@@ -588,16 +619,46 @@ export function AdminImportPage() {
                               </div>
                             )}
                             {mode === 'column' || !fieldDef.fixedOptions ? (
-                              <select
-                                className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
-                                value={(dm?.mode === 'column' ? dm.column : '') ?? ''}
-                                onChange={e => setMapping(m => ({
-                                  ...m,
-                                  detailMappings: { ...m.detailMappings, [fieldDef.key]: { mode: 'column', column: e.target.value } }
-                                }))}
-                              >
-                                {colOptions(true)}
-                              </select>
+                              <>
+                                <select
+                                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                                  value={(dm?.mode === 'column' ? dm.column : '') ?? ''}
+                                  onChange={e => setMapping(m => ({
+                                    ...m,
+                                    detailMappings: { ...m.detailMappings, [fieldDef.key]: { mode: 'column', column: e.target.value } }
+                                  }))}
+                                >
+                                  {colOptions(true)}
+                                </select>
+                                {/* Value transform: shown when this field has fixedOptions and a column is selected */}
+                                {fieldDef.fixedOptions && dm?.mode === 'column' && dm.column && (() => {
+                                  const rawVals = Array.from(new Set(
+                                    rows.map(r => cellStr(r, dm.column)).filter(Boolean)
+                                  )).sort()
+                                  if (rawVals.length === 0) return null
+                                  return (
+                                    <div className="mt-2 rounded-lg border bg-muted/30 p-3 space-y-1.5">
+                                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Map values</p>
+                                      {rawVals.map(raw => (
+                                        <div key={raw} className="flex items-center gap-2">
+                                          <span className="text-xs font-mono bg-background border rounded px-1.5 py-0.5 shrink-0">{raw}</span>
+                                          <span className="text-muted-foreground text-xs">→</span>
+                                          <select
+                                            className="flex-1 rounded border bg-background px-2 py-1 text-xs"
+                                            value={detailValueMaps[fieldDef.key]?.[raw] ?? raw.toLowerCase()}
+                                            onChange={e => setDetailValueMaps(m => ({
+                                              ...m,
+                                              [fieldDef.key]: { ...(m[fieldDef.key] ?? {}), [raw]: e.target.value }
+                                            }))}
+                                          >
+                                            {fieldDef.fixedOptions!.map(o => <option key={o} value={o}>{o}</option>)}
+                                          </select>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                })()}
+                              </>
                             ) : (
                               <select
                                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
