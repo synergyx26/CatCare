@@ -144,6 +144,9 @@ Frontend access pattern: `response.data.data` (Axios wrapper → Rails envelope 
 ### Health Endpoint
 `GET /health` — public, no auth. Returns `{ status: "ok", db: "connected" }` or 503 if DB is down. Use this for uptime monitors and load balancer health checks.
 
+### Cold-Start Resilience (Render free tier)
+`web/src/api/client.ts` response interceptor retries 502/503/504 up to 8 times with increasing backoff (3s→15s). Shows a persistent `toast.loading('Server is starting up…')` on first failure, dismisses it on success. Covers the ~60–90s window where Render's proxy is live but Puma hasn't finished booting. Import calls use a 120s per-request timeout (override on `adminImportCareEvents`).
+
 ### Sentry
 - **Rails**: `config/initializers/sentry.rb` — reads `SENTRY_DSN` env var. Only active in `production`/`staging`. Set `SENTRY_DSN` in your hosting environment's secrets.
 - **React**: initialized in `web/src/main.tsx` — reads `VITE_SENTRY_DSN`. No-ops silently if the env var is absent (safe in dev).
@@ -261,7 +264,7 @@ ReminderRecipient — reminder_id, user_id
 **Event types (enum int):** feeding=0, litter=1, water=2, weight=3, note=4, medication=5, vet_visit=6, grooming=7
 
 **JSONB details shapes:**
-- feeding: `{ food_type, amount_grams }`
+- feeding: `{ food_type, amount_grams, unit }` — unit is free-text (grams, packs, etc.)
 - weight: `{ weight_value, weight_unit }`
 - medication: `{ medication_name, dosage, unit }` — unit is `mg` | `ml` | `tablet`
 
@@ -281,6 +284,12 @@ api/app/controllers/api/v1/
   household_invites_controller.rb — role param + accept flow + Pundit; tier enforcement on create (member limit)
   memberships_controller.rb       — self profile (show/update) + admin manage_update/manage_destroy
   oauth_controller.rb             — POST /api/v1/auth/google; verifies Google ID token via tokeninfo endpoint, finds-or-creates user, returns CatCare JWT
+
+api/app/controllers/api/v1/admin/
+  base_controller.rb        — requires super_admin? before all actions; inherits ApplicationController (NOT Api::V1::BaseController)
+  stats_controller.rb       — GET /api/v1/admin/stats
+  users_controller.rb       — GET/PATCH /api/v1/admin/users
+  imports_controller.rb     — POST /api/v1/admin/imports/care_events; batched bulk insert; overrides current_household to use super-admin's first household; no tier checks; accepts { events: [...] }
 
 api/app/policies/
   cat_policy.rb                    — sitter: read-only; admin/member: full CRUD
@@ -357,6 +366,11 @@ web/src/
     HouseholdSettingsPage.tsx — admin-only; per-cat care requirements (feedings/day, water, litter) + feeding portion preset editor
     LandingPage.tsx         — public landing page at /
     AddCatPage.tsx, HouseholdSetupPage.tsx, LoginPage.tsx, RegisterPage.tsx, InvitePage.tsx
+    AdminPage.tsx           — super-admin dashboard: platform stats, user management, tier switching
+    AdminImportPage.tsx     — super-admin only; 4-step Excel import wizard (Upload → Map → Preview → Import);
+                              SheetJS parses client-side; batches 500 rows/request with progress bar;
+                              maps cat names, event types, detail fields (food_type value transform,
+                              date-only mode); route: /admin/import
 ```
 
 ---
@@ -374,3 +388,5 @@ web/src/
 9. **Tier frontend-only** — every tier restriction must be enforced in Rails too; frontend is UX only, backend is the security boundary
 10. **Wrong event type color** — always use `EVENT_COLORS` from `lib/eventColors.ts`; never hardcode event colors (litter=purple, water=blue, not the other way around)
 11. **Forgetting batch actions** — `BatchActionModal` and the "Log for all" row in `DashboardPage` are separate from `LogCareModal`; any new event type tier rule must be applied to all three surfaces
+12. **Admin controllers missing current_household** — `Admin::BaseController` inherits `ApplicationController`, not `Api::V1::BaseController`. Admin controllers that need `current_household` must define it themselves (e.g. `current_user.households.first` for import, or `current_user.households.find(params[:household_id])` if the route has it)
+13. **Import builds clean locally but fails CI** — `tsc --noEmit` does not catch all unused variable errors that `tsc -b` (used by `npm run build`) does. Always run `npm run build` before pushing, not just `tsc --noEmit`
