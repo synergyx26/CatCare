@@ -123,7 +123,7 @@ function cellStr(row: RawRow, col: string): string {
 
 // ─── Step components ─────────────────────────────────────────────────────────
 
-function StepIndicator({ step, current }: { step: number; current: number }) {
+function StepIndicator({ current }: { current: number }) {
   const steps = ['Upload', 'Map', 'Preview', 'Import']
   return (
     <div className="flex items-center gap-2 mb-8">
@@ -438,7 +438,7 @@ export function AdminImportPage() {
           </p>
         </div>
 
-        <StepIndicator step={step} current={step} />
+        <StepIndicator current={step} />
 
         {/* ── Step 1: Upload ─────────────────────────────────────────────── */}
         {step === 1 && (
