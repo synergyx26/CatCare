@@ -34,13 +34,15 @@ export function MedicationsSection({ householdId, catId, currentRole, onOpenModa
       new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
   )
 
-  // Group by medication name — keep only the most recent entry per name
+  // Group by medication name — keep only the most recent entry per name.
+  // Skip historical imports (historical: true); those appear only in the care log.
   const medicationMap = new Map<
     string,
     { lastAt: string; dosage: string; unit: string; event: CareEvent; stopped: boolean }
   >()
   for (const event of medicationEvents) {
     const d = event.details as Record<string, unknown>
+    if (d.historical === true) continue
     const name = (d.medication_name as string) || 'Unknown medication'
     if (!medicationMap.has(name)) {
       medicationMap.set(name, {
