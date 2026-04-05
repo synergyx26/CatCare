@@ -215,9 +215,9 @@ export function AdminImportPage() {
       // Reset downstream state
       setMapping({
         catColumn: cols[0] ?? '',
-        eventTypeColumn: cols[1] ?? '',
+        eventTypeColumn: '',
         eventTypeFixed: 'feeding',
-        eventTypeMode: 'column',
+        eventTypeMode: 'fixed',
         dateColumn: cols[2] ?? '',
         notesColumn: '',
         detailMappings: {},
