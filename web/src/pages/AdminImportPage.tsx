@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { read as xlsxRead, utils as xlsxUtils } from 'xlsx'
+import { read as xlsxRead, utils as xlsxUtils, type WorkBook } from 'xlsx'
 import { api } from '@/api/client'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { useNavigate } from 'react-router-dom'
@@ -61,7 +61,7 @@ const DETAIL_FIELDS: Partial<Record<KnownEventType, {
     { key: 'grooming_type', label: 'Grooming type', required: false, fixedOptions: ['bath', 'nail_trim', 'full_groom', 'other'] },
   ],
   symptom: [
-    { key: 'symptom_type', label: 'Symptom type', required: false },
+    { key: 'symptom_type', label: 'What happened?', required: false, fixedOptions: ['vomiting', 'coughing', 'asthma_attack', 'sneezing', 'diarrhea', 'lethargy', 'not_eating', 'limping', 'eye_discharge', 'seizure', 'other'] },
     { key: 'severity', label: 'Severity', required: false, fixedOptions: ['mild', 'moderate', 'severe'] },
   ],
 }
@@ -70,10 +70,12 @@ const DETAIL_FIELDS: Partial<Record<KnownEventType, {
 
 type RawRow = Record<string, string | number | null | undefined>
 
-// Maps a detail field key to either a spreadsheet column name or a fixed literal value
+// Maps a detail field key to either a spreadsheet column name, a fixed literal value,
+// or the same column that drives event type (with its own per-value transform)
 type DetailMapping =
   | { mode: 'column'; column: string }
   | { mode: 'fixed'; value: string }
+  | { mode: 'event_type_col' }
 
 interface ColumnMapping {
   catColumn: string           // spreadsheet column → cat name
@@ -113,6 +115,14 @@ function parseDate(raw: string | number | null | undefined): string | null {
   const d = new Date(String(raw))
   if (isNaN(d.getTime())) return null
   return d.toISOString()
+}
+
+// Extracts the first number from a string, e.g. "7.22kg at the vet" → 7.22
+function parseNumeric(raw: string): number {
+  const direct = Number(raw)
+  if (!isNaN(direct)) return direct
+  const match = raw.match(/(\d+\.?\d*)/)
+  return match ? Number(match[1]) : NaN
 }
 
 function cellStr(row: RawRow, col: string): string {
@@ -156,6 +166,9 @@ export function AdminImportPage() {
   const [rows, setRows] = useState<RawRow[]>([])
   const [columns, setColumns] = useState<string[]>([])
   const [fileName, setFileName] = useState('')
+  const [sheetNames, setSheetNames] = useState<string[]>([])
+  const [selectedSheet, setSelectedSheet] = useState('')
+  const workbookRef = useRef<WorkBook | null>(null)
 
   // Load existing cats for name reconciliation
   const householdsQuery = useQuery({
@@ -179,7 +192,7 @@ export function AdminImportPage() {
     eventTypeMode: 'column',
     dateColumn: '',
     notesColumn: '',
-    detailMappings: {},
+    detailMappings: { severity: { mode: 'fixed', value: 'mild' } },
   })
 
   // typeMap: raw string in file → CatCare event type
@@ -201,38 +214,45 @@ export function AdminImportPage() {
   const [importError, setImportError] = useState<string | null>(null)
 
   // ── Step 1: Upload ─────────────────────────────────────────────────────────
+
+  // Parses a specific sheet from the stored workbook and resets all downstream state.
+  const applySheet = useCallback((workbook: WorkBook, sheetName: string) => {
+    const sheet = workbook.Sheets[sheetName]
+    const parsed: RawRow[] = xlsxUtils.sheet_to_json(sheet, { defval: null })
+    if (parsed.length === 0) return
+    const cols = Object.keys(parsed[0])
+    setRows(parsed)
+    setColumns(cols)
+    setSelectedSheet(sheetName)
+    setMapping({
+      catColumn: cols[0] ?? '',
+      eventTypeColumn: '',
+      eventTypeFixed: 'feeding',
+      eventTypeMode: 'fixed',
+      dateColumn: cols[2] ?? '',
+      notesColumn: '',
+      detailMappings: { severity: { mode: 'fixed', value: 'mild' } },
+    })
+    setTypeMap({})
+    setCatMap({})
+    setDetailValueMaps({})
+    setDateOnly(false)
+    setImportResult(null)
+  }, [])
+
   const handleFile = useCallback((file: File) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       const data = e.target?.result
       const workbook = xlsxRead(data, { type: 'binary', cellDates: false })
-      const sheetName = workbook.SheetNames[0]
-      const sheet = workbook.Sheets[sheetName]
-      const parsed: RawRow[] = xlsxUtils.sheet_to_json(sheet, { defval: null })
-      if (parsed.length === 0) return
-      const cols = Object.keys(parsed[0])
-      setRows(parsed)
-      setColumns(cols)
+      workbookRef.current = workbook
+      setSheetNames(workbook.SheetNames)
       setFileName(file.name)
-      // Reset downstream state
-      setMapping({
-        catColumn: cols[0] ?? '',
-        eventTypeColumn: '',
-        eventTypeFixed: 'feeding',
-        eventTypeMode: 'fixed',
-        dateColumn: cols[2] ?? '',
-        notesColumn: '',
-        detailMappings: {},
-      })
-      setTypeMap({})
-      setCatMap({})
-      setDetailValueMaps({})
-      setDateOnly(false)
-      setImportResult(null)
+      applySheet(workbook, workbook.SheetNames[0])
       setStep(2)
     }
     reader.readAsBinaryString(file)
-  }, [])
+  }, [applySheet])
 
   // ── Step 2: Derive unique raw type values when mapping changes ─────────────
   const rawTypeValues: string[] = (() => {
@@ -315,7 +335,16 @@ export function AdminImportPage() {
               const transform = detailValueMaps[fieldDef.key]
               const transformed = transform?.[v] ?? v
               const numericKeys = ['weight_value', 'amount_grams']
-              details[fieldDef.key] = numericKeys.includes(fieldDef.key) ? Number(transformed) : transformed
+              details[fieldDef.key] = numericKeys.includes(fieldDef.key) ? parseNumeric(transformed) : transformed
+            }
+          } else if (dm.mode === 'event_type_col' && mapping.eventTypeColumn) {
+            // Read the same column that drives event type; apply this field's own value transform.
+            // Non-matching rows (e.g. "Medicine" rows when mapping symptom_type) simply produce
+            // no value because the transform entry will be empty/absent.
+            const v = cellStr(row, mapping.eventTypeColumn)
+            if (v) {
+              const transformed = detailValueMaps[fieldDef.key]?.[v] ?? ''
+              if (transformed) details[fieldDef.key] = transformed
             }
           }
         }
@@ -460,13 +489,36 @@ export function AdminImportPage() {
           >
             <Upload className="size-10 text-muted-foreground/50 mx-auto mb-3" />
             <p className="text-base font-medium">Drop your spreadsheet here or click to browse</p>
-            <p className="text-sm text-muted-foreground mt-1">.xlsx or .xls — first sheet only</p>
+            <p className="text-sm text-muted-foreground mt-1">.xlsx or .xls</p>
           </div>
         )}
 
         {/* ── Step 2: Map columns ─────────────────────────────────────────── */}
         {step === 2 && (
           <div className="space-y-6">
+            {/* Sheet selector — only shown when the file has more than one tab */}
+            {sheetNames.length > 1 && (
+              <div className="rounded-2xl border bg-card p-6 space-y-3">
+                <h2 className="font-semibold text-base">Select sheet</h2>
+                <p className="text-xs text-muted-foreground">Your file has multiple tabs. Choose which one to import.</p>
+                <div className="flex flex-wrap gap-2">
+                  {sheetNames.map(name => (
+                    <button
+                      key={name}
+                      onClick={() => workbookRef.current && applySheet(workbookRef.current, name)}
+                      className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors
+                        ${selectedSheet === name
+                          ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                          : 'border-border bg-background hover:border-amber-400 text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-2xl border bg-card p-6 space-y-5">
               <h2 className="font-semibold text-base">Required fields</h2>
 
@@ -632,7 +684,7 @@ export function AdminImportPage() {
                           </label>
                           <div className="space-y-1.5">
                             {fieldDef.fixedOptions && (
-                              <div className="flex gap-3 text-xs mb-1">
+                              <div className="flex flex-wrap gap-3 text-xs mb-1">
                                 <label className="flex items-center gap-1 cursor-pointer">
                                   <input type="radio" name={`dm_mode_${fieldDef.key}`} value="column"
                                     checked={mode === 'column'}
@@ -651,9 +703,49 @@ export function AdminImportPage() {
                                     }))} />
                                   Fixed value
                                 </label>
+                                {mapping.eventTypeMode === 'column' && mapping.eventTypeColumn && (
+                                  <label className="flex items-center gap-1 cursor-pointer">
+                                    <input type="radio" name={`dm_mode_${fieldDef.key}`} value="event_type_col"
+                                      checked={mode === 'event_type_col'}
+                                      onChange={() => setMapping(m => ({
+                                        ...m,
+                                        detailMappings: { ...m.detailMappings, [fieldDef.key]: { mode: 'event_type_col' } }
+                                      }))} />
+                                    From event type column
+                                  </label>
+                                )}
                               </div>
                             )}
-                            {mode === 'column' || !fieldDef.fixedOptions ? (
+                            {mode === 'event_type_col' ? (
+                              <>
+                                <p className="text-xs text-muted-foreground">
+                                  Reading from <span className="font-mono text-foreground">{mapping.eventTypeColumn}</span>.
+                                  Set each value below — leave <span className="font-mono">(skip)</span> for rows that aren't this event type.
+                                </p>
+                                {rawTypeValues.length > 0 && (
+                                  <div className="mt-2 rounded-lg border bg-muted/30 p-3 space-y-1.5">
+                                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Map values</p>
+                                    {rawTypeValues.map(raw => (
+                                      <div key={raw} className="flex items-center gap-2">
+                                        <span className="text-xs font-mono bg-background border rounded px-1.5 py-0.5 shrink-0">{raw}</span>
+                                        <span className="text-muted-foreground text-xs">→</span>
+                                        <select
+                                          className="flex-1 rounded border bg-background px-2 py-1 text-xs"
+                                          value={detailValueMaps[fieldDef.key]?.[raw] ?? ''}
+                                          onChange={e => setDetailValueMaps(m => ({
+                                            ...m,
+                                            [fieldDef.key]: { ...(m[fieldDef.key] ?? {}), [raw]: e.target.value }
+                                          }))}
+                                        >
+                                          <option value="">(skip)</option>
+                                          {fieldDef.fixedOptions!.map(o => <option key={o} value={o}>{o}</option>)}
+                                        </select>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            ) : mode === 'column' || !fieldDef.fixedOptions ? (
                               <>
                                 <select
                                   className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
