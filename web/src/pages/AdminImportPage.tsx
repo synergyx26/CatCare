@@ -195,9 +195,10 @@ export function AdminImportPage() {
   // dateOnly: when true, strip the time from DateAdded and use midnight UTC
   const [dateOnly, setDateOnly] = useState(false)
 
-  // ── Import result + progress state ────────────────────────────────────────
+  // ── Import result + progress + error state ────────────────────────────────
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [importProgress, setImportProgress] = useState<{ sent: number; total: number } | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
 
   // ── Step 1: Upload ─────────────────────────────────────────────────────────
   const handleFile = useCallback((file: File) => {
@@ -350,22 +351,30 @@ export function AdminImportPage() {
       }))
 
       const total = payload.length
-      let sent = 0
       let imported = 0
       const failed: { row: number; error: string }[] = []
 
+      setImportError(null)
       setImportProgress({ sent: 0, total })
 
       for (let i = 0; i < payload.length; i += BATCH_SIZE) {
         const batch = payload.slice(i, i + BATCH_SIZE)
-        // row offset so server-side row numbers stay meaningful across batches
-        const res = await api.adminImportCareEvents(batch)
+        let res
+        try {
+          res = await api.adminImportCareEvents(batch)
+        } catch (err: unknown) {
+          // Extract a readable message from the axios error
+          const axiosErr = err as { response?: { data?: { message?: string; error?: string }; status?: number }; message?: string }
+          const serverMsg = axiosErr.response?.data?.message ?? axiosErr.response?.data?.error
+          const status = axiosErr.response?.status
+          const detail = serverMsg ?? axiosErr.message ?? 'Unknown error'
+          throw new Error(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed (HTTP ${status ?? '?'}): ${detail}`)
+        }
         const result: ImportResult = res.data
         imported += result.imported
         // adjust row numbers relative to the full dataset
         failed.push(...result.failed.map(f => ({ ...f, row: f.row + i })))
-        sent = Math.min(i + BATCH_SIZE, total)
-        setImportProgress({ sent, total })
+        setImportProgress({ sent: Math.min(i + BATCH_SIZE, total), total })
       }
 
       return { imported, failed }
@@ -375,8 +384,9 @@ export function AdminImportPage() {
       setImportProgress(null)
       setStep(4)
     },
-    onError: () => {
-      setImportResult(null)
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Import failed. Check the console for details.'
+      setImportError(msg)
       setImportProgress(null)
     },
   })
@@ -793,6 +803,16 @@ export function AdminImportPage() {
               )}
             </div>
 
+            {importError && (
+              <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 space-y-1">
+                <p className="text-sm font-semibold text-destructive flex items-center gap-1.5">
+                  <XCircle className="size-4 shrink-0" /> Import failed
+                </p>
+                <p className="text-xs text-destructive font-mono break-all">{importError}</p>
+                <p className="text-xs text-muted-foreground pt-1">Fix the issue above and try again.</p>
+              </div>
+            )}
+
             {importProgress && (
               <div className="rounded-2xl border bg-card p-5 space-y-3">
                 <div className="flex items-center justify-between text-sm">
@@ -830,9 +850,9 @@ export function AdminImportPage() {
               <button
                 className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:pointer-events-none"
                 disabled={validRows.length === 0 || importMutation.isPending}
-                onClick={() => importMutation.mutate()}
+                onClick={() => { setImportError(null); importMutation.mutate() }}
               >
-                {importMutation.isPending ? 'Working…' : `Import ${validRows.length} events`}
+                {importMutation.isPending ? 'Working…' : importError ? `Retry import` : `Import ${validRows.length} events`}
                 {!importMutation.isPending && <ChevronRight className="size-4" />}
               </button>
             </div>

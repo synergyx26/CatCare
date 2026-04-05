@@ -320,5 +320,5 @@ export const api = {
     apiClient.patch(`/admin/users/${userId}`, { subscription_tier: tier }),
 
   adminImportCareEvents: (events: ImportCareEventRow[]) =>
-    apiClient.post('/admin/imports/care_events', { events }),
+    apiClient.post('/admin/imports/care_events', { events }, { timeout: 120_000 }),
 }
