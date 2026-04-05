@@ -195,8 +195,9 @@ export function AdminImportPage() {
   // dateOnly: when true, strip the time from DateAdded and use midnight UTC
   const [dateOnly, setDateOnly] = useState(false)
 
-  // ── Import result state ────────────────────────────────────────────────────
+  // ── Import result + progress state ────────────────────────────────────────
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
+  const [importProgress, setImportProgress] = useState<{ sent: number; total: number } | null>(null)
 
   // ── Step 1: Upload ─────────────────────────────────────────────────────────
   const handleFile = useCallback((file: File) => {
@@ -335,9 +336,11 @@ export function AdminImportPage() {
   const validRows = previewRows.filter(r => r.errors.length === 0)
   const invalidRows = previewRows.filter(r => r.errors.length > 0)
 
-  // ── Step 4: Import mutation ─────────────────────────────────────────────────
+  // ── Step 4: Import mutation (batched, 500 rows per request) ───────────────
+  const BATCH_SIZE = 500
+
   const importMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const payload: ImportCareEventRow[] = validRows.map(r => ({
         cat_id: r.catId!,
         event_type: r.eventType!,
@@ -345,14 +348,36 @@ export function AdminImportPage() {
         notes: r.notes,
         details: r.details,
       }))
-      return api.adminImportCareEvents(payload)
+
+      const total = payload.length
+      let sent = 0
+      let imported = 0
+      const failed: { row: number; error: string }[] = []
+
+      setImportProgress({ sent: 0, total })
+
+      for (let i = 0; i < payload.length; i += BATCH_SIZE) {
+        const batch = payload.slice(i, i + BATCH_SIZE)
+        // row offset so server-side row numbers stay meaningful across batches
+        const res = await api.adminImportCareEvents(batch)
+        const result: ImportResult = res.data
+        imported += result.imported
+        // adjust row numbers relative to the full dataset
+        failed.push(...result.failed.map(f => ({ ...f, row: f.row + i })))
+        sent = Math.min(i + BATCH_SIZE, total)
+        setImportProgress({ sent, total })
+      }
+
+      return { imported, failed }
     },
-    onSuccess: (res) => {
-      setImportResult(res.data)
+    onSuccess: (result) => {
+      setImportResult(result)
+      setImportProgress(null)
       setStep(4)
     },
     onError: () => {
       setImportResult(null)
+      setImportProgress(null)
     },
   })
 
@@ -768,19 +793,46 @@ export function AdminImportPage() {
               )}
             </div>
 
+            {importProgress && (
+              <div className="rounded-2xl border bg-card p-5 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium flex items-center gap-2">
+                    <svg className="animate-spin size-4 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    Importing…
+                  </span>
+                  <span className="text-muted-foreground tabular-nums">
+                    {importProgress.sent.toLocaleString()} / {importProgress.total.toLocaleString()} events
+                  </span>
+                </div>
+                <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-amber-500 transition-all duration-300"
+                    style={{ width: `${Math.round((importProgress.sent / importProgress.total) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {Math.round((importProgress.sent / importProgress.total) * 100)}% complete — do not close this tab
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-between">
               <button
-                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                disabled={importMutation.isPending}
                 onClick={() => setStep(2)}
               >
                 <ChevronLeft className="size-4" /> Back
               </button>
               <button
-                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors disabled:opacity-40"
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:pointer-events-none"
                 disabled={validRows.length === 0 || importMutation.isPending}
                 onClick={() => importMutation.mutate()}
               >
-                {importMutation.isPending ? 'Importing…' : `Import ${validRows.length} events`}
+                {importMutation.isPending ? 'Working…' : `Import ${validRows.length} events`}
                 {!importMutation.isPending && <ChevronRight className="size-4" />}
               </button>
             </div>
