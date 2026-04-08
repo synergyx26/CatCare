@@ -222,6 +222,25 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
     setCustomAmount('')
   }
 
+  // One-tap quick pick: sets food type + amount simultaneously
+  function pickQuickPreset(type: FoodType, g: number) {
+    setFoodType(type)
+    setSelectedAmount(g)
+    setIsCustom(false)
+    setCustomAmount('')
+  }
+
+  // Quick picks: all preset amounts across food types, flattened for display
+  // Only shown when cat has at least one custom preset configured
+  const hasCustomPresets = cat.feeding_presets != null
+  const quickPicks: { type: FoodType; label: string; g: number }[] = hasCustomPresets
+    ? (['wet', 'dry', 'treats', 'other'] as FoodType[]).flatMap((type) => {
+        if (type === 'treats' || type === 'other') return []
+        const amounts = catPresets[type]
+        return amounts.map((g) => ({ type, label: `${type === 'wet' ? 'Wet' : 'Dry'} ${g}g`, g }))
+      })
+    : []
+
   const parsedCustom    = parseFloat(customAmount)
   const effectiveAmount = isCustom ? parsedCustom : selectedAmount
 
@@ -409,6 +428,24 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
           {/* Feeding fields */}
           {eventType === 'feeding' && (
             <>
+              {/* Quick picks — one-tap composite buttons for cats with configured presets */}
+              {quickPicks.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Quick picks</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {quickPicks.map(({ type, label, g }) => (
+                      <button
+                        key={`${type}-${g}`}
+                        onClick={() => pickQuickPreset(type, g)}
+                        className={pillClass(foodType === type && !isCustom && selectedAmount === g)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <p className="text-sm font-medium">Food type</p>
                 <div className="flex gap-2 flex-wrap">

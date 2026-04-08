@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/EmptyState'
 import { EVENT_COLORS } from '@/lib/eventColors'
 import { formatEventSummary, EVENT_TYPE_LABEL } from '@/lib/helpers'
-import type { CareEvent, Cat, EventType, Household } from '@/types/api'
+import type { CareEvent, Cat, EventType, Household, SubscriptionTier } from '@/types/api'
 import { Download, Filter, Lock, RotateCcw, TableProperties, X } from 'lucide-react'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -156,6 +156,30 @@ const ALL_EVENT_TYPES: EventType[] = [
   'medication', 'vet_visit', 'grooming', 'symptom', 'tooth_brushing',
 ]
 
+// ── Quick range presets ───────────────────────────────────────────────────────
+
+interface QuickRange {
+  label:     string
+  days:      number | null   // null = "All time"
+  minTier:   SubscriptionTier
+}
+
+const QUICK_RANGES: QuickRange[] = [
+  { label: '7d',       days: 7,    minTier: 'free'    },
+  { label: '30d',      days: 30,   minTier: 'free'    },
+  { label: '90d',      days: 90,   minTier: 'premium' },
+  { label: '6 months', days: 180,  minTier: 'premium' },
+  { label: 'All time', days: null, minTier: 'premium' },
+]
+
+function tierRank(tier: SubscriptionTier): number {
+  return tier === 'premium' ? 2 : tier === 'pro' ? 1 : 0
+}
+
+function rangeAllowed(range: QuickRange, tier: SubscriptionTier): boolean {
+  return tierRank(tier) >= tierRank(range.minTier)
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function CareHistoryTablePage() {
@@ -165,24 +189,40 @@ export function CareHistoryTablePage() {
   const hId             = Number(householdId)
   const { user }        = useAuthStore()
   const isPremium       = user?.subscription_tier === 'premium'
+  const tier            = (user?.subscription_tier ?? 'free') as SubscriptionTier
 
   usePageTitle('Care History')
 
   // Seed catFilter from ?catId= so CatHistoryPage can jump here pre-filtered
   const initialCatId = searchParams.get('catId') ? Number(searchParams.get('catId')) : ''
 
-  const [startDate,     setStartDate]     = useState(DEFAULT_START)
-  const [endDate,       setEndDate]       = useState(DEFAULT_END)
-  const [catFilter,     setCatFilter]     = useState<number | ''>(initialCatId)
-  const [typeFilter,    setTypeFilter]    = useState<EventType | ''>('')
-  const [subtypeFilter, setSubtypeFilter] = useState('')
-  const [memberFilter,  setMemberFilter]  = useState<number | ''>('')
+  const [startDate,       setStartDate]       = useState(DEFAULT_START)
+  const [endDate,         setEndDate]         = useState(DEFAULT_END)
+  const [catFilter,       setCatFilter]       = useState<number | ''>(initialCatId)
+  const [typeFilter,      setTypeFilter]      = useState<EventType | ''>('')
+  const [subtypeFilter,   setSubtypeFilter]   = useState('')
+  const [memberFilter,    setMemberFilter]    = useState<number | ''>('')
+  // null = custom / no quick range active; number = days value (null days = all-time)
+  const [activeQuickDays, setActiveQuickDays] = useState<number | null | 'custom'>('custom')
 
   const subtypeConfig = typeFilter ? SUBTYPE_CONFIG[typeFilter] : undefined
 
   function handleTypeChange(value: EventType | '') {
     setTypeFilter(value)
     setSubtypeFilter('')
+  }
+
+  function applyQuickRange(range: QuickRange) {
+    const end = new Date()
+    setEndDate(toInputDate(end))
+    if (range.days === null) {
+      setStartDate('')   // empty start = all time
+    } else {
+      const start = new Date(end)
+      start.setDate(end.getDate() - range.days)
+      setStartDate(toInputDate(start))
+    }
+    setActiveQuickDays(range.days)
   }
 
   const hasActiveFilters =
@@ -200,6 +240,7 @@ export function CareHistoryTablePage() {
     setTypeFilter('')
     setSubtypeFilter('')
     setMemberFilter('')
+    setActiveQuickDays('custom')
   }
 
   // ── Queries ───────────────────────────────────────────────────
@@ -309,6 +350,34 @@ export function CareHistoryTablePage() {
           )}
         </div>
 
+        {/* Quick range buttons */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {QUICK_RANGES.map((range) => {
+            const allowed  = rangeAllowed(range, tier)
+            const isActive = activeQuickDays === range.days
+            return (
+              <button
+                key={range.label}
+                disabled={!allowed}
+                onClick={() => allowed && applyQuickRange(range)}
+                title={!allowed ? `Available on ${range.minTier} plan` : undefined}
+                className={[
+                  'text-xs px-2.5 py-1 rounded-full border transition-colors',
+                  isActive
+                    ? 'bg-primary/10 border-primary/40 text-primary font-medium'
+                    : allowed
+                      ? 'bg-muted/50 border-border text-muted-foreground hover:text-foreground hover:border-border/80 cursor-pointer'
+                      : 'bg-muted/30 border-border/30 text-muted-foreground/40 cursor-not-allowed',
+                ].join(' ')}
+              >
+                {!allowed && <Lock className="inline size-2.5 mr-1 -mt-px" />}
+                {range.label}
+              </button>
+            )
+          })}
+          <span className="text-xs text-muted-foreground ml-1">or use custom dates below</span>
+        </div>
+
         {/* Row 1: date range + cat + type + member */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 min-w-0">
 
@@ -319,7 +388,7 @@ export function CareHistoryTablePage() {
               type="date"
               value={startDate}
               max={endDate || DEFAULT_END}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => { setStartDate(e.target.value); setActiveQuickDays('custom') }}
               className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm min-w-0 block"
             />
             {startDate !== DEFAULT_START && (
@@ -335,7 +404,7 @@ export function CareHistoryTablePage() {
               value={endDate}
               min={startDate}
               max={DEFAULT_END}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => { setEndDate(e.target.value); setActiveQuickDays('custom') }}
               className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm min-w-0 block"
             />
             {endDate !== DEFAULT_END && (
@@ -441,7 +510,12 @@ export function CareHistoryTablePage() {
         <EmptyState
           icon={TableProperties}
           title="No events found"
-          description="Try adjusting your filters or date range."
+          description={[
+            typeFilter    ? `No ${EVENT_TYPE_LABEL[typeFilter] ?? typeFilter} events` : 'No events',
+            catFilter     ? ` for ${catMap.get(Number(catFilter)) ?? 'selected cat'}` : '',
+            ' in this period.',
+            hasActiveFilters ? ' Try adjusting your filters or date range.' : '',
+          ].join('')}
         />
       ) : (
         <>
@@ -487,9 +561,9 @@ export function CareHistoryTablePage() {
 
           {/* Desktop: full table */}
           <div className="hidden sm:block rounded-2xl border overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[65vh] overflow-y-auto">
               <table className="min-w-[640px] w-full text-sm">
-                <thead className="bg-muted/50 border-b">
+                <thead className="bg-muted/50 border-b sticky top-0 z-10">
                   <tr>
                     <th className="text-left px-4 py-2.5 font-medium text-muted-foreground whitespace-nowrap">Date / Time</th>
                     <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Cat</th>
