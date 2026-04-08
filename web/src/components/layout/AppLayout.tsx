@@ -37,6 +37,7 @@ import {
   ShieldCheck,
   Bell,
   TableProperties,
+  CalendarDays,
 } from 'lucide-react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
 import type { Household } from '@/types/api'
@@ -185,6 +186,18 @@ export function AppLayout() {
                       Care History
                     </button>
                   )}
+                  {primaryHousehold && (user?.subscription_tier === 'pro' || user?.subscription_tier === 'premium') && (
+                    <button
+                      onClick={() => {
+                        navigate(`/households/${primaryHousehold.id}/calendar`)
+                        setMobileOpen(false)
+                      }}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
+                    >
+                      <CalendarDays className="size-4" />
+                      Calendar
+                    </button>
+                  )}
                   {user?.is_super_admin && (
                     <>
                       <button
@@ -298,6 +311,17 @@ export function AppLayout() {
                 >
                   <TableProperties className="size-3.5" />
                   Care History
+                </Button>
+              )}
+              {primaryHousehold && (user?.subscription_tier === 'pro' || user?.subscription_tier === 'premium') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => navigate(`/households/${primaryHousehold.id}/calendar`)}
+                >
+                  <CalendarDays className="size-3.5" />
+                  Calendar
                 </Button>
               )}
             </nav>

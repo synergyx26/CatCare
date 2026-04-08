@@ -110,6 +110,7 @@ interface Props {
   householdId:            number
   initialEvent?:          CareEvent
   initialType?:           EventType
+  initialDate?:           string    // ISO date "YYYY-MM-DD"; pre-fills occurred_at to noon on that date
   initialMedicationName?: string
   activeMedication?:      boolean
   onClose:                () => void
@@ -117,7 +118,7 @@ interface Props {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function LogCareModal({ cat, householdId, initialEvent, initialType, initialMedicationName, activeMedication, onClose }: Props) {
+export function LogCareModal({ cat, householdId, initialEvent, initialType, initialDate, initialMedicationName, activeMedication, onClose }: Props) {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
   const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
@@ -149,6 +150,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   const [notes,           setNotes]           = useState(initialEvent?.notes ?? '')
   const [occurredAt,      setOccurredAt]      = useState(() => {
     if (initialEvent) return toLocalDateTimeInput(new Date(initialEvent.occurred_at))
+    if (initialDate) return toLocalDateTimeInput(new Date(`${initialDate}T12:00:00`))
     if (initType === 'vet_visit' || initType === 'grooming') {
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)

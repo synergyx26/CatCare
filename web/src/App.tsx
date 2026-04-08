@@ -21,6 +21,7 @@ import { HouseholdSettingsPage } from '@/pages/HouseholdSettingsPage'
 import { HouseholdNotesPage } from '@/pages/HouseholdNotesPage'
 import { NotificationSettingsPage } from '@/pages/NotificationSettingsPage'
 import { CareHistoryTablePage } from '@/pages/CareHistoryTablePage'
+import { HouseholdCalendarPage } from '@/pages/HouseholdCalendarPage'
 import { AdminPage } from '@/pages/AdminPage'
 import { AdminImportPage } from '@/pages/AdminImportPage'
 import { LandingPage } from '@/pages/LandingPage'
@@ -97,6 +98,10 @@ export default function App() {
               <Route
                 path="/households/:householdId/care-history"
                 element={<CareHistoryTablePage />}
+              />
+              <Route
+                path="/households/:householdId/calendar"
+                element={<HouseholdCalendarPage />}
               />
             </Route>
           </Route>

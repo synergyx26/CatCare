@@ -173,11 +173,11 @@ New policy specs must be added whenever a new policy is created. Pundit policy b
 ## Subscription Tiers
 
 ### Tier definitions
-| Tier | Cats | Members | Event types | History range | History offset |
-|---|---|---|---|---|---|
-| `free` | 1 | 2 | feeding, litter, water, note | 7d only | current period only |
-| `pro` | 3 | unlimited | all 8 | 7d, 30d | up to 180 days back |
-| `premium` | unlimited | unlimited | all 8 | 7d, 30d, 90d | unlimited |
+| Tier | Cats | Members | Event types | History range | History offset | Calendar |
+|---|---|---|---|---|---|---|
+| `free` | 1 | 2 | feeding, litter, water, note | 7d only | current period only | blocked (upgrade wall) |
+| `pro` | 3 | unlimited | all 8 | 7d, 30d | up to 180 days back | up to 6 months back |
+| `premium` | unlimited | unlimited | all 8 | 7d, 30d, 90d | unlimited | unlimited history |
 
 **Free event types:** `feeding`, `litter`, `water`, `note`
 **Pro/Premium-only:** `weight`, `medication`, `vet_visit`, `grooming`
@@ -193,7 +193,8 @@ New policy specs must be added whenever a new policy is created. Pundit policy b
 - **`CatHistoryPage.tsx`** — range selector locks unavailable ranges; defaults to widest allowed range on mount; clamps on tier change
 - **`DashboardPage.tsx`** — "Add Cat" button shows Lock icon + toast at cat limit; custom batch action buttons show Lock + toast for restricted event types
 - **`MembersSection.tsx`** — "Invite someone" shows Lock + toast at member limit; receives `tier` prop from `DashboardPage`
-- **`LogCareModal.tsx`** — reads tier from `useAuthStore`; restricted type pills are greyed/locked; falls back to `feeding` if opened with a restricted `initialType`
+- **`LogCareModal.tsx`** — reads tier from `useAuthStore`; restricted type pills are greyed/locked; falls back to `feeding` if opened with a restricted `initialType`; accepts `initialDate?: string` ("YYYY-MM-DD") to pre-fill occurred_at to noon on that date (used by HouseholdCalendarPage)
+- **`HouseholdCalendarPage.tsx`** — Pro/Premium only; free users see an upgrade wall; month navigation clamped by tier (Pro: 6 months back, Premium: unlimited); all filters applied client-side
 - **`BatchActionModal.tsx`** — reads tier from `useAuthStore`; `medication` and `grooming` type pills are locked for Free
 
 ### Event type color system
@@ -361,7 +362,8 @@ web/src/
     DashboardPage.tsx       — today's care, cat cards, archived cats toggle, quick-log buttons
     CatProfilePage.tsx      — cat details + sitter info + archive/deceased actions
     EditCatPage.tsx         — edit all cat fields + sitter info + photo upload
-    CatHistoryPage.tsx      — stats dashboard with 5 charts
+    CatHistoryPage.tsx      — stats dashboard with 5 charts (per-cat analytics)
+    HouseholdCalendarPage.tsx — Pro/Premium household calendar; route /households/:id/calendar; fetches care_events for displayed month; client-side cat/type/member filters; day panel with full CRUD via LogCareModal
     HouseholdProfilePage.tsx — membership profile (phone, emergency contact, notes)
     HouseholdSettingsPage.tsx — admin-only; per-cat care requirements (feedings/day, water, litter) + feeding portion preset editor
     LandingPage.tsx         — public landing page at /

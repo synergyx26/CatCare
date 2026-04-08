@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout'
@@ -20,14 +20,19 @@ import { MemberContributionChart } from '@/components/charts/MemberContributionC
 import { CareActivityHeatmap } from '@/components/charts/CareActivityHeatmap'
 import { DailyFoodIntakeChart } from '@/components/charts/DailyFoodIntakeChart'
 import { SymptomLogChart } from '@/components/charts/SymptomLogChart'
+import { CalendarViewChart } from '@/components/charts/CalendarViewChart'
 import { ChartCard } from '@/components/charts/ChartCard'
+import { ChartSettingsSheet } from '@/components/charts/ChartSettingsSheet'
 import { ExportPdfButton } from '@/components/pdf/ExportPdfButton'
 import {
   DEFAULT_LAYOUTS,
+  buildLayoutFromOrder,
   loadLayouts,
   saveLayouts,
   clearLayouts,
 } from '@/lib/chartLayout'
+import { useChartPrefsStore, normalizeChartOrder, ALL_CHART_IDS } from '@/store/chartPrefsStore'
+import type { ChartId } from '@/lib/chartLayout'
 
 type Range = '7d' | '30d' | '90d'
 
@@ -75,6 +80,13 @@ export function CatHistoryPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
+
+  // Chart preferences — globally persisted, not per-cat
+  const { hidden: hiddenCharts, order: chartOrder, setOrder: setChartOrder } = useChartPrefsStore()
+  const visibleCharts = useMemo<ChartId[]>(
+    () => normalizeChartOrder(chartOrder).filter((id) => !hiddenCharts.includes(id)),
+    [chartOrder, hiddenCharts],
+  )
   const allowedRanges = useMemo(() => tierAllowedRanges(tier), [tier])
   const [range, setRange] = useState<Range>(() => {
     // Default to the widest range available for the tier
@@ -108,6 +120,63 @@ export function CatHistoryPage() {
   useEffect(() => {
     setLayouts((catId ? loadLayouts(catId) : null) ?? DEFAULT_LAYOUTS)
   }, [catId])
+
+  // When the user reorders charts in the settings panel, rebuild grid positions
+  // to match the new sequence. Skip on initial mount — only fire on real changes.
+  const prevChartOrderKey = useRef<string | null>(null)
+  useEffect(() => {
+    const key = normalizeChartOrder(chartOrder).join(',')
+    if (prevChartOrderKey.current === null) {
+      prevChartOrderKey.current = key
+      return
+    }
+    if (key === prevChartOrderKey.current) return
+    prevChartOrderKey.current = key
+
+    const newLayouts = buildLayoutFromOrder(normalizeChartOrder(chartOrder))
+    setLayouts(newLayouts)
+    if (catId) saveLayouts(catId, newLayouts)
+  }, [chartOrder, catId])
+
+  // Proactively restore DEFAULT_LAYOUTS dimensions for any chart that is being
+  // unhidden. Runs before paint (useLayoutEffect) so the chart never renders tiny.
+  // This is the primary guard: if a stored layout entry has h < minH (e.g. because
+  // react-grid-layout auto-placed it at h:1 in a previous session), we correct it
+  // before the child mounts.
+  const prevHiddenRef = useRef<ChartId[]>(hiddenCharts)
+  useLayoutEffect(() => {
+    const prev = prevHiddenRef.current
+    const justUnhidden = prev.filter(id => !hiddenCharts.includes(id))
+    prevHiddenRef.current = hiddenCharts
+    if (justUnhidden.length === 0) return
+
+    setLayouts(prev => {
+      let changed = false
+      const next: ResponsiveLayouts = {}
+      for (const [bp, items] of Object.entries(prev)) {
+        const defaultBp = (DEFAULT_LAYOUTS[bp as keyof typeof DEFAULT_LAYOUTS] ?? []) as Array<{
+          i: string; x: number; y: number; w: number; h: number; minW?: number; minH?: number
+        }>
+        next[bp] = (items ?? []).map(item => {
+          if (!justUnhidden.includes(item.i as ChartId)) return item
+          const def = defaultBp.find(d => d.i === item.i)
+          if (!def) return item
+          // Restore default dimensions; keep stored x/y so it returns to its last position
+          changed = true
+          return {
+            i: item.i,
+            x: item.x,
+            y: item.y,
+            w: def.w,
+            h: def.h,
+            minW: def.minW,
+            minH: def.minH,
+          }
+        })
+      }
+      return changed ? next : prev
+    })
+  }, [hiddenCharts])
 
   // Reset offset when range changes so we always start at the current period
   useEffect(() => { setOffset(0) }, [range])
@@ -199,21 +268,61 @@ export function CatHistoryPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isTierError  = (statsQuery.error as any)?.response?.status === 403
 
+  // Build a lookup of default dimensions keyed by chart id, per breakpoint.
+  // Used to enforce minimum sizes when react-grid-layout auto-places re-added charts.
+  const defaultDimsRef = useRef<Record<string, Record<string, { h: number; w: number; minH?: number; minW?: number }>>>({})
+  useEffect(() => {
+    const dims: typeof defaultDimsRef.current = {}
+    for (const [bp, items] of Object.entries(DEFAULT_LAYOUTS)) {
+      dims[bp] = {}
+      for (const item of items ?? []) {
+        dims[bp][item.i] = { h: item.h, w: item.w, minH: (item as any).minH, minW: (item as any).minW }
+      }
+    }
+    defaultDimsRef.current = dims
+  }, [])
+
   // Merge layout changes, preserving positions for conditionally-hidden charts
-  // so they snap back to the right place when data appears (e.g. weight chart)
+  // so they snap back to the right place when data appears (e.g. weight chart).
+  // Also enforces h >= minH per DEFAULT_LAYOUTS so react-grid-layout auto-placement
+  // (which uses h:1) never gets persisted — the main cause of "tiny on unhide".
   const handleLayoutChange = useCallback(
     (_layout: Layout, allLayouts: ResponsiveLayouts) => {
       const merged: ResponsiveLayouts = {}
       for (const bp of Object.keys(allLayouts)) {
-        const newBp = allLayouts[bp] ?? []
+        const defaultBp = defaultDimsRef.current[bp] ?? {}
+        const newBp = (allLayouts[bp] ?? []).map(item => {
+          const def = defaultBp[item.i]
+          if (!def) return item
+          const minH = def.minH ?? def.h
+          const minW = def.minW ?? def.w
+          // If h/w are below the minimum (auto-placement artefact), restore to defaults
+          if (item.h < minH || item.w < minW) {
+            return { ...item, h: Math.max(item.h, minH), w: Math.max(item.w, minW), minH, minW }
+          }
+          // Always ensure minH/minW are stored so they survive future merges
+          return { ...item, minH: (item as any).minH ?? minH, minW: (item as any).minW ?? minW }
+        })
         const newKeys = new Set(newBp.map((item) => item.i))
         const preserved = (layouts[bp] ?? []).filter((item) => !newKeys.has(item.i))
         merged[bp] = [...newBp, ...preserved]
       }
       setLayouts(merged)
       if (catId) saveLayouts(catId, merged)
+
+      // Sync settings panel order to match the new grid positions.
+      // Sort lg items by y then x (top-to-bottom, left-to-right) to derive sequence.
+      const lgItems = merged.lg ?? []
+      const newOrder = [...lgItems]
+        .sort((a, b) => a.y !== b.y ? a.y - b.y : a.x - b.x)
+        .map(item => item.i as ChartId)
+        .filter((id): id is ChartId => ALL_CHART_IDS.includes(id as ChartId))
+      const currentOrderKey = normalizeChartOrder(chartOrder).join(',')
+      if (newOrder.join(',') !== currentOrderKey) {
+        setChartOrder(newOrder)
+      }
     },
-    [catId, layouts]
+    [catId, layouts, chartOrder, setChartOrder]
   )
 
   const handleResetLayout = useCallback(() => {
@@ -287,6 +396,7 @@ export function CatHistoryPage() {
                   <span className="hidden sm:inline">Event table</span>
                 </button>
               )}
+              <ChartSettingsSheet />
               {!isMobile && (
                 <button
                   onClick={handleResetLayout}
@@ -467,84 +577,76 @@ export function CatHistoryPage() {
             {/* Mobile: plain vertical stack — no drag/drop, no pixel-width grid */}
             {isMobile && (
               <div className="flex flex-col gap-4">
-                {stats.weight_series.length > 0 && (
-                  <div className="h-[240px]">
-                    <ChartCard
-                      className="h-full"
-                      title="Weight over time"
-                      subtitle={`${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${rangeLabel}`}
-                      accent="linear-gradient(to right, #34d399, #4ade80)"
-                    >
-                      <WeightTrendChart data={stats.weight_series} />
-                    </ChartCard>
-                  </div>
-                )}
-                <div className="h-[220px]">
-                  <ChartCard
-                    className="h-full"
-                    title="Feeding frequency"
-                    subtitle="Feedings per day"
-                    accent="linear-gradient(to right, #fbbf24, #fb923c)"
-                  >
-                    <FeedingFrequencyChart data={stats.by_day} />
-                  </ChartCard>
-                </div>
-                <div style={{ height: Math.max(200, careTypeCount * 38 + 16 + 96) }}>
-                  <ChartCard
-                    className="h-full"
-                    title="Care breakdown"
-                    subtitle={`By type \u00B7 ${rangeLabel}`}
-                    accent="linear-gradient(to right, #38bdf8, #60a5fa)"
-                  >
-                    <CareTypeBreakdownChart byType={stats.by_type} />
-                  </ChartCard>
-                </div>
-                {stats.by_member.length > 0 && (
-                  <div style={{ height: Math.max(200, stats.by_member.length * 52 + 110) }}>
-                    <ChartCard
-                      className="h-full"
-                      title="Household contributions"
-                      subtitle="Events logged per member"
-                      accent="linear-gradient(to right, #c084fc, #a78bfa)"
-                    >
-                      <MemberContributionChart data={stats.by_member} />
-                    </ChartCard>
-                  </div>
-                )}
-                <div className="h-[280px]">
-                  <ChartCard
-                    className="h-full"
-                    title="Activity heatmap"
-                    subtitle="Care events by day"
-                    accent="linear-gradient(to right, #22d3ee, #38bdf8)"
-                  >
-                    <CareActivityHeatmap data={stats.by_day} />
-                  </ChartCard>
-                </div>
-                {hasFoodIntake && (
-                  <div className="h-[300px]">
-                    <ChartCard
-                      className="h-full"
-                      title="Daily food intake"
-                      subtitle="Grams per food type"
-                      accent="linear-gradient(to right, #fb923c, #fbbf24)"
-                    >
-                      <DailyFoodIntakeChart data={stats.feeding_series} />
-                    </ChartCard>
-                  </div>
-                )}
-                {hasSymptoms && (
-                  <div className="h-[280px]">
-                    <ChartCard
-                      className="h-full"
-                      title="Symptom log"
-                      subtitle={`${stats.symptom_series.length} event${stats.symptom_series.length === 1 ? '' : 's'} · ${rangeLabel}`}
-                      accent="linear-gradient(to right, #f97316, #ef4444)"
-                    >
-                      <SymptomLogChart data={stats.symptom_series} />
-                    </ChartCard>
-                  </div>
-                )}
+                {visibleCharts.map((id) => {
+                  switch (id) {
+                    case 'weight':
+                      return stats.weight_series.length > 0 ? (
+                        <div key={id} className="h-[240px]">
+                          <ChartCard className="h-full" title="Weight over time" subtitle={`${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${rangeLabel}`} accent="linear-gradient(to right, #34d399, #4ade80)">
+                            <WeightTrendChart data={stats.weight_series} />
+                          </ChartCard>
+                        </div>
+                      ) : null
+                    case 'feeding':
+                      return (
+                        <div key={id} className="h-[220px]">
+                          <ChartCard className="h-full" title="Feeding frequency" subtitle="Feedings per day" accent="linear-gradient(to right, #fbbf24, #fb923c)">
+                            <FeedingFrequencyChart data={stats.by_day} />
+                          </ChartCard>
+                        </div>
+                      )
+                    case 'care_breakdown':
+                      return (
+                        <div key={id} style={{ height: Math.max(200, careTypeCount * 38 + 16 + 96) }}>
+                          <ChartCard className="h-full" title="Care breakdown" subtitle={`By type \u00B7 ${rangeLabel}`} accent="linear-gradient(to right, #38bdf8, #60a5fa)">
+                            <CareTypeBreakdownChart byType={stats.by_type} />
+                          </ChartCard>
+                        </div>
+                      )
+                    case 'member':
+                      return stats.by_member.length > 0 ? (
+                        <div key={id} style={{ height: Math.max(200, stats.by_member.length * 52 + 110) }}>
+                          <ChartCard className="h-full" title="Household contributions" subtitle="Events logged per member" accent="linear-gradient(to right, #c084fc, #a78bfa)">
+                            <MemberContributionChart data={stats.by_member} />
+                          </ChartCard>
+                        </div>
+                      ) : null
+                    case 'heatmap':
+                      return (
+                        <div key={id} className="h-[280px]">
+                          <ChartCard className="h-full" title="Activity heatmap" subtitle="Care events by day" accent="linear-gradient(to right, #22d3ee, #38bdf8)">
+                            <CareActivityHeatmap data={stats.by_day} />
+                          </ChartCard>
+                        </div>
+                      )
+                    case 'food_intake':
+                      return hasFoodIntake ? (
+                        <div key={id} className="h-[300px]">
+                          <ChartCard className="h-full" title="Daily food intake" subtitle="Grams per food type" accent="linear-gradient(to right, #fb923c, #fbbf24)">
+                            <DailyFoodIntakeChart data={stats.feeding_series} />
+                          </ChartCard>
+                        </div>
+                      ) : null
+                    case 'symptom_log':
+                      return hasSymptoms ? (
+                        <div key={id} className="h-[280px]">
+                          <ChartCard className="h-full" title="Symptom log" subtitle={`${stats.symptom_series.length} event${stats.symptom_series.length === 1 ? '' : 's'} \u00B7 ${rangeLabel}`} accent="linear-gradient(to right, #f97316, #ef4444)">
+                            <SymptomLogChart data={stats.symptom_series} />
+                          </ChartCard>
+                        </div>
+                      ) : null
+                    case 'calendar':
+                      return (
+                        <div key={id} className="h-[480px]">
+                          <ChartCard className="h-full" title="Care calendar" subtitle={rangeLabel} accent="linear-gradient(to right, #38bdf8, #818cf8)">
+                            <CalendarViewChart data={stats.by_day} startDate={stats.start_date} endDate={stats.end_date} tier={tier} feedingsPerDay={cat?.feedings_per_day ?? 0} />
+                          </ChartCard>
+                        </div>
+                      )
+                    default:
+                      return null
+                  }
+                })}
               </div>
             )}
 
@@ -564,82 +666,112 @@ export function CatHistoryPage() {
                   margin={[16, 16]}
                   containerPadding={[0, 0]}
                 >
-                  <ChartCard
-                    key="weight"
-                    title="Weight over time"
-                    subtitle={
-                      stats.weight_series.length > 0
-                        ? `${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${rangeLabel}`
-                        : `No weight data \u00B7 ${rangeLabel}`
-                    }
-                    accent="linear-gradient(to right, #34d399, #4ade80)"
-                  >
-                    {stats.weight_series.length > 0
-                      ? <WeightTrendChart data={stats.weight_series} />
-                      : <ChartEmptyState message="No weight events in this period" />
-                    }
-                  </ChartCard>
-                  <ChartCard
-                    key="feeding"
-                    title="Feeding frequency"
-                    subtitle="Feedings per day"
-                    accent="linear-gradient(to right, #fbbf24, #fb923c)"
-                  >
-                    <FeedingFrequencyChart data={stats.by_day} />
-                  </ChartCard>
-                  <ChartCard
-                    key="care_breakdown"
-                    title="Care breakdown"
-                    subtitle={`By type \u00B7 ${rangeLabel}`}
-                    accent="linear-gradient(to right, #38bdf8, #60a5fa)"
-                  >
-                    <CareTypeBreakdownChart byType={stats.by_type} />
-                  </ChartCard>
-                  <ChartCard
-                    key="member"
-                    title="Household contributions"
-                    subtitle="Events logged per member"
-                    accent="linear-gradient(to right, #c084fc, #a78bfa)"
-                  >
-                    {stats.by_member.length > 0
-                      ? <MemberContributionChart data={stats.by_member} />
-                      : <ChartEmptyState message="No member data in this period" />
-                    }
-                  </ChartCard>
-                  <ChartCard
-                    key="heatmap"
-                    title="Activity heatmap"
-                    subtitle="Care events by day"
-                    accent="linear-gradient(to right, #22d3ee, #38bdf8)"
-                  >
-                    <CareActivityHeatmap data={stats.by_day} />
-                  </ChartCard>
-                  <ChartCard
-                    key="food_intake"
-                    title="Daily food intake"
-                    subtitle="Grams per food type"
-                    accent="linear-gradient(to right, #fb923c, #fbbf24)"
-                  >
-                    {hasFoodIntake
-                      ? <DailyFoodIntakeChart data={stats.feeding_series} />
-                      : <ChartEmptyState message="No food intake data in this period" />
-                    }
-                  </ChartCard>
-                  <ChartCard
-                    key="symptom_log"
-                    title="Symptom log"
-                    subtitle={
-                      hasSymptoms
-                        ? `${stats.symptom_series.length} event${stats.symptom_series.length === 1 ? '' : 's'} · ${rangeLabel}`
-                        : `No symptoms logged · ${rangeLabel}`
-                    }
-                    accent="linear-gradient(to right, #f97316, #ef4444)"
-                  >
-                    {hasSymptoms
-                      ? <SymptomLogChart data={stats.symptom_series} />
-                      : <ChartEmptyState message="No symptoms logged in this period" />
-                    }
-                  </ChartCard>
+                  {visibleCharts.includes('weight') && (
+                    <ChartCard
+                      key="weight"
+                      title="Weight over time"
+                      subtitle={
+                        stats.weight_series.length > 0
+                          ? `${stats.weight_series.length} entr${stats.weight_series.length === 1 ? 'y' : 'ies'} \u00B7 ${rangeLabel}`
+                          : `No weight data \u00B7 ${rangeLabel}`
+                      }
+                      accent="linear-gradient(to right, #34d399, #4ade80)"
+                    >
+                      {stats.weight_series.length > 0
+                        ? <WeightTrendChart data={stats.weight_series} />
+                        : <ChartEmptyState message="No weight events in this period" />
+                      }
+                    </ChartCard>
+                  )}
+                  {visibleCharts.includes('feeding') && (
+                    <ChartCard
+                      key="feeding"
+                      title="Feeding frequency"
+                      subtitle="Feedings per day"
+                      accent="linear-gradient(to right, #fbbf24, #fb923c)"
+                    >
+                      <FeedingFrequencyChart data={stats.by_day} />
+                    </ChartCard>
+                  )}
+                  {visibleCharts.includes('care_breakdown') && (
+                    <ChartCard
+                      key="care_breakdown"
+                      title="Care breakdown"
+                      subtitle={`By type \u00B7 ${rangeLabel}`}
+                      accent="linear-gradient(to right, #38bdf8, #60a5fa)"
+                    >
+                      <CareTypeBreakdownChart byType={stats.by_type} />
+                    </ChartCard>
+                  )}
+                  {visibleCharts.includes('member') && (
+                    <ChartCard
+                      key="member"
+                      title="Household contributions"
+                      subtitle="Events logged per member"
+                      accent="linear-gradient(to right, #c084fc, #a78bfa)"
+                    >
+                      {stats.by_member.length > 0
+                        ? <MemberContributionChart data={stats.by_member} />
+                        : <ChartEmptyState message="No member data in this period" />
+                      }
+                    </ChartCard>
+                  )}
+                  {visibleCharts.includes('heatmap') && (
+                    <ChartCard
+                      key="heatmap"
+                      title="Activity heatmap"
+                      subtitle="Care events by day"
+                      accent="linear-gradient(to right, #22d3ee, #38bdf8)"
+                    >
+                      <CareActivityHeatmap data={stats.by_day} />
+                    </ChartCard>
+                  )}
+                  {visibleCharts.includes('food_intake') && (
+                    <ChartCard
+                      key="food_intake"
+                      title="Daily food intake"
+                      subtitle="Grams per food type"
+                      accent="linear-gradient(to right, #fb923c, #fbbf24)"
+                    >
+                      {hasFoodIntake
+                        ? <DailyFoodIntakeChart data={stats.feeding_series} />
+                        : <ChartEmptyState message="No food intake data in this period" />
+                      }
+                    </ChartCard>
+                  )}
+                  {visibleCharts.includes('symptom_log') && (
+                    <ChartCard
+                      key="symptom_log"
+                      title="Symptom log"
+                      subtitle={
+                        hasSymptoms
+                          ? `${stats.symptom_series.length} event${stats.symptom_series.length === 1 ? '' : 's'} · ${rangeLabel}`
+                          : `No symptoms logged · ${rangeLabel}`
+                      }
+                      accent="linear-gradient(to right, #f97316, #ef4444)"
+                    >
+                      {hasSymptoms
+                        ? <SymptomLogChart data={stats.symptom_series} />
+                        : <ChartEmptyState message="No symptoms logged in this period" />
+                      }
+                    </ChartCard>
+                  )}
+                  {visibleCharts.includes('calendar') && (
+                    <ChartCard
+                      key="calendar"
+                      title="Care calendar"
+                      subtitle={rangeLabel}
+                      accent="linear-gradient(to right, #38bdf8, #818cf8)"
+                    >
+                      <CalendarViewChart
+                        data={stats.by_day}
+                        startDate={stats.start_date}
+                        endDate={stats.end_date}
+                        tier={tier}
+                        feedingsPerDay={cat?.feedings_per_day ?? 0}
+                      />
+                    </ChartCard>
+                  )}
                 </ResponsiveGridLayout>}
               </div>
             )}

@@ -13,6 +13,7 @@ import {
   TrendingUp,
   PawPrint,
   ChevronDown,
+  CalendarDays,
 } from 'lucide-react'
 import { usePageTitle } from '@/hooks/usePageTitle'
 
@@ -100,6 +101,15 @@ const features: {
     bg: 'bg-teal-50 dark:bg-teal-950/30',
     tier: undefined,
   },
+  {
+    icon: CalendarDays,
+    title: 'Monthly care calendar',
+    description:
+      'See your entire household\'s care history at a glance in a monthly calendar. Filter by cat, event type, or household member. Tap any day to view events and log or edit care directly — without leaving the calendar.',
+    color: 'text-indigo-500',
+    bg: 'bg-indigo-50 dark:bg-indigo-950/30',
+    tier: 'pro' as FeatureTier,
+  },
 ]
 
 const steps = [
@@ -186,6 +196,7 @@ const plans: Plan[] = [
       { label: 'Unlimited household members', included: true },
       { label: '30-day care history', included: true },
       { label: 'All 5 analytics charts', included: true },
+      { label: 'Monthly care calendar (with CRUD)', included: true },
       { label: 'Vet info & care instructions', included: true },
       { label: 'Weight, medication, vet & grooming logs', included: true },
       { label: 'Exportable care history table', included: false },
@@ -210,7 +221,9 @@ const plans: Plan[] = [
       { label: 'Unlimited household members', included: true },
       { label: '90-day care history', included: true },
       { label: 'All 5 analytics charts', included: true },
+      { label: 'Monthly care calendar (with CRUD)', included: true },
       { label: 'Exportable care history table with filters', included: true },
+      { label: 'Unlimited calendar history', included: true },
       { label: 'Email reminders', included: true, note: 'Coming soon' },
       { label: 'Persistent photo storage', included: true },
       { label: 'Priority support', included: true },
