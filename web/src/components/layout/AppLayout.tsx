@@ -27,7 +27,8 @@ import {
   PawPrint,
   Menu,
   Home,
-  Settings,
+  Settings2,
+  Lock,
   LogOut,
   User,
   ChevronDown,
@@ -47,6 +48,19 @@ const THEME_ICON: Record<Theme, typeof Sun> = { light: Sun, dark: Moon, system: 
 
 const TIERS: SubscriptionTier[] = ['free', 'pro', 'premium']
 const TIER_LABELS: Record<SubscriptionTier, string> = { free: 'Free', pro: 'Pro', premium: 'Premium' }
+
+function TierBadge({ tier }: { tier: 'pro' | 'premium' }) {
+  return (
+    <span className={[
+      'ml-auto text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0',
+      tier === 'premium'
+        ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+        : 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+    ].join(' ')}>
+      {tier}
+    </span>
+  )
+}
 
 export function AppLayout() {
   const navigate = useNavigate()
@@ -94,6 +108,9 @@ export function AppLayout() {
   const households: Household[] = householdsData?.data?.data ?? []
   const primaryHousehold = households[0]
   const currentRole = primaryHousehold?.members?.find((m) => m.id === user?.id)?.role ?? null
+  const tier = user?.subscription_tier ?? 'free'
+  const canAccessCalendar    = tier === 'pro' || tier === 'premium'
+  const canAccessCareHistory = tier === 'premium'
 
   function handleLogout() {
     // Clear client state immediately so the user is logged out regardless of
@@ -140,16 +157,53 @@ export function AppLayout() {
                     <Home className="size-4" />
                     Dashboard
                   </button>
+                  {/* Insights section — always visible; locked items show tier badge */}
+                  {primaryHousehold && (
+                    <>
+                      <div className="px-3 pt-3 pb-0.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Insights</p>
+                      </div>
+                      <button
+                        onClick={canAccessCalendar ? () => { navigate(`/households/${primaryHousehold.id}/calendar`); setMobileOpen(false) } : undefined}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors w-full ${
+                          canAccessCalendar
+                            ? 'hover:bg-muted text-foreground'
+                            : 'text-muted-foreground cursor-not-allowed'
+                        }`}
+                      >
+                        {canAccessCalendar ? <CalendarDays className="size-4 shrink-0" /> : <Lock className="size-4 shrink-0" />}
+                        Calendar
+                        {!canAccessCalendar && <TierBadge tier="pro" />}
+                      </button>
+                      <button
+                        onClick={canAccessCareHistory ? () => { navigate(`/households/${primaryHousehold.id}/care-history`); setMobileOpen(false) } : undefined}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors w-full ${
+                          canAccessCareHistory
+                            ? 'hover:bg-muted text-foreground'
+                            : 'text-muted-foreground cursor-not-allowed'
+                        }`}
+                      >
+                        {canAccessCareHistory ? <TableProperties className="size-4 shrink-0" /> : <Lock className="size-4 shrink-0" />}
+                        Care History
+                        {!canAccessCareHistory && <TierBadge tier="premium" />}
+                      </button>
+                    </>
+                  )}
+
+                  {/* Settings group */}
+                  <div className="px-3 pt-3 pb-0.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Settings</p>
+                  </div>
                   {primaryHousehold && (
                     <button
                       onClick={() => {
                         navigate(`/households/${primaryHousehold.id}/profile`)
                         setMobileOpen(false)
                       }}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                     >
-                      <Settings className="size-4" />
-                      Household Settings
+                      <User className="size-4" />
+                      Household
                     </button>
                   )}
                   {primaryHousehold && currentRole === 'admin' && (
@@ -158,10 +212,10 @@ export function AppLayout() {
                         navigate(`/households/${primaryHousehold.id}/settings`)
                         setMobileOpen(false)
                       }}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                     >
-                      <Settings className="size-4" />
-                      Care Settings
+                      <Settings2 className="size-4" />
+                      Care
                     </button>
                   )}
                   <button
@@ -169,35 +223,11 @@ export function AppLayout() {
                       navigate('/notification-settings')
                       setMobileOpen(false)
                     }}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                   >
                     <Bell className="size-4" />
-                    Notification Settings
+                    Notifications
                   </button>
-                  {primaryHousehold && user?.subscription_tier === 'premium' && (
-                    <button
-                      onClick={() => {
-                        navigate(`/households/${primaryHousehold.id}/care-history`)
-                        setMobileOpen(false)
-                      }}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
-                    >
-                      <TableProperties className="size-4" />
-                      Care History
-                    </button>
-                  )}
-                  {primaryHousehold && (user?.subscription_tier === 'pro' || user?.subscription_tier === 'premium') && (
-                    <button
-                      onClick={() => {
-                        navigate(`/households/${primaryHousehold.id}/calendar`)
-                        setMobileOpen(false)
-                      }}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
-                    >
-                      <CalendarDays className="size-4" />
-                      Calendar
-                    </button>
-                  )}
                   {user?.is_super_admin && (
                     <>
                       <button
@@ -284,45 +314,63 @@ export function AppLayout() {
               <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
                 Dashboard
               </Button>
+
+              {/* Settings dropdown — consolidates Household, Care, and Notification settings */}
               {primaryHousehold && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(`/households/${primaryHousehold.id}/profile`)}
-                >
-                  Settings
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1')}
+                  >
+                    Settings
+                    <ChevronDown className="size-3 text-muted-foreground" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" sideOffset={8} className="min-w-44">
+                    <DropdownMenuItem onClick={() => navigate(`/households/${primaryHousehold.id}/profile`)}>
+                      <User className="size-4" />
+                      Household
+                    </DropdownMenuItem>
+                    {currentRole === 'admin' && (
+                      <DropdownMenuItem onClick={() => navigate(`/households/${primaryHousehold.id}/settings`)}>
+                        <Settings2 className="size-4" />
+                        Care
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => navigate('/notification-settings')}>
+                      <Bell className="size-4" />
+                      Notifications
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-              {primaryHousehold && currentRole === 'admin' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(`/households/${primaryHousehold.id}/settings`)}
-                >
-                  Care Settings
-                </Button>
-              )}
-              {primaryHousehold && user?.subscription_tier === 'premium' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => navigate(`/households/${primaryHousehold.id}/care-history`)}
-                >
-                  <TableProperties className="size-3.5" />
-                  Care History
-                </Button>
-              )}
-              {primaryHousehold && (user?.subscription_tier === 'pro' || user?.subscription_tier === 'premium') && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => navigate(`/households/${primaryHousehold.id}/calendar`)}
-                >
-                  <CalendarDays className="size-3.5" />
-                  Calendar
-                </Button>
+
+              {/* Insights dropdown — Calendar + Care History, always visible with lock state */}
+              {primaryHousehold && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1')}
+                  >
+                    Insights
+                    <ChevronDown className="size-3 text-muted-foreground" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" sideOffset={8} className="min-w-52">
+                    <DropdownMenuItem
+                      onClick={canAccessCalendar ? () => navigate(`/households/${primaryHousehold.id}/calendar`) : undefined}
+                      className={!canAccessCalendar ? 'opacity-60 cursor-not-allowed' : ''}
+                    >
+                      {canAccessCalendar ? <CalendarDays className="size-4" /> : <Lock className="size-4" />}
+                      Calendar
+                      {!canAccessCalendar && <TierBadge tier="pro" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={canAccessCareHistory ? () => navigate(`/households/${primaryHousehold.id}/care-history`) : undefined}
+                      className={!canAccessCareHistory ? 'opacity-60 cursor-not-allowed' : ''}
+                    >
+                      {canAccessCareHistory ? <TableProperties className="size-4" /> : <Lock className="size-4" />}
+                      Care History
+                      {!canAccessCareHistory && <TierBadge tier="premium" />}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </nav>
 
@@ -372,20 +420,6 @@ export function AppLayout() {
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                {primaryHousehold && (
-                  <DropdownMenuItem
-                    onClick={() =>
-                      navigate(`/households/${primaryHousehold.id}/profile`)
-                    }
-                  >
-                    <Settings className="size-4" />
-                    Household Settings
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => navigate('/notification-settings')}>
-                  <Bell className="size-4" />
-                  Notification Settings
-                </DropdownMenuItem>
                 {user?.is_super_admin && (
                   <>
                     <DropdownMenuSeparator />

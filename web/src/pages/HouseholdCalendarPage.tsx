@@ -344,7 +344,7 @@ function DayPanel({
   }, [activeCats, dateStr, onLogCare])
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 shrink-0">
         <div>
@@ -364,8 +364,8 @@ function DayPanel({
         </button>
       </div>
 
-      {/* Event list */}
-      <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
+      {/* Event list — flex-1 + overflow-auto lets it scroll inside the fixed-height container */}
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-4">
         {visibleEvents.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
             <CalendarDays className="w-8 h-8 text-muted-foreground/40" />
@@ -861,7 +861,7 @@ export function HouseholdCalendarPage() {
 
       {/* ── Bottom sheet (mobile / tablet) ───────────────────────────────────── */}
       {selectedDate && (
-        <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 flex flex-col bg-background border-t border-border/60 rounded-t-2xl shadow-2xl max-h-[60dvh]">
+        <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden bg-background border-t border-border/60 rounded-t-2xl shadow-2xl max-h-[60dvh]">
           {/* Drag handle */}
           <div className="flex justify-center pt-2 pb-1 shrink-0">
             <div className="w-10 h-1 rounded-full bg-border" />
