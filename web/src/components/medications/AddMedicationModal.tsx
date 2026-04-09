@@ -3,6 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
 import { notify } from '@/lib/notify'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import type { ApiError, CareEvent, MedicationFrequency } from '@/types/api'
 import { FREQUENCY_LABELS } from '@/types/api'
 
@@ -130,12 +132,11 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
             <label className="text-sm font-medium">
               Medication name <span className="text-destructive">*</span>
             </label>
-            <input
+            <Input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Prednisolone"
-              className="input"
               autoFocus
             />
           </div>
@@ -146,14 +147,14 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
               Dosage <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <div className="flex items-center gap-2">
-              <input
+              <Input
                 type="number"
                 min="0"
                 step="0.1"
                 value={dosage}
                 onChange={(e) => setDosage(e.target.value)}
                 placeholder="e.g. 5"
-                className="input w-28"
+                className="w-28"
               />
               {/* Unit pills — only shown when dosage is set */}
               {dosage && (
@@ -205,11 +206,10 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
             <label className="text-sm font-medium">
               {isEdit ? 'Date & time' : 'Start date'}
             </label>
-            <input
+            <Input
               type="datetime-local"
               value={startAt}
               onChange={(e) => setStartAt(e.target.value)}
-              className="input"
             />
           </div>
 
@@ -228,11 +228,10 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
             {isCourse && (
               <div className="space-y-1 pl-6">
                 <label className="text-xs text-muted-foreground">Course end date</label>
-                <input
+                <Input
                   type="date"
                   value={courseEndDate}
                   onChange={(e) => setCourseEndDate(e.target.value)}
-                  className="input"
                 />
               </div>
             )}
@@ -243,12 +242,12 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
             <label className="text-sm font-medium">
               Notes <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
-            <textarea
+            <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. prescribed by Dr. Smith, give with food…"
               rows={2}
-              className="input resize-none"
+              className="resize-none"
             />
           </div>
 

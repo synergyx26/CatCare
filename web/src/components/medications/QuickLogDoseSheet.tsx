@@ -3,6 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
 import { notify } from '@/lib/notify'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import type { ApiError, CareEvent } from '@/types/api'
 
 function toLocalDateTimeInput(date: Date): string {
@@ -85,11 +87,10 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
           {/* Date & time */}
           <div className="space-y-1">
             <label className="text-sm font-medium">Date & time</label>
-            <input
+            <Input
               type="datetime-local"
               value={occurredAt}
               onChange={(e) => setOccurredAt(e.target.value)}
-              className="input"
             />
           </div>
 
@@ -98,12 +99,12 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
             <label className="text-sm font-medium">
               Notes <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
-            <textarea
+            <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any observations…"
               rows={2}
-              className="input resize-none"
+              className="resize-none"
             />
           </div>
 
