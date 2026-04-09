@@ -39,6 +39,7 @@ import {
   Bell,
   TableProperties,
   CalendarDays,
+  Plane,
 } from 'lucide-react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
 import type { Household } from '@/types/api'
@@ -218,6 +219,23 @@ export function AppLayout() {
                       Care
                     </button>
                   )}
+                  {primaryHousehold && currentRole === 'admin' && (
+                    <button
+                      onClick={() => {
+                        navigate(`/households/${primaryHousehold.id}/vacation`)
+                        setMobileOpen(false)
+                      }}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    >
+                      <Plane className="size-4" />
+                      Vacation Mode
+                      {primaryHousehold.active_vacation_trip && (
+                        <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                          active
+                        </span>
+                      )}
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       navigate('/notification-settings')
@@ -333,6 +351,17 @@ export function AppLayout() {
                       <DropdownMenuItem onClick={() => navigate(`/households/${primaryHousehold.id}/settings`)}>
                         <Settings2 className="size-4" />
                         Care
+                      </DropdownMenuItem>
+                    )}
+                    {currentRole === 'admin' && (
+                      <DropdownMenuItem onClick={() => navigate(`/households/${primaryHousehold.id}/vacation`)}>
+                        <Plane className="size-4" />
+                        Vacation Mode
+                        {primaryHousehold.active_vacation_trip && (
+                          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                            active
+                          </span>
+                        )}
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={() => navigate('/notification-settings')}>

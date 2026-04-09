@@ -83,6 +83,21 @@ export interface HouseholdMember {
   membership_id: number
 }
 
+// ─── Vacation Trips ───────────────────────────────────────────────────────────
+
+export interface VacationTrip {
+  id: number
+  household_id: number
+  created_by_id: number
+  start_date: string          // "YYYY-MM-DD"
+  end_date: string | null     // "YYYY-MM-DD" or null (open-ended)
+  notes: string | null
+  sitter_visit_frequency_days: number
+  active: boolean
+  created_at: string
+  updated_at?: string
+}
+
 export interface Household {
   id: number
   name: string
@@ -97,6 +112,7 @@ export interface Household {
   vet_clinic: string | null
   vet_phone: string | null
   vet_address: string | null
+  active_vacation_trip: VacationTrip | null
 }
 
 export interface MembershipProfile {

@@ -18,10 +18,12 @@ import { CatCardSkeleton } from '@/components/skeletons/CatCardSkeleton'
 import { CareLogSkeleton } from '@/components/skeletons/CareLogSkeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { usePageTitle } from '@/hooks/usePageTitle'
-import { isToday, isSameLocalDay, getCatTodayStatus } from '@/lib/helpers'
+import { isToday, isSameLocalDay, getCatTodayStatus, isWithinLastNDays, type VacationContext, type CatCareRequirements } from '@/lib/helpers'
 import { Link } from 'react-router-dom'
 import { notify } from '@/lib/notify'
 import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X, Lock, WifiOff, RefreshCw, Pencil, TableProperties } from 'lucide-react'
+import { VacationBanner } from '@/components/dashboard/VacationBanner'
+import { SitterVisitChecklist } from '@/components/dashboard/SitterVisitChecklist'
 
 import { BatchActionModal } from '@/components/dashboard/BatchActionModal'
 import type { BatchActionPayload } from '@/components/dashboard/BatchActionModal'
@@ -33,6 +35,7 @@ import type {
   EventType,
   HouseholdInvite,
   MemberRole,
+  VacationTrip,
 } from '@/types/api'
 
 function getTimeGreeting(name: string): string {
@@ -87,13 +90,31 @@ export function DashboardPage() {
     queryClient.invalidateQueries({ queryKey: ['care_events', primaryHousehold?.id] })
   }
   const allEvents: CareEvent[] = careData?.data?.data ?? []
-  // todayEvents drives cat status badges and the "needs attention" banner — always today
-  const todayEvents = allEvents
-    .filter((e) => isToday(e.occurred_at))
-    .sort(
-      (a, b) =>
-        new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+
+  // Vacation mode context — derived from the household's active trip
+  const activeTrip: VacationTrip | null = primaryHousehold?.active_vacation_trip ?? null
+  const isVacationMode = activeTrip?.active === true
+  const vacationCtx: VacationContext | undefined = isVacationMode && activeTrip ? {
+    active: true,
+    windowDays: activeTrip.sitter_visit_frequency_days,
+    startDate: activeTrip.start_date,
+  } : undefined
+
+  // memberRoleMap used by VacationBanner to identify which events were logged by sitters
+  const memberRoleMap = new Map<number, MemberRole>(
+    (primaryHousehold?.members ?? []).map((m) => [m.id, m.role])
+  )
+
+  // windowEvents: drives care status badges and the "needs attention" banner.
+  // In normal mode: today only. In vacation mode: last N days.
+  const windowEvents = allEvents
+    .filter((e) =>
+      isVacationMode && vacationCtx
+        ? isWithinLastNDays(e.occurred_at, vacationCtx.windowDays)
+        : isToday(e.occurred_at)
     )
+    .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
+
   // selectedDateEvents drives the care log section (can be a past day)
   const selectedDateEvents = allEvents
     .filter((e) => isSameLocalDay(e.occurred_at, selectedDate))
@@ -132,11 +153,21 @@ export function DashboardPage() {
   const catLimit = tier === 'premium' ? Infinity : tier === 'pro' ? 3 : 1
   const atCatLimit = cats.length >= catLimit
 
-  // Derive per-cat attention status — includes toothbrushing so the banner and
-  // status badges are in sync. recentSymptomAt is intentionally excluded (informational).
+  // Per-cat care requirements map — passed to SitterVisitChecklist
+  const catRequirements = new Map<number, CatCareRequirements>(
+    cats.map((cat) => [cat.id, {
+      feedings_per_day:    cat.feedings_per_day,
+      track_water:         cat.track_water,
+      track_litter:        cat.track_litter,
+      track_toothbrushing: cat.track_toothbrushing,
+    }])
+  )
+
+  // Derive per-cat attention status — uses windowEvents so vacation mode widens the check window.
+  // recentSymptomAt is intentionally excluded (informational).
   const catsNeedingAttention = cats
     .map((cat) => {
-      const s = getCatTodayStatus(cat.id, todayEvents, memberMap, user?.id ?? -1, {
+      const s = getCatTodayStatus(cat.id, windowEvents, memberMap, user?.id ?? -1, {
         feedings_per_day:    cat.feedings_per_day,
         track_water:         cat.track_water,
         track_litter:        cat.track_litter,
@@ -343,7 +374,11 @@ export function DashboardPage() {
             {getTimeGreeting(user?.name ?? 'there')} 👋
           </h1>
           {cats.length > 0 && catsNeedingAttention.length === 0 && (
-            <p className="text-sm text-muted-foreground">All cats are cared for today</p>
+            <p className="text-sm text-muted-foreground">
+              {isVacationMode && vacationCtx
+                ? `All cats are cared for (last ${vacationCtx.windowDays}d)`
+                : 'All cats are cared for today'}
+            </p>
           )}
         </div>
         {primaryHousehold && currentRole !== 'sitter' && (
@@ -468,6 +503,17 @@ export function DashboardPage() {
                 </div>
               )}
 
+              {/* Vacation banner — shown when an active vacation trip exists */}
+              {isVacationMode && activeTrip && primaryHousehold && (
+                <VacationBanner
+                  trip={activeTrip}
+                  householdId={primaryHousehold.id}
+                  allEvents={allEvents}
+                  memberRoleMap={memberRoleMap}
+                  currentRole={currentRole}
+                />
+              )}
+
               {/* Birthday banner — shown when any active cat has a birthday today */}
               <BirthdayBanner cats={cats} onLog={openNewLog} />
 
@@ -475,7 +521,9 @@ export function DashboardPage() {
               {catsNeedingAttention.length > 0 && (
                 <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-950/10 p-4 space-y-2">
                   <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-                    Needs attention today
+                    {isVacationMode && vacationCtx
+                      ? `Needs attention (last ${vacationCtx.windowDays}d)`
+                      : 'Needs attention today'}
                   </p>
                   {catsNeedingAttention.map(({ cat, missing }) => (
                     <div key={cat.id} className="flex items-center justify-between gap-3">
@@ -494,19 +542,33 @@ export function DashboardPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {cats.map((cat) => (
-                  <CatCard
-                    key={cat.id}
-                    cat={cat}
-                    householdId={primaryHousehold!.id}
-                    todayEvents={todayEvents}
-                    memberMap={memberMap}
-                    currentUserId={user?.id ?? -1}
-                    onLog={openNewLog}
-                  />
-                ))}
-              </div>
+              {isVacationMode && currentRole === 'sitter' ? (
+                <SitterVisitChecklist
+                  cats={cats}
+                  householdId={primaryHousehold!.id}
+                  windowEvents={windowEvents}
+                  vacationCtx={vacationCtx!}
+                  memberMap={memberMap}
+                  currentUserId={user?.id ?? -1}
+                  onLog={openNewLog}
+                  requirements={catRequirements}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {cats.map((cat) => (
+                    <CatCard
+                      key={cat.id}
+                      cat={cat}
+                      householdId={primaryHousehold!.id}
+                      todayEvents={windowEvents}
+                      memberMap={memberMap}
+                      currentUserId={user?.id ?? -1}
+                      onLog={openNewLog}
+                      vacationMode={isVacationMode}
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
 

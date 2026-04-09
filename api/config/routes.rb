@@ -35,6 +35,7 @@ Rails.application.routes.draw do
         end
         resources :batch_actions, only: [:index, :create, :update, :destroy],
                                   controller: 'household_batch_actions'
+        resources :vacation_trips, only: [:index, :create, :update, :destroy]
         resources :invites,     only: [:index, :create, :destroy], controller: 'household_invites'
       end
 

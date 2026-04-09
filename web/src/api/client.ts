@@ -280,6 +280,33 @@ export const api = {
   deleteReminder: (householdId: number, reminderId: number) =>
     apiClient.delete(`/households/${householdId}/reminders/${reminderId}`),
 
+  // Vacation Trips
+  getVacationTrips: (householdId: number) =>
+    apiClient.get(`/households/${householdId}/vacation_trips`),
+
+  createVacationTrip: (householdId: number, data: {
+    vacation_trip: {
+      start_date: string
+      end_date?: string | null
+      notes?: string | null
+      sitter_visit_frequency_days: number
+    }
+  }) =>
+    apiClient.post(`/households/${householdId}/vacation_trips`, data),
+
+  updateVacationTrip: (householdId: number, tripId: number, data: {
+    vacation_trip: Partial<{
+      start_date: string
+      end_date: string | null
+      notes: string | null
+      sitter_visit_frequency_days: number
+    }>
+  }) =>
+    apiClient.patch(`/households/${householdId}/vacation_trips/${tripId}`, data),
+
+  deleteVacationTrip: (householdId: number, tripId: number) =>
+    apiClient.delete(`/households/${householdId}/vacation_trips/${tripId}`),
+
   testSendReminder: (householdId: number, reminderId: number) =>
     apiClient.post(`/households/${householdId}/reminders/${reminderId}/test_send`),
 

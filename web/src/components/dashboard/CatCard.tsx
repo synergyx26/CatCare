@@ -12,6 +12,7 @@ interface CatCardProps {
   memberMap: Map<number, string>
   currentUserId: number
   onLog: (cat: Cat, type?: EventType) => void
+  vacationMode?: boolean
 }
 
 function getStatusLine(status: CatTodayStatus): { text: string; allGood: boolean } {
@@ -32,6 +33,7 @@ export function CatCard({
   memberMap,
   currentUserId,
   onLog,
+  vacationMode = false,
 }: CatCardProps) {
   const navigate = useNavigate()
   const status: CatTodayStatus = getCatTodayStatus(
@@ -114,7 +116,11 @@ export function CatCard({
                     : 'text-amber-600 dark:text-amber-400'
               }`}
             >
-              {isBirthday ? birthdayStatusText : statusText}
+              {isBirthday
+                ? birthdayStatusText
+                : vacationMode && allGood
+                  ? 'All caught up (recent)'
+                  : statusText}
             </p>
             <CatStatusBadges status={status} />
           </div>

@@ -5,7 +5,7 @@ module Api
 
       # GET /api/v1/households
       def index
-        households = current_user.households.includes(:cats, :members, :household_memberships)
+        households = current_user.households.includes(:cats, :members, :household_memberships, :vacation_trips)
         render json: {
           data: households.map { |h| household_json(h) }
         }
@@ -83,6 +83,18 @@ module Api
           vet_clinic:              household.vet_clinic,
           vet_phone:               household.vet_phone,
           vet_address:             household.vet_address,
+          active_vacation_trip:    begin
+            t = household.active_vacation_trip
+            t && {
+              id:                          t.id,
+              start_date:                  t.start_date,
+              end_date:                    t.end_date,
+              notes:                       t.notes,
+              sitter_visit_frequency_days: t.sitter_visit_frequency_days,
+              active:                      t.active?,
+              created_at:                  t.created_at,
+            }
+          end,
         }
       end
     end

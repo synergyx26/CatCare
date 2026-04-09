@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_02_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_10_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -214,6 +214,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_02_000001) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  create_table "vacation_trips", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.date "end_date"
+    t.bigint "household_id", null: false
+    t.text "notes"
+    t.integer "sitter_visit_frequency_days", default: 2, null: false
+    t.date "start_date", null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id", "start_date"], name: "index_vacation_trips_on_household_id_and_start_date"
+    t.index ["household_id"], name: "index_vacation_trips_on_household_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "care_events", "cats"
@@ -229,4 +242,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_02_000001) do
   add_foreign_key "reminder_recipients", "users"
   add_foreign_key "reminders", "cats"
   add_foreign_key "reminders", "households"
+  add_foreign_key "vacation_trips", "households"
+  add_foreign_key "vacation_trips", "users", column: "created_by_id"
 end

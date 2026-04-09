@@ -28,6 +28,22 @@ export function getCatAge(birthday: string | null): number | null {
   return age >= 0 ? age : null
 }
 
+// ─── Vacation Mode ────────────────────────────────────────────────────────────
+
+export interface VacationContext {
+  active: boolean
+  windowDays: number
+  startDate: string  // trip.start_date "YYYY-MM-DD"
+}
+
+export function isWithinLastNDays(isoString: string, days: number): boolean {
+  const d = new Date(isoString)
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - days)
+  cutoff.setHours(0, 0, 0, 0)
+  return d >= cutoff
+}
+
 export function isToday(isoString: string): boolean {
   const d = new Date(isoString)
   const now = new Date()
