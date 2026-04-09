@@ -1,4 +1,4 @@
-import type { CareEvent, EventType } from '@/types/api'
+import type { CareEvent, EventType, MedicationFrequency } from '@/types/api'
 
 // Checks whether today (local time) is a cat's birthday (same month + day).
 // Parses birthday as a local date to avoid UTC-midnight timezone shifts.
@@ -142,6 +142,112 @@ export const EVENT_TYPE_LABEL: Record<EventType, string> = {
   grooming:  'Grooming',
   symptom:        'Symptom',
   tooth_brushing: 'Toothbrushing',
+}
+
+// ─── Medication Adherence Helpers ─────────────────────────────────────────────
+
+const FREQUENCY_HOURS: Record<MedicationFrequency, number | null> = {
+  once_daily:  24,
+  twice_daily: 12,
+  every_8h:    8,
+  every_12h:   12,
+  as_needed:   null,
+}
+
+/**
+ * Returns a human-readable label for when the next dose is due.
+ * Returns null for "as_needed" or when frequency is unknown.
+ */
+export function getNextDoseLabel(
+  frequency: MedicationFrequency | null | undefined,
+  lastDoseAt: string | null | undefined
+): string | null {
+  if (!frequency || !lastDoseAt) return null
+  const intervalHours = FREQUENCY_HOURS[frequency]
+  if (intervalHours === null) return null
+
+  const lastMs = new Date(lastDoseAt).getTime()
+  const nextMs = lastMs + intervalHours * 60 * 60 * 1000
+  const nowMs = Date.now()
+  const diffMs = nextMs - nowMs
+  const diffHours = diffMs / (60 * 60 * 1000)
+
+  if (diffMs <= 0) {
+    const overdueHours = Math.abs(diffHours)
+    if (overdueHours < 1) return 'Due now'
+    return `Overdue by ~${Math.round(overdueHours)}h`
+  }
+  if (diffHours < 1) return 'Due in < 1h'
+  return `Due in ~${Math.round(diffHours)}h`
+}
+
+export type DoseTimelineRow =
+  | { type: 'dose'; event: CareEvent }
+  | { type: 'missed'; expectedAt: string }
+
+/**
+ * Builds a unified dose timeline for a single medication.
+ * Inserts "missed" rows wherever a dose gap exceeds the expected interval.
+ * startAt is the occurred_at of the "start" event (active_medication: true).
+ * doses should be sorted newest-first on entry; output is also newest-first.
+ */
+export function buildDoseTimeline(
+  frequency: MedicationFrequency | null | undefined,
+  startAt: string,
+  doses: CareEvent[]
+): DoseTimelineRow[] {
+  const intervalHours = frequency ? FREQUENCY_HOURS[frequency] : null
+
+  // Sort oldest-first to walk chronologically
+  const sorted = [...doses].sort(
+    (a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime()
+  )
+
+  const rows: DoseTimelineRow[] = []
+
+  if (!intervalHours) {
+    // No frequency — just return doses as-is (newest-first)
+    for (const event of [...sorted].reverse()) {
+      rows.push({ type: 'dose', event })
+    }
+    return rows
+  }
+
+  const intervalMs = intervalHours * 60 * 60 * 1000
+  const now = Date.now()
+  const startMs = new Date(startAt).getTime()
+
+  // Walk from start to now in expected dose slots, inserting missed rows
+  let expectedMs = startMs + intervalMs
+  let doseIndex = 0
+
+  while (expectedMs <= now + intervalMs) {
+    const dose = sorted[doseIndex]
+    if (dose) {
+      const doseMs = new Date(dose.occurred_at).getTime()
+      if (doseMs <= expectedMs + intervalMs / 2) {
+        // Close enough — counts as the expected dose
+        rows.push({ type: 'dose', event: dose })
+        doseIndex++
+        expectedMs += intervalMs
+        continue
+      }
+    }
+    // No dose found near this slot — it's missed (only flag past slots)
+    if (expectedMs < now - intervalMs / 4) {
+      rows.push({ type: 'missed', expectedAt: new Date(expectedMs).toISOString() })
+    }
+    expectedMs += intervalMs
+  }
+
+  // Any remaining doses (e.g., extra doses in a slot) append at the end
+  while (doseIndex < sorted.length) {
+    rows.push({ type: 'dose', event: sorted[doseIndex] })
+    doseIndex++
+  }
+
+  // Return newest-first
+  return rows.reverse()
 }
 
 export interface CatCareRequirements {

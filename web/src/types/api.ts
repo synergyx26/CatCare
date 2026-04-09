@@ -170,10 +170,23 @@ export type EventType =
   | 'feeding' | 'litter' | 'water' | 'weight'
   | 'note' | 'medication' | 'vet_visit' | 'grooming' | 'symptom' | 'tooth_brushing'
 
+// Medication frequency — stored in details.frequency on the "start" event (active_medication: true)
+export type MedicationFrequency = 'once_daily' | 'twice_daily' | 'every_8h' | 'every_12h' | 'as_needed'
+
+export const FREQUENCY_LABELS: Record<MedicationFrequency, string> = {
+  once_daily:  'Once daily',
+  twice_daily: 'Twice daily',
+  every_8h:   'Every 8 hours',
+  every_12h:  'Every 12 hours',
+  as_needed:  'As needed',
+}
+
 // details JSONB shapes per event_type:
 //   feeding:    { food_type: 'wet'|'dry'|'treats'|'other', amount_grams?: number }
 //   weight:     { weight_value: number, weight_unit: 'kg'|'g' }
-//   medication: { medication_name: string, dosage?: string, unit?: 'mg'|'ml'|'tablet' }
+//   medication: { medication_name: string, dosage?: string, unit?: 'mg'|'ml'|'tablet',
+//                 active_medication?: boolean, stopped?: boolean,
+//                 frequency?: MedicationFrequency, course_end_date?: string }
 //   vet_visit:  { reason: string, vet_name?: string, vet_clinic?: string }
 //   grooming:   { grooming_type: 'bath'|'nail_trim'|'full_groom'|'other' }
 //   symptom:    { symptom_type: SymptomType, severity?: 'mild'|'moderate'|'severe', duration_minutes?: number }
