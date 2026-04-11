@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_10_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_11_080000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -154,6 +154,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_000001) do
   create_table "households", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "created_by"
+    t.string "currency", default: "USD", null: false
+    t.string "default_country", default: "US", null: false
     t.string "emergency_contact_name"
     t.string "emergency_contact_phone"
     t.string "name"
@@ -162,6 +164,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_000001) do
     t.string "vet_clinic"
     t.string "vet_name"
     t.string "vet_phone"
+  end
+
+  create_table "pet_expenses", force: :cascade do |t|
+    t.string "brand"
+    t.bigint "cat_id"
+    t.integer "category", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.bigint "household_id", null: false
+    t.boolean "is_recurring", default: false, null: false
+    t.text "notes"
+    t.string "product_name", null: false
+    t.date "purchase_date", null: false
+    t.decimal "quantity", precision: 8, scale: 3, default: "1.0", null: false
+    t.integer "recurrence_interval_days"
+    t.string "store_name"
+    t.string "store_url"
+    t.string "unit_label"
+    t.decimal "unit_price", precision: 10, scale: 2, null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id", "cat_id"], name: "index_pet_expenses_on_household_id_and_cat_id"
+    t.index ["household_id", "category"], name: "index_pet_expenses_on_household_id_and_category"
+    t.index ["household_id", "is_recurring"], name: "index_pet_expenses_on_household_id_and_is_recurring"
+    t.index ["household_id", "purchase_date"], name: "index_pet_expenses_on_household_id_and_purchase_date"
+    t.index ["household_id"], name: "index_pet_expenses_on_household_id"
   end
 
   create_table "reminder_recipients", force: :cascade do |t|
@@ -215,6 +242,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_000001) do
   end
 
   create_table "vacation_trips", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.bigint "created_by_id", null: false
     t.date "end_date"
@@ -223,6 +251,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_000001) do
     t.integer "sitter_visit_frequency_days", default: 2, null: false
     t.date "start_date", null: false
     t.datetime "updated_at", null: false
+    t.index ["household_id", "active"], name: "index_vacation_trips_on_household_id_and_active"
     t.index ["household_id", "start_date"], name: "index_vacation_trips_on_household_id_and_start_date"
     t.index ["household_id"], name: "index_vacation_trips_on_household_id"
   end
@@ -238,6 +267,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_000001) do
   add_foreign_key "household_invites", "households"
   add_foreign_key "household_memberships", "households"
   add_foreign_key "household_memberships", "users"
+  add_foreign_key "pet_expenses", "cats"
+  add_foreign_key "pet_expenses", "households"
+  add_foreign_key "pet_expenses", "users", column: "created_by_id"
   add_foreign_key "reminder_recipients", "reminders"
   add_foreign_key "reminder_recipients", "users"
   add_foreign_key "reminders", "cats"

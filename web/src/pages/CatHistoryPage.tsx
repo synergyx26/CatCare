@@ -412,10 +412,10 @@ export function CatHistoryPage() {
 
           {/* Row 2: Filter bar — container-responsive via @container */}
           <div className="@container">
-            <div className="flex flex-col @sm:flex-row @sm:items-center gap-2">
+            <div className="flex flex-col @md:flex-row @md:items-center gap-2">
 
               {/* Range selector — grid on narrow, inline flex on wider */}
-              <div className="grid grid-cols-3 @sm:flex rounded-xl overflow-hidden ring-1 ring-border/60 text-sm">
+              <div className="grid grid-cols-3 @md:flex rounded-xl overflow-hidden ring-1 ring-border/60 text-sm">
                 {(['7d', '30d', '90d'] as Range[]).map((r) => {
                   const allowed = allowedRanges.includes(r)
                   return (
@@ -463,8 +463,8 @@ export function CatHistoryPage() {
                 </button>
 
                 {/* Current window label */}
-                <div className="flex flex-col items-center justify-center px-3 py-1.5 flex-1 min-w-0">
-                  <span className="text-xs font-medium text-foreground whitespace-nowrap">
+                <div className="flex flex-col items-center justify-center px-2 py-1.5 flex-1 min-w-0 overflow-hidden">
+                  <span className="text-xs font-medium text-foreground whitespace-nowrap overflow-hidden text-ellipsis max-w-full">
                     {currentLabel}
                   </span>
                   {offset > 0 && (

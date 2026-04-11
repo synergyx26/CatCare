@@ -29,7 +29,7 @@ PhoneInputText.displayName = 'PhoneInputText'
 export interface PhoneInputProps {
   value: string
   onChange: (value: string) => void
-  defaultCountry?: Country
+  defaultCountry?: Country | string
   placeholder?: string
   className?: string
   disabled?: boolean
@@ -47,7 +47,7 @@ export function PhoneInput({
     <div className={cn('phone-input-wrapper', className)}>
       <PhoneInputLib
         international
-        defaultCountry={defaultCountry}
+        defaultCountry={defaultCountry as Country}
         value={value && value.startsWith('+') ? value : undefined}
         onChange={(v) => onChange(v ?? '')}
         inputComponent={PhoneInputText}

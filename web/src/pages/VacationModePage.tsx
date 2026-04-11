@@ -222,7 +222,7 @@ export function VacationModePage() {
 
   const endMutation = useMutation({
     mutationFn: (id: number) =>
-      api.updateVacationTrip(hid, id, { vacation_trip: { end_date: todayStr() } }),
+      api.updateVacationTrip(hid, id, { vacation_trip: { active: false, end_date: todayStr() } }),
     onSuccess: () => {
       notify.success('Trip ended.')
       invalidate()

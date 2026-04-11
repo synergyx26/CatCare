@@ -7,8 +7,60 @@ import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
+import { Button } from '@/components/ui/button'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { CURRENCIES } from '@/lib/currency'
 import type { Cat, Household } from '@/types/api'
+
+// ─── Country list for phone defaults ─────────────────────────────────────────
+
+const COUNTRIES: { code: string; label: string }[] = [
+  { code: 'US', label: 'United States' },
+  { code: 'CA', label: 'Canada' },
+  { code: 'GB', label: 'United Kingdom' },
+  { code: 'AU', label: 'Australia' },
+  { code: 'NZ', label: 'New Zealand' },
+  { code: 'IE', label: 'Ireland' },
+  { code: 'ZA', label: 'South Africa' },
+  { code: 'DE', label: 'Germany' },
+  { code: 'FR', label: 'France' },
+  { code: 'ES', label: 'Spain' },
+  { code: 'IT', label: 'Italy' },
+  { code: 'NL', label: 'Netherlands' },
+  { code: 'BE', label: 'Belgium' },
+  { code: 'CH', label: 'Switzerland' },
+  { code: 'AT', label: 'Austria' },
+  { code: 'SE', label: 'Sweden' },
+  { code: 'NO', label: 'Norway' },
+  { code: 'DK', label: 'Denmark' },
+  { code: 'FI', label: 'Finland' },
+  { code: 'PL', label: 'Poland' },
+  { code: 'PT', label: 'Portugal' },
+  { code: 'CZ', label: 'Czech Republic' },
+  { code: 'HU', label: 'Hungary' },
+  { code: 'RO', label: 'Romania' },
+  { code: 'GR', label: 'Greece' },
+  { code: 'JP', label: 'Japan' },
+  { code: 'CN', label: 'China' },
+  { code: 'KR', label: 'South Korea' },
+  { code: 'IN', label: 'India' },
+  { code: 'SG', label: 'Singapore' },
+  { code: 'HK', label: 'Hong Kong' },
+  { code: 'TW', label: 'Taiwan' },
+  { code: 'TH', label: 'Thailand' },
+  { code: 'PH', label: 'Philippines' },
+  { code: 'MY', label: 'Malaysia' },
+  { code: 'ID', label: 'Indonesia' },
+  { code: 'BR', label: 'Brazil' },
+  { code: 'MX', label: 'Mexico' },
+  { code: 'AR', label: 'Argentina' },
+  { code: 'CL', label: 'Chile' },
+  { code: 'CO', label: 'Colombia' },
+  { code: 'AE', label: 'United Arab Emirates' },
+  { code: 'SA', label: 'Saudi Arabia' },
+  { code: 'IL', label: 'Israel' },
+  { code: 'TR', label: 'Turkey' },
+]
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +109,32 @@ export function HouseholdSettingsPage() {
     enabled:  !!hid,
   })
   const cats: Cat[] = (catsData?.data?.data ?? []).filter((c: Cat) => c.active)
+
+  // ── Locale state (currency + country) ───────────────────────────────────────
+
+  const [currency, setCurrency] = useState(primaryHousehold?.currency ?? 'USD')
+  const [defaultCountry, setDefaultCountry] = useState(primaryHousehold?.default_country ?? 'US')
+
+  useEffect(() => {
+    if (primaryHousehold) {
+      setCurrency(primaryHousehold.currency ?? 'USD')
+      setDefaultCountry(primaryHousehold.default_country ?? 'US')
+    }
+  }, [primaryHousehold?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const localeMutation = useMutation({
+    mutationFn: () =>
+      api.updateHousehold(hid, { household: { currency, default_country: defaultCountry } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['households'] })
+      notify.success('Locale settings saved')
+    },
+    onError: () => notify.error('Failed to save locale settings'),
+  })
+
+  const localeChanged =
+    currency !== (primaryHousehold?.currency ?? 'USD') ||
+    defaultCountry !== (primaryHousehold?.default_country ?? 'US')
 
   // ── Mutation: patch any cat field(s) ────────────────────────────────────────
 
@@ -131,6 +209,57 @@ export function HouseholdSettingsPage() {
         subtitle="Configure daily care requirements and feeding portions for each cat"
         backTo={{ label: 'Back to dashboard', onClick: () => navigate('/dashboard') }}
       />
+
+      {/* ── Locale settings ── */}
+      <div className="rounded-2xl bg-card ring-1 ring-border/60 overflow-hidden">
+        <div className="px-4 py-3 border-b border-border/40">
+          <p className="text-sm font-semibold">Locale settings</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Sets the currency shown in Expenses and the default country code in phone fields.
+          </p>
+        </div>
+        <div className="px-4 py-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground block">Currency</label>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.symbol} {c.code} — {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground block">Default phone country</label>
+              <select
+                value={defaultCountry}
+                onChange={(e) => setDefaultCountry(e.target.value)}
+                className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} — {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => localeMutation.mutate()}
+              disabled={!localeChanged || localeMutation.isPending}
+            >
+              {localeMutation.isPending ? 'Saving…' : 'Save locale'}
+            </Button>
+          </div>
+        </div>
+      </div>
 
       <div className="rounded-2xl bg-sky-50 dark:bg-sky-950/20 ring-1 ring-sky-200/60 dark:ring-sky-800/30 p-4">
         <p className="text-sm text-sky-700 dark:text-sky-300">

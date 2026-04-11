@@ -52,6 +52,14 @@ export function HouseholdProfilePage() {
   })
   const profile: MembershipProfile | undefined = data?.data?.data
 
+  const { data: householdsData } = useQuery({
+    queryKey: ['households'],
+    queryFn:  () => api.getHouseholds(),
+    staleTime: Infinity,
+  })
+  const defaultCountry: string =
+    (householdsData?.data?.data ?? []).find((h: { id: number }) => h.id === hid)?.default_country ?? 'US'
+
   const {
     register,
     handleSubmit,
@@ -144,6 +152,7 @@ export function HouseholdProfilePage() {
                 <PhoneInput
                   value={field.value ?? ''}
                   onChange={field.onChange}
+                  defaultCountry={defaultCountry}
                 />
               )}
             />
@@ -187,6 +196,7 @@ export function HouseholdProfilePage() {
                 <PhoneInput
                   value={field.value ?? ''}
                   onChange={field.onChange}
+                  defaultCountry={defaultCountry}
                 />
               )}
             />

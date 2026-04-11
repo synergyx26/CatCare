@@ -8,13 +8,7 @@ class VacationTrip < ApplicationRecord
     numericality: { only_integer: true, greater_than_or_equal_to: 1, less_than_or_equal_to: 30 }
   validate :end_date_not_before_start_date
 
-  scope :active_on, ->(date) {
-    where("start_date <= ?", date).where("end_date IS NULL OR end_date >= ?", date)
-  }
-
-  def active?
-    start_date <= Date.today && (end_date.nil? || end_date >= Date.today)
-  end
+  scope :active_on, ->(_date = nil) { where(active: true) }
 
   private
 

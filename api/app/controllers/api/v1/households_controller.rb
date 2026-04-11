@@ -61,7 +61,8 @@ module Api
       def household_params
         params.require(:household).permit(
           :name, :emergency_contact_name, :emergency_contact_phone,
-          :vet_name, :vet_clinic, :vet_phone, :vet_address
+          :vet_name, :vet_clinic, :vet_phone, :vet_address,
+          :currency, :default_country
         )
       end
 
@@ -83,6 +84,8 @@ module Api
           vet_clinic:              household.vet_clinic,
           vet_phone:               household.vet_phone,
           vet_address:             household.vet_address,
+          currency:                household.currency,
+          default_country:         household.default_country,
           active_vacation_trip:    begin
             t = household.active_vacation_trip
             t && {

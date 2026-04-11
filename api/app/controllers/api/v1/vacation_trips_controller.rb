@@ -45,7 +45,7 @@ module Api
 
       def trip_params
         params.require(:vacation_trip).permit(
-          :start_date, :end_date, :notes, :sitter_visit_frequency_days
+          :start_date, :end_date, :notes, :sitter_visit_frequency_days, :active
         )
       end
 

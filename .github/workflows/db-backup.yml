@@ -1,0 +1,41 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'   # Weekly — every Sunday at 03:00 UTC
+    # Uncomment for monthly instead (1st of each month at 03:00 UTC):
+    # - cron: '0 3 1 * *'
+  workflow_dispatch:       # Manual trigger from the Actions tab
+
+jobs:
+  backup:
+    name: pg_dump → artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Dump database
+        env:
+          PGPASSWORD: ${{ secrets.BACKUP_DB_PASSWORD }}
+        run: |
+          FILENAME="catcare-$(date -u +%Y-%m-%d).dump"
+          pg_dump \
+            --host="${{ secrets.BACKUP_DB_HOST }}" \
+            --port="${{ secrets.BACKUP_DB_PORT }}" \
+            --username="${{ secrets.BACKUP_DB_USER }}" \
+            --dbname="${{ secrets.BACKUP_DB_NAME }}" \
+            --no-owner \
+            --no-acl \
+            --format=custom \
+            --file="$FILENAME"
+          echo "FILENAME=$FILENAME" >> "$GITHUB_ENV"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: ${{ env.FILENAME }}
+          retention-days: 90
+          if-no-files-found: error

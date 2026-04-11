@@ -24,6 +24,7 @@ import { CareHistoryTablePage } from '@/pages/CareHistoryTablePage'
 import { HouseholdCalendarPage } from '@/pages/HouseholdCalendarPage'
 import { VacationModePage } from '@/pages/VacationModePage'
 import { MedicationsPage } from '@/pages/MedicationsPage'
+import { ExpenseTrackerPage } from '@/pages/ExpenseTrackerPage'
 import { AdminPage } from '@/pages/AdminPage'
 import { AdminImportPage } from '@/pages/AdminImportPage'
 import { LandingPage } from '@/pages/LandingPage'
@@ -112,6 +113,10 @@ export default function App() {
               <Route
                 path="/households/:householdId/vacation"
                 element={<VacationModePage />}
+              />
+              <Route
+                path="/households/:householdId/expenses"
+                element={<ExpenseTrackerPage />}
               />
             </Route>
           </Route>

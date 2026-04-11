@@ -60,7 +60,9 @@ export function EditCatPage() {
     queryKey: ['households'],
     queryFn:  () => api.getHouseholds(),
   })
-  const household: Household | undefined = householdData?.data?.data?.[0]
+  const household: Household | undefined =
+    (householdData?.data?.data ?? []).find((h: Household) => h.id === Number(householdId))
+    ?? householdData?.data?.data?.[0]
   const hasHouseholdVet = !!(household?.vet_name || household?.vet_clinic || household?.vet_phone || household?.vet_address)
 
   const { register, handleSubmit, setValue, control, formState: { errors } } = useForm<FormValues>({
@@ -389,6 +391,7 @@ export function EditCatPage() {
                 <PhoneInput
                   value={field.value ?? ''}
                   onChange={field.onChange}
+                  defaultCountry={household?.default_country}
                 />
               )}
             />

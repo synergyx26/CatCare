@@ -107,6 +107,7 @@ export function HouseholdVetSection({ household, currentRole }: HouseholdVetSect
             <PhoneInput
               value={vetPhone}
               onChange={setVetPhone}
+              defaultCountry={household.default_country}
             />
           </div>
           <div className="space-y-1">

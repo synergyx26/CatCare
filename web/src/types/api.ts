@@ -106,6 +106,8 @@ export interface Household {
   members: HouseholdMember[]
   cat_count: number
   created_at: string
+  currency: string              // ISO 4217, e.g. "USD"
+  default_country: string       // ISO 3166-1 alpha-2, e.g. "US"
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
   vet_name: string | null
@@ -377,5 +379,82 @@ export interface ImportCareEventRow {
 export interface ImportResult {
   imported: number
   failed: { row: number; error: string }[]
+}
+
+// ─── Pet Expenses ─────────────────────────────────────────────────────────────
+
+export type ExpenseCategory =
+  | 'food' | 'treats' | 'litter' | 'toys'
+  | 'medication' | 'grooming' | 'accessories' | 'other'
+
+export type ExpenseRange = '1m' | '3m' | '6m' | '1y' | 'all'
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  food:        'Food',
+  treats:      'Treats',
+  litter:      'Litter',
+  toys:        'Toys',
+  medication:  'Medication',
+  grooming:    'Grooming',
+  accessories: 'Accessories',
+  other:       'Other',
+}
+
+export const EXPENSE_CATEGORY_ICONS: Record<ExpenseCategory, string> = {
+  food:        '🍖',
+  treats:      '🦴',
+  litter:      '🪣',
+  toys:        '🧸',
+  medication:  '💊',
+  grooming:    '✂️',
+  accessories: '🏠',
+  other:       '📦',
+}
+
+export const EXPENSE_CATEGORY_COLORS: Record<ExpenseCategory, string> = {
+  food:        '#22c55e',
+  treats:      '#f97316',
+  litter:      '#a78bfa',
+  toys:        '#06b6d4',
+  medication:  '#ef4444',
+  grooming:    '#ec4899',
+  accessories: '#f59e0b',
+  other:       '#94a3b8',
+}
+
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  'food', 'treats', 'litter', 'toys', 'medication', 'grooming', 'accessories', 'other',
+]
+
+export interface PetExpense {
+  id: number
+  household_id: number
+  cat_id: number | null          // null = whole household
+  created_by_id: number
+  product_name: string
+  brand: string | null
+  category: ExpenseCategory
+  unit_price: number
+  quantity: number
+  unit_label: string | null      // "bag", "can", "lbs", etc.
+  total_cost: number             // computed server-side: unit_price * quantity
+  purchase_date: string          // "YYYY-MM-DD"
+  store_name: string | null
+  store_url: string | null
+  is_recurring: boolean
+  recurrence_interval_days: number | null
+  notes: string | null
+  created_at: string
+}
+
+export interface ExpenseStats {
+  range: ExpenseRange
+  start_date: string | null      // null when range = 'all'
+  end_date: string
+  total: number
+  by_category: Partial<Record<ExpenseCategory, number>>
+  by_month: Record<string, number>   // "YYYY-MM" -> total
+  by_cat: Record<string, number>     // cat_id as string (or "null") -> total
+  upcoming: PetExpense[]
 }
 

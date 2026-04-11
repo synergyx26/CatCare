@@ -90,6 +90,7 @@ export function EmergencyContactSection({
             <PhoneInput
               value={ecPhone}
               onChange={setEcPhone}
+              defaultCountry={household.default_country}
             />
           </div>
           <Button

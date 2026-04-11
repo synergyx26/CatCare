@@ -147,6 +147,14 @@ Frontend access pattern: `response.data.data` (Axios wrapper → Rails envelope 
 ### Cold-Start Resilience (Render free tier)
 `web/src/api/client.ts` response interceptor retries 502/503/504 up to 8 times with increasing backoff (3s→15s). Shows a persistent `toast.loading('Server is starting up…')` on first failure, dismisses it on success. Covers the ~60–90s window where Render's proxy is live but Puma hasn't finished booting. Import calls use a 120s per-request timeout (override on `adminImportCareEvents`).
 
+### Email (Resend)
+- **Gem**: `resend` v1.0.1 — configured in `config/environments/production.rb`
+- **Delivery**: active when `RESEND_API_KEY` env var is set; falls back to `:test` (silent discard) if absent
+- **Sender**: controlled by `MAILER_SENDER` env var — defaults to `noreply@catcare.app` if unset
+- **Current production sender**: `onboarding@resend.dev` (Resend shared domain) — **emails only deliver to the Resend account owner's email**. Must verify a custom domain at resend.com/domains to send to real users.
+- **Dev preview**: `letter_opener_web` captures emails locally at `http://localhost:3000/letter_opener` — nothing is sent in development
+- **Required Render env vars**: `RESEND_API_KEY`, `MAILER_SENDER`, `APP_HOST` (used by Action Mailer to build URLs in email templates)
+
 ### Sentry
 - **Rails**: `config/initializers/sentry.rb` — reads `SENTRY_DSN` env var. Only active in `production`/`staging`. Set `SENTRY_DSN` in your hosting environment's secrets.
 - **React**: initialized in `web/src/main.tsx` — reads `VITE_SENTRY_DSN`. No-ops silently if the env var is absent (safe in dev).
@@ -173,11 +181,11 @@ New policy specs must be added whenever a new policy is created. Pundit policy b
 ## Subscription Tiers
 
 ### Tier definitions
-| Tier | Cats | Members | Event types | History range | History offset | Calendar |
-|---|---|---|---|---|---|---|
-| `free` | 1 | 2 | feeding, litter, water, note | 7d only | current period only | blocked (upgrade wall) |
-| `pro` | 3 | unlimited | all 8 | 7d, 30d | up to 180 days back | up to 6 months back |
-| `premium` | unlimited | unlimited | all 8 | 7d, 30d, 90d | unlimited | unlimited history |
+| Tier | Cats | Members | Event types | History range | History offset | Calendar | Care History Table |
+|---|---|---|---|---|---|---|---|
+| `free` | 1 | 2 | feeding, litter, water, note | 7d only | current period only | locked (nav shows with badge) | locked (nav shows with badge) |
+| `pro` | 3 | unlimited | all 8 | 7d, 30d | up to 180 days back | up to 6 months back | locked (nav shows with badge) |
+| `premium` | unlimited | unlimited | all 8 | 7d, 30d, 90d | unlimited | unlimited history | unlimited |
 
 **Free event types:** `feeding`, `litter`, `water`, `note`
 **Pro/Premium-only:** `weight`, `medication`, `vet_visit`, `grooming`
@@ -194,7 +202,8 @@ New policy specs must be added whenever a new policy is created. Pundit policy b
 - **`DashboardPage.tsx`** — "Add Cat" button shows Lock icon + toast at cat limit; custom batch action buttons show Lock + toast for restricted event types
 - **`MembersSection.tsx`** — "Invite someone" shows Lock + toast at member limit; receives `tier` prop from `DashboardPage`
 - **`LogCareModal.tsx`** — reads tier from `useAuthStore`; restricted type pills are greyed/locked; falls back to `feeding` if opened with a restricted `initialType`; accepts `initialDate?: string` ("YYYY-MM-DD") to pre-fill occurred_at to noon on that date (used by HouseholdCalendarPage)
-- **`HouseholdCalendarPage.tsx`** — Pro/Premium only; free users see an upgrade wall; month navigation clamped by tier (Pro: 6 months back, Premium: unlimited); all filters applied client-side
+- **`HouseholdCalendarPage.tsx`** — Pro/Premium only; free users see an upgrade wall; month navigation clamped by tier (Pro: 6 months back, Premium: unlimited); all filters applied client-side; mobile day panel uses `max-h-[60dvh]` bottom sheet with `overflow-hidden` + `flex-1 min-h-0` on DayPanel so the event list scrolls correctly
+- **`AppLayout.tsx`** — Calendar + Care History always visible in "Insights" dropdown (desktop) / section (mobile) regardless of tier; locked items show Lock icon + "Pro"/"Premium" pill badge via `TierBadge` helper; `canAccessCalendar` / `canAccessCareHistory` booleans derived from `tier`; settings removed from avatar dropdown (lives in nav Settings dropdown only)
 - **`BatchActionModal.tsx`** — reads tier from `useAuthStore`; `medication` and `grooming` type pills are locked for Free
 
 ### Event type color system
@@ -327,7 +336,7 @@ web/src/
     EmptyState.tsx          — reusable: Lucide icon + title + description + optional CTA
     LogCareModal.tsx        — full care logging (all 8 types + edit/delete + AlertDialog confirm); reads feeding_presets from cat prop for quick-pick portion buttons; Free tier locks weight/medication/vet_visit/grooming pills
     layout/
-      AppLayout.tsx         — sticky navbar, user dropdown, theme toggle, mobile sheet
+      AppLayout.tsx         — sticky navbar, user dropdown, theme toggle, mobile sheet; desktop nav: Dashboard | Settings ▾ | Insights ▾ | [theme] [avatar]; Insights dropdown groups Calendar + Care History, always visible with Lock icon + tier badge for locked tiers; Settings dropdown: Household / Care (admin only) / Notifications; avatar dropdown: identity + sign-out only (settings removed to avoid duplication); mobile drawer mirrors same structure with Insights and Settings sections
       PageHeader.tsx        — reusable title + subtitle + back link + action slot
     dashboard/
       BirthdayBanner.tsx    — rose/pink gradient banner; shown when any active cat has a birthday today; "Send love" button opens note-log modal; dismissable per-session

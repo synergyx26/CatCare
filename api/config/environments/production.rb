@@ -53,14 +53,14 @@ Rails.application.configure do
   config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST"), protocol: "https" }
 
   # Resend delivery — HTTPS API, no SMTP port restrictions.
-  # Without the key the app boots normally but emails are logged instead of sent.
+  # Without the key the app boots normally but emails are silently discarded.
   if ENV["RESEND_API_KEY"].present?
     require "resend/mailer"
     Resend.api_key = ENV["RESEND_API_KEY"]
     config.action_mailer.raise_delivery_errors = true
     config.action_mailer.delivery_method = :resend
   else
-    config.action_mailer.delivery_method = :logger
+    config.action_mailer.delivery_method = :test
   end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to

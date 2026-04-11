@@ -9,10 +9,11 @@ class Household < ApplicationRecord
   has_many :care_notes, dependent: :destroy
   has_many :household_batch_actions, dependent: :destroy
   has_many :vacation_trips, dependent: :destroy
+  has_many :pet_expenses, dependent: :destroy
 
   validates :name, presence: true
 
   def active_vacation_trip
-    vacation_trips.active_on(Date.today).order(start_date: :desc).first
+    vacation_trips.where(active: true).order(start_date: :desc).first
   end
 end

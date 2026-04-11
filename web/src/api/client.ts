@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
-import type { NotificationPreferences, ImportCareEventRow } from '@/types/api'
+import type { NotificationPreferences, ImportCareEventRow, ExpenseRange, PetExpense } from '@/types/api'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
@@ -112,7 +112,7 @@ export const api = {
   createHousehold: (data: { household: { name: string } }) =>
     apiClient.post('/households', data),
 
-  updateHousehold: (id: number, data: { household: { name?: string; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; vet_name?: string | null; vet_clinic?: string | null; vet_phone?: string | null; vet_address?: string | null } }) =>
+  updateHousehold: (id: number, data: { household: { name?: string; currency?: string; default_country?: string; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; vet_name?: string | null; vet_clinic?: string | null; vet_phone?: string | null; vet_address?: string | null } }) =>
     apiClient.patch(`/households/${id}`, data),
 
   getHousehold: (id: number) =>
@@ -300,6 +300,7 @@ export const api = {
       end_date: string | null
       notes: string | null
       sitter_visit_frequency_days: number
+      active: boolean
     }>
   }) =>
     apiClient.patch(`/households/${householdId}/vacation_trips/${tripId}`, data),
@@ -348,4 +349,40 @@ export const api = {
 
   adminImportCareEvents: (events: ImportCareEventRow[]) =>
     apiClient.post('/admin/imports/care_events', { events }, { timeout: 120_000 }),
+
+  // ─── Pet Expenses (Premium) ────────────────────────────────────────────────
+
+  getExpenses: (
+    householdId: number,
+    opts?: { range?: ExpenseRange; catId?: number; category?: string; dateFrom?: string; dateTo?: string }
+  ) => {
+    const params: Record<string, unknown> = {}
+    if (opts?.range)    params.range    = opts.range
+    if (opts?.catId)    params.cat_id   = opts.catId
+    if (opts?.category) params.category = opts.category
+    if (opts?.dateFrom) params.date_from = opts.dateFrom
+    if (opts?.dateTo)   params.date_to   = opts.dateTo
+    return apiClient.get(`/households/${householdId}/expenses`, { params })
+  },
+
+  createExpense: (
+    householdId: number,
+    data: {
+      pet_expense: Omit<PetExpense, 'id' | 'household_id' | 'created_by_id' | 'total_cost' | 'created_at'>
+    }
+  ) =>
+    apiClient.post(`/households/${householdId}/expenses`, data),
+
+  updateExpense: (
+    householdId: number,
+    expenseId: number,
+    data: { pet_expense: Partial<Omit<PetExpense, 'id' | 'household_id' | 'created_by_id' | 'total_cost' | 'created_at'>> }
+  ) =>
+    apiClient.patch(`/households/${householdId}/expenses/${expenseId}`, data),
+
+  deleteExpense: (householdId: number, expenseId: number) =>
+    apiClient.delete(`/households/${householdId}/expenses/${expenseId}`),
+
+  getExpenseStats: (householdId: number, range: ExpenseRange = '1m') =>
+    apiClient.get(`/households/${householdId}/expenses/stats`, { params: { range } }),
 }

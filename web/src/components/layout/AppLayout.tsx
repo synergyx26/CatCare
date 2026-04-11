@@ -40,6 +40,7 @@ import {
   TableProperties,
   CalendarDays,
   Plane,
+  ReceiptText,
 } from 'lucide-react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
 import type { Household } from '@/types/api'
@@ -112,6 +113,7 @@ export function AppLayout() {
   const tier = user?.subscription_tier ?? 'free'
   const canAccessCalendar    = tier === 'pro' || tier === 'premium'
   const canAccessCareHistory = tier === 'premium'
+  const canAccessExpenses    = tier === 'premium'
 
   function handleLogout() {
     // Clear client state immediately so the user is logged out regardless of
@@ -187,6 +189,20 @@ export function AppLayout() {
                         {canAccessCareHistory ? <TableProperties className="size-4 shrink-0" /> : <Lock className="size-4 shrink-0" />}
                         Care History
                         {!canAccessCareHistory && <TierBadge tier="premium" />}
+                      </button>
+                      <button
+                        onClick={canAccessExpenses && primaryHousehold
+                          ? () => { navigate(`/households/${primaryHousehold.id}/expenses`); setMobileOpen(false) }
+                          : undefined}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors w-full ${
+                          canAccessExpenses
+                            ? 'hover:bg-muted text-foreground'
+                            : 'text-muted-foreground cursor-not-allowed'
+                        }`}
+                      >
+                        {canAccessExpenses ? <ReceiptText className="size-4 shrink-0" /> : <Lock className="size-4 shrink-0" />}
+                        Expenses
+                        {!canAccessExpenses && <TierBadge tier="premium" />}
                       </button>
                     </>
                   )}
@@ -397,6 +413,14 @@ export function AppLayout() {
                       {canAccessCareHistory ? <TableProperties className="size-4" /> : <Lock className="size-4" />}
                       Care History
                       {!canAccessCareHistory && <TierBadge tier="premium" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={canAccessExpenses ? () => navigate(`/households/${primaryHousehold.id}/expenses`) : undefined}
+                      className={!canAccessExpenses ? 'opacity-60 cursor-not-allowed' : ''}
+                    >
+                      {canAccessExpenses ? <ReceiptText className="size-4" /> : <Lock className="size-4" />}
+                      Expenses
+                      {!canAccessExpenses && <TierBadge tier="premium" />}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
