@@ -226,43 +226,44 @@ function DayCell({
 
   const dayNum = Number(dateStr.split('-')[2])
 
+  // Cell background — no borders, state communicated through fill only
+  const cellBg =
+    !isInRange          ? 'bg-transparent cursor-default opacity-40' :
+    isSelected && isToday ? 'bg-sky-100/90 dark:bg-sky-900/40 cursor-pointer' :
+    isSelected          ? 'bg-primary/10 dark:bg-primary/15 cursor-pointer' :
+    isToday             ? 'bg-sky-50/80 dark:bg-sky-950/40 cursor-pointer' :
+                          'bg-muted/20 hover:bg-muted/50 cursor-pointer'
+
   return (
     <button
       onClick={onClick}
+      disabled={!isInRange}
       aria-pressed={isSelected}
       aria-label={`${dateStr}${isInRange ? `, ${visibleEvents.length} events` : ''}`}
       className={[
-        'relative flex flex-col items-start p-1 sm:p-1.5 rounded-lg text-left transition-all border',
-        'min-h-[52px] sm:min-h-[72px] w-full',
-        isInRange
-          ? isSelected
-            ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/30'
-            : 'border-border/60 hover:bg-muted/40 hover:border-border cursor-pointer'
-          : 'border-transparent opacity-30 cursor-default',
-        isToday && isInRange
-          ? '!border-sky-400/60 bg-sky-50/40 dark:bg-sky-950/20'
-          : '',
+        'relative flex flex-col items-start rounded-xl text-left transition-colors',
+        'min-h-[64px] sm:min-h-[88px] w-full p-1.5 sm:p-2.5',
+        cellBg,
       ].join(' ')}
     >
-      {/* Day number */}
+      {/* Day number — filled circle only for today/selected */}
       <span className={[
-        'text-[11px] sm:text-xs font-semibold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full mb-0.5 shrink-0',
-        isToday
-          ? 'bg-sky-500 text-white'
-          : isInRange
-            ? 'text-foreground'
-            : 'text-muted-foreground',
+        'text-xs sm:text-sm font-semibold w-6 h-6 flex items-center justify-center rounded-full shrink-0 leading-none',
+        isToday             ? 'bg-sky-500 text-white' :
+        isSelected          ? 'bg-primary text-primary-foreground' :
+        isInRange           ? 'text-foreground' :
+                              'text-muted-foreground',
       ].join(' ')}>
         {dayNum}
       </span>
 
-      {/* Event type dots — compact horizontal row, no labels (labels live in the day panel) */}
+      {/* Event type dots — pushed to bottom of cell, horizontal row */}
       {isInRange && shown.length > 0 && (
-        <div className="flex flex-wrap gap-[3px]">
+        <div className="flex flex-wrap gap-1 mt-auto pt-1">
           {shown.map(([type]) => (
             <span
               key={type}
-              className="w-1.5 h-1.5 rounded-full shrink-0"
+              className="w-2 h-2 rounded-full shrink-0"
               style={{ background: EVENT_COLORS[type] }}
             />
           ))}
@@ -272,20 +273,20 @@ function DayCell({
         </div>
       )}
 
-      {/* Missing feeding indicator */}
-      {missingFeeding && !isToday && (
+      {/* Missing feeding indicator — amber corner notch */}
+      {missingFeeding && (
         <span
           className="absolute bottom-0 right-0 w-0 h-0"
           style={{
             borderStyle: 'solid',
-            borderWidth: '0 0 10px 10px',
+            borderWidth: '0 0 8px 8px',
             borderColor: 'transparent transparent #f59e0b transparent',
           }}
           aria-hidden="true"
         />
       )}
 
-      {/* Lock for out-of-range past days */}
+      {/* Lock icon for out-of-tier past days */}
       {!isInRange && !isFuture && (
         <Lock className="absolute top-1.5 right-1.5 w-3 h-3 text-muted-foreground/40" />
       )}
@@ -769,7 +770,7 @@ export function HouseholdCalendarPage() {
         <div className="flex-1 min-w-0 overflow-auto">
           <div className="container mx-auto max-w-screen-xl px-4 py-4">
             {/* Weekday headers */}
-            <div className="grid grid-cols-7 gap-1 mb-1">
+            <div className="grid grid-cols-7 gap-2 mb-1">
               {WEEKDAY_LABELS.map(d => (
                 <div key={d} className="text-center text-[11px] font-medium text-muted-foreground py-1">
                   <span className="hidden sm:inline">{d}</span>
@@ -780,19 +781,19 @@ export function HouseholdCalendarPage() {
 
             {/* Loading state */}
             {eventsQuery.isLoading && (
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-2">
                 {Array.from({ length: 35 }).map((_, i) => (
-                  <div key={i} className="min-h-[72px] sm:min-h-[90px] rounded-lg bg-muted/40 animate-pulse" />
+                  <div key={i} className="min-h-[64px] sm:min-h-[88px] rounded-xl bg-muted/40 animate-pulse" />
                 ))}
               </div>
             )}
 
             {/* Calendar cells */}
             {!eventsQuery.isLoading && (
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-2">
                 {calendarDays.map((dateStr, i) => {
                   if (!dateStr) {
-                    return <div key={i} className="min-h-[72px] sm:min-h-[90px] rounded-lg bg-muted/10" />
+                    return <div key={i} className="min-h-[64px] sm:min-h-[88px]" />
                   }
                   const isInRange = dateStr >= monthStart && dateStr <= monthEnd && dateStr <= todayStr
                   return (
