@@ -233,7 +233,7 @@ function DayCell({
       aria-label={`${dateStr}${isInRange ? `, ${visibleEvents.length} events` : ''}`}
       className={[
         'relative flex flex-col items-start p-1 sm:p-1.5 rounded-lg text-left transition-all border',
-        'min-h-[52px] sm:min-h-[72px] w-full overflow-hidden',
+        'min-h-[52px] sm:min-h-[72px] w-full',
         isInRange
           ? isSelected
             ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/30'
