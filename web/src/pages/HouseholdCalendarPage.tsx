@@ -220,7 +220,7 @@ function DayCell({
     typeGroups.set(e.event_type, (typeGroups.get(e.event_type) ?? 0) + 1)
   }
   const typesShown = [...typeGroups.entries()]
-  const MAX_DOTS = 3
+  const MAX_DOTS = 5
   const shown = typesShown.slice(0, MAX_DOTS)
   const overflow = typesShown.length - MAX_DOTS
 
@@ -232,8 +232,8 @@ function DayCell({
       aria-pressed={isSelected}
       aria-label={`${dateStr}${isInRange ? `, ${visibleEvents.length} events` : ''}`}
       className={[
-        'relative flex flex-col items-start p-1.5 sm:p-2 rounded-lg text-left transition-all border',
-        'min-h-[72px] sm:min-h-[90px] w-full overflow-hidden',
+        'relative flex flex-col items-start p-1 sm:p-1.5 rounded-lg text-left transition-all border',
+        'min-h-[52px] sm:min-h-[72px] w-full overflow-hidden',
         isInRange
           ? isSelected
             ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/30'
@@ -246,7 +246,7 @@ function DayCell({
     >
       {/* Day number */}
       <span className={[
-        'text-xs sm:text-sm font-semibold w-6 h-6 flex items-center justify-center rounded-full mb-1 shrink-0',
+        'text-[11px] sm:text-xs font-semibold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full mb-0.5 shrink-0',
         isToday
           ? 'bg-sky-500 text-white'
           : isInRange
@@ -256,24 +256,18 @@ function DayCell({
         {dayNum}
       </span>
 
-      {/* Event type dots with count */}
+      {/* Event type dots — compact horizontal row, no labels (labels live in the day panel) */}
       {isInRange && shown.length > 0 && (
-        <div className="flex flex-col gap-0.5 w-full">
-          {shown.map(([type, count]) => (
-            <div key={type} className="flex items-center gap-1 min-w-0">
-              <span
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ background: EVENT_COLORS[type] }}
-              />
-              <span className="text-[10px] text-muted-foreground truncate leading-none">
-                {count > 1 ? `${EVENT_LABELS[type]} ×${count}` : EVENT_LABELS[type]}
-              </span>
-            </div>
+        <div className="flex flex-wrap gap-[3px]">
+          {shown.map(([type]) => (
+            <span
+              key={type}
+              className="w-1.5 h-1.5 rounded-full shrink-0"
+              style={{ background: EVENT_COLORS[type] }}
+            />
           ))}
           {overflow > 0 && (
-            <span className="text-[10px] text-muted-foreground leading-none pl-3">
-              +{overflow} more
-            </span>
+            <span className="text-[9px] text-muted-foreground leading-none self-center">+{overflow}</span>
           )}
         </div>
       )}
