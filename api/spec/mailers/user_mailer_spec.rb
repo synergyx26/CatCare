@@ -33,7 +33,7 @@ RSpec.describe UserMailer, type: :mailer do
     end
 
     it 'includes the user name in the HTML body' do
-      expect(mail.html_part.body.decoded).to include(user.name)
+      expect(CGI.unescapeHTML(mail.html_part.body.decoded)).to include(user.name)
     end
 
     it 'includes the cat name in the HTML body' do
