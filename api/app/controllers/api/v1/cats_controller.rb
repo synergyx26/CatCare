@@ -104,7 +104,7 @@ module Api
         end
 
         end_time   = offset.zero? ? Time.current.end_of_day : (days * offset).days.ago.end_of_day
-        start_time = (days * (offset + 1)).days.ago.beginning_of_day
+        start_time = (days * offset + (days - 1)).days.ago.beginning_of_day
         events     = @cat.care_events.where(occurred_at: start_time..end_time).to_a
 
         render_success({

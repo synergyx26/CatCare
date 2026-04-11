@@ -14,6 +14,6 @@ class Household < ApplicationRecord
   validates :name, presence: true
 
   def active_vacation_trip
-    vacation_trips.where(active: true).order(start_date: :desc).first
+    vacation_trips.where(active: true).active_on(Date.today).order(start_date: :desc).first
   end
 end
