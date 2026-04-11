@@ -426,7 +426,7 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
       />
 
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-[2px] shrink-0">
+      <div className="grid grid-cols-7 gap-1 shrink-0">
         {WEEKDAY_LABELS.map(d => (
           <div key={d} className="text-center text-[10px] text-muted-foreground font-medium py-0.5">
             {d}
@@ -435,10 +435,10 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 grid-rows-6 gap-[2px] flex-1 min-h-0">
+      <div className="grid grid-cols-7 grid-rows-6 gap-1 flex-1 min-h-0">
         {calendarDays.map((cell, i) => {
           if (!cell.dateStr || cell.dayNumber === null) {
-            return <div key={i} className="rounded bg-muted/10" />
+            return <div key={i} />
           }
 
           const missing = isMissingCare(cell.stats, feedingsPerDay, cell.dateStr)
@@ -447,48 +447,51 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
           const ariaLabel = [
             cell.dayNumber,
             cell.isInRange ? (eventCount === 1 ? '1 event' : `${eventCount} events`) : 'outside range',
-            missing ? `missing care` : null,
+            missing ? 'missing care' : null,
           ].filter(Boolean).join(', ')
+
+          // State communicated through fill only — no rings or borders
+          const cellBg =
+            !cell.isInRange              ? 'opacity-40 cursor-default' :
+            isSelected && cell.isToday   ? 'bg-sky-100/80 dark:bg-sky-900/40 cursor-pointer' :
+            isSelected                   ? 'bg-primary/15 cursor-pointer' :
+            cell.isToday                 ? 'bg-sky-50/80 dark:bg-sky-950/30 cursor-pointer' :
+            missing                      ? 'bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-50/70 cursor-pointer' :
+                                           'hover:bg-muted/50 cursor-pointer'
 
           return (
             <button
               key={i}
               onClick={() => handleDayClick(cell)}
+              disabled={!cell.isInRange}
               aria-label={ariaLabel}
               aria-current={cell.isToday ? 'date' : undefined}
-              aria-disabled={!cell.isInRange}
               className={[
-                'relative rounded flex flex-col items-start justify-start p-0.5 text-left transition-colors overflow-hidden',
-                cell.isInRange
-                  ? isSelected
-                    ? 'bg-primary/15 ring-1 ring-primary/50'
-                    : 'hover:bg-muted/50 cursor-pointer'
-                  : 'opacity-40 cursor-default',
-                cell.isToday && cell.isInRange
-                  ? 'ring-1 ring-sky-400/80 bg-sky-50/30 dark:bg-sky-950/20'
-                  : '',
-                missing && !cell.isToday
-                  ? 'ring-1 ring-amber-400/60 bg-amber-50/20 dark:bg-amber-950/10'
-                  : '',
+                'relative rounded-lg flex flex-col items-start justify-start p-1 text-left transition-colors',
+                cellBg,
               ].join(' ')}
             >
-              {/* Day number */}
+              {/* Day number — filled circle for today/selected, plain text otherwise */}
               <span
                 className={[
-                  'text-[10px] leading-none font-medium w-4 h-4 flex items-center justify-center rounded-full',
+                  'text-[10px] leading-none font-semibold w-4 h-4 flex items-center justify-center rounded-full shrink-0',
                   cell.isToday
                     ? 'bg-sky-500 text-white'
-                    : cell.isInRange
-                      ? 'text-foreground'
-                      : 'text-muted-foreground',
+                    : isSelected
+                      ? 'bg-primary text-primary-foreground'
+                      : cell.isInRange
+                        ? 'text-foreground'
+                        : 'text-muted-foreground',
                 ].join(' ')}
               >
                 {cell.dayNumber}
               </span>
 
-              {/* Event dots */}
+              {/* Event dots — pushed to bottom */}
               {cell.isInRange && cell.stats && (
-                <EventDotRow types={cell.stats.types} activeFilters={activeFilters} />
+                <div className="mt-auto">
+                  <EventDotRow types={cell.stats.types} activeFilters={activeFilters} />
+                </div>
               )}
 
               {/* Out-of-range lock icon */}
@@ -496,7 +499,7 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
                 <Lock className="absolute top-0.5 right-0.5 w-2 h-2 text-muted-foreground/50" />
               )}
 
-              {/* Missing care indicator — bottom-right triangle */}
+              {/* Missing care indicator — bottom-right amber notch */}
               {missing && (
                 <span
                   className="absolute bottom-0 right-0 w-0 h-0"
