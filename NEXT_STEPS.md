@@ -6,6 +6,13 @@
 
 ## Recently Completed
 
+### Bug Fixes & UI Polish ✅ *(2026-04-11)*
+- **Stats off-by-one (today missing from heatmap):** `start_time` formula in `cats_controller#stats` generated N buckets covering days-N through day-1, excluding today. Fixed to `(days * offset + days - 1).days.ago` so the current period always includes the current day.
+- **Expired vacation trips returned as active:** `Household#active_vacation_trip` used `where(active: true)` alone — since `active` defaults to `true`, ended trips were returned. Fixed by chaining `.active_on(Date.today)` (date-range SQL scope on VacationTrip).
+- **VacationTrip `active?` method missing:** Added instance method and `active_on(date)` scope to `vacation_trip.rb`; fixed 3 failing RSpec examples.
+- **UserMailer spec apostrophe failure:** Rails HTML-escapes `O'Name` → `O&#39;Name` in ERB; `.decoded` only handles transfer encoding. Fixed by wrapping with `CGI.unescapeHTML()`.
+- **Calendar cells touching / Saturday border clip:** Removed all cell borders from `HouseholdCalendarPage` and `CalendarViewChart`; switched to background-fill-only state system (`bg-muted/20`, `bg-primary/10`, `bg-sky-50/80`); increased gap to `gap-2`; removed `overflow-hidden` that was clipping the Saturday cell's own rounded border on WebKit. Both calendar implementations updated to match.
+
 ### Vacation Mode ✅ *(2026-04-09)*
 - `VacationTrip` model: date range + sitter visit frequency (days between visits)
 - Admin creates/ends trips via `/households/:id/vacation`; sitter frequency widens care status checks from "done today?" to "done in the last N days?"

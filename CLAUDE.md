@@ -269,6 +269,9 @@ CareEvent       — cat_id, household_id (denorm), logged_by_id, event_type (enu
                   occurred_at (indexed), notes, details (jsonb)
 Reminder        — cat_id, next_trigger_at (indexed)
 ReminderRecipient — reminder_id, user_id
+VacationTrip    — household_id, start_date, end_date (nullable = no scheduled return),
+                  sitter_visit_frequency_days (int, default 1), active (bool DB column, default true)
+PetExpense      — household_id, cat_id (nullable), amount_cents, currency, category, description, occurred_on
 ```
 
 **Event types (enum int):** feeding=0, litter=1, water=2, weight=3, note=4, medication=5, vet_visit=6, grooming=7
@@ -294,6 +297,7 @@ api/app/controllers/api/v1/
   household_invites_controller.rb — role param + accept flow + Pundit; tier enforcement on create (member limit)
   memberships_controller.rb       — self profile (show/update) + admin manage_update/manage_destroy
   oauth_controller.rb             — POST /api/v1/auth/google; verifies Google ID token via tokeninfo endpoint, finds-or-creates user, returns CatCare JWT
+  vacation_trips_controller.rb    — CRUD for household vacation trips; POST /end to close active trip; admin only for create/end
 
 api/app/controllers/api/v1/admin/
   base_controller.rb        — requires super_admin? before all actions; inherits ApplicationController (NOT Api::V1::BaseController)
@@ -360,7 +364,10 @@ web/src/
       VetSummaryDocument.tsx — @react-pdf/renderer A4 document (weight, meds, vet visits, symptoms, care summary, notes)
       ExportPdfButton.tsx   — isExporting state machine; 4 parallel queries; tier gate (Free=locked, Pro=30d, Premium=all)
     charts/                 — WeightTrend, FeedingFrequency, CareTypeBreakdown,
-                              MemberContribution, CareActivityHeatmap, ChartCard
+                              MemberContribution, CareActivityHeatmap, ChartCard,
+                              CalendarViewChart (mini calendar heatmap inside ChartCard on CatHistoryPage;
+                              distinct from HouseholdCalendarPage — background-fill-only cell states,
+                              missing-day amber highlight, no borders)
   lib/
     eventColors.ts          — EVENT_COLORS and EVENT_LABELS per event type
     helpers.ts              — date formatting, status helpers; `isCatBirthday(birthday)` (local date, avoids UTC shift), `getCatAge(birthday)` → age in full years
@@ -382,6 +389,11 @@ web/src/
                               SheetJS parses client-side; batches 500 rows/request with progress bar;
                               maps cat names, event types, detail fields (food_type value transform,
                               date-only mode); route: /admin/import
+    VacationPage.tsx        — admin creates/ends vacation trips; shows sitter visit frequency setting;
+                              route: /households/:id/vacation
+  components/dashboard/
+    VacationBanner.tsx      — owner-facing: shown when active vacation trip exists; displays last sitter activity
+    SitterVisitChecklist.tsx — sitter-facing: replaces daily status cards during active trip; shows tasks grouped by cat
 ```
 
 ---
@@ -401,3 +413,4 @@ web/src/
 11. **Forgetting batch actions** — `BatchActionModal` and the "Log for all" row in `DashboardPage` are separate from `LogCareModal`; any new event type tier rule must be applied to all three surfaces
 12. **Admin controllers missing current_household** — `Admin::BaseController` inherits `ApplicationController`, not `Api::V1::BaseController`. Admin controllers that need `current_household` must define it themselves (e.g. `current_user.households.first` for import, or `current_user.households.find(params[:household_id])` if the route has it)
 13. **Import builds clean locally but fails CI** — `tsc --noEmit` does not catch all unused variable errors that `tsc -b` (used by `npm run build`) does. Always run `npm run build` before pushing, not just `tsc --noEmit`
+14. **VacationTrip `active` DB column vs `active?` method** — the `active` column defaults to `true`, so `where(active: true)` returns ALL trips including ended ones. The instance method `active?` and the `active_on(date)` scope do the real date-range check. In `Household#active_vacation_trip`, always chain `.active_on(Date.today)` — never rely on `where(active: true)` alone.

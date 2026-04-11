@@ -13,7 +13,7 @@ Production deployment for 2-person household beta testing. All services are free
 | API hosting | Render.com | render.com |
 | Database (PostgreSQL) | Supabase | supabase.com |
 | Redis (background jobs + cache) | Upstash | upstash.com |
-| Email delivery | Gmail SMTP (App Password) | myaccount.google.com |
+| Email delivery | Resend | resend.com |
 | Frontend hosting | Vercel | vercel.com |
 
 > **File storage note:** The `cloudinary` gem v2.x is incompatible with Rails 8.1 + Ruby 4.0 and has been removed. Cat photos use local Render disk storage for now. Photos will not persist across Render deploys — this is acceptable for beta testing. See NEXT_STEPS.md for the fix.
@@ -41,13 +41,13 @@ Production deployment for 2-person household beta testing. All services are free
    - Format: `rediss://default:PASSWORD@hostname:port`
    - Use the **Copy** button — the URL contains a password that may not display fully on screen
 
-### C. Gmail App Password (email delivery)
-1. myaccount.google.com → Security
-2. Enable **2-Step Verification** (required before App Passwords work)
-3. Security → **App passwords** → Select app: "Mail" → Generate
-4. Copy the 16-character password — shown only once, no spaces
+### C. Resend (email delivery)
+1. Sign up free at resend.com — no credit card required for the free tier (3,000 emails/month)
+2. Dashboard → **API Keys** → Create API Key → copy the key (shown only once)
+3. **Current sender domain:** `onboarding@resend.dev` (Resend's shared domain) — emails only deliver to the Resend account owner's email address. Sufficient for beta.
+4. To send to real users: Dashboard → **Domains** → Add domain → follow DNS verification steps, then update `MAILER_SENDER` on Render to `noreply@yourdomain.com`
 
-> Gmail sends up to 500 emails/day — more than enough for beta testing.
+> No SMTP config needed — the `resend` gem uses the Resend HTTPS API directly, avoiding port-blocking issues on Render.
 
 ---
 
@@ -72,8 +72,8 @@ Production deployment for 2-person household beta testing. All services are free
    | `DEVISE_JWT_SECRET_KEY` | `openssl rand -hex 64` (different value from SECRET_KEY_BASE) |
    | `APP_HOST` | e.g. `catcare-v52y.onrender.com` |
    | `CORS_ORIGINS` | Your Vercel URL (set after Step 3) |
-   | `GMAIL_USERNAME` | Your full Gmail address (e.g. `you@gmail.com`) |
-   | `GMAIL_APP_PASSWORD` | 16-character app password, no spaces (Step 1C) |
+   | `RESEND_API_KEY` | API key from Resend dashboard (Step 1C) |
+   | `MAILER_SENDER` | `onboarding@resend.dev` (or `noreply@yourdomain.com` after domain verification) |
    | `GOOGLE_CLIENT_ID` | OAuth 2.0 Web Client ID from Google Cloud Console (optional — only needed if Google sign-in is enabled) |
 
    **Generating secrets:**
@@ -159,6 +159,6 @@ Render does not use the Docker entrypoint — it reads the Procfile (`web: bin/r
 | API | Render Starter ($7/mo) — always-on, no spin-down |
 | Database | Supabase Pro ($25/mo) or keep free (500MB limit) |
 | Redis | Upstash Pay-as-you-go (fractions of a cent per request) |
-| Email | SendGrid (free 100/day; Essentials $19.95/mo for 50k/mo) |
+| Email | Resend Pro ($20/mo for 50k emails/mo) |
 | File storage | Re-add Cloudinary once gem supports Rails 8.1 (see NEXT_STEPS.md) |
 | Frontend | Vercel free tier scales well for personal use |
