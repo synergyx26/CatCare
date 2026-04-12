@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, useNavigate, Link } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { googleLogout } from '@react-oauth/google'
 import { useAuthStore } from '@/store/authStore'
@@ -66,6 +66,7 @@ function TierBadge({ tier }: { tier: 'pro' | 'premium' }) {
 
 export function AppLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, clearAuth, setAuth } = useAuthStore()
   const { setPreferences } = useNotificationStore()
   const queryClient = useQueryClient()
@@ -149,15 +150,18 @@ export function AppLayout() {
                     CatCare
                   </SheetTitle>
                 </SheetHeader>
-                <nav className="flex flex-col gap-1 px-2">
+                <nav className="flex flex-col gap-1 px-2" aria-label="Main navigation">
                   <button
                     onClick={() => {
                       navigate('/dashboard')
                       setMobileOpen(false)
                     }}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
+                    aria-current={location.pathname === '/dashboard' ? 'page' : undefined}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors ${
+                      location.pathname === '/dashboard' ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300' : ''
+                    }`}
                   >
-                    <Home className="size-4" />
+                    <Home className="size-4" aria-hidden="true" />
                     Dashboard
                   </button>
                   {/* Insights section — always visible; locked items show tier badge */}
@@ -344,8 +348,14 @@ export function AppLayout() {
           {/* Right: desktop nav + user menu */}
           <div className="flex items-center gap-2">
             {/* Desktop nav links */}
-            <nav className="mr-2 hidden items-center gap-1 sm:flex">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
+            <nav className="mr-2 hidden items-center gap-1 sm:flex" aria-label="Main navigation">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/dashboard')}
+                aria-current={location.pathname === '/dashboard' ? 'page' : undefined}
+                className={location.pathname === '/dashboard' ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300' : ''}
+              >
                 Dashboard
               </Button>
 
@@ -430,14 +440,17 @@ export function AppLayout() {
             {/* Theme toggle */}
             {(() => {
               const ThemeIcon = THEME_ICON[theme]
+              const nextTheme = THEME_CYCLE[theme]
+              const themeLabel = `Switch to ${nextTheme} mode (currently ${theme})`
               return (
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => setTheme(THEME_CYCLE[theme])}
-                  aria-label="Toggle theme"
+                  onClick={() => setTheme(nextTheme)}
+                  aria-label={themeLabel}
+                  title={themeLabel}
                 >
-                  <ThemeIcon className="size-4" />
+                  <ThemeIcon className="size-4" aria-hidden="true" />
                 </Button>
               )
             })()}

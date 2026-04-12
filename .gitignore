@@ -10,3 +10,9 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Claude Code internal settings
+.claude/
+
+# Unrelated nested directory (separate project, not part of CatCare)
+catcare/

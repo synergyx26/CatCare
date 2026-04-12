@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
+import { X } from 'lucide-react'
 import { api } from '@/api/client'
 import { notify } from '@/lib/notify'
 import { Input } from '@/components/ui/input'
@@ -109,48 +110,56 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-med-modal-title"
+    >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
 
       {/* Sheet */}
       <div className="relative z-10 w-full sm:max-w-md bg-background rounded-t-2xl sm:rounded-2xl shadow-xl overflow-y-auto max-h-[90dvh]">
         <div className="p-5 space-y-5">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-base">
+            <h2 id="add-med-modal-title" className="font-semibold text-base">
               {isEdit ? 'Edit medication' : 'Start medication'}
             </h2>
             <button
               onClick={onClose}
-              className="text-muted-foreground hover:text-foreground text-lg leading-none"
-              aria-label="Close"
+              className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md"
+              aria-label="Close dialog"
             >
-              ✕
+              <X className="size-4" aria-hidden="true" />
             </button>
           </div>
 
           {/* Medication name */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">
-              Medication name <span className="text-destructive">*</span>
+            <label htmlFor="add-med-name" className="text-sm font-medium">
+              Medication name <span aria-hidden="true" className="text-destructive">*</span>
             </label>
             <Input
+              id="add-med-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Prednisolone"
+              aria-required="true"
               autoFocus
             />
           </div>
 
           {/* Dosage + unit */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">
+            <label htmlFor="add-med-dosage" className="text-sm font-medium">
               Dosage <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <div className="flex items-center gap-2">
               <Input
+                id="add-med-dosage"
                 type="number"
                 min="0"
                 step="0.1"
@@ -161,11 +170,13 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
               />
               {/* Unit pills — only shown when dosage is set */}
               {dosage && (
-                <div className="flex gap-1.5">
+                <div className="flex gap-1.5" role="radiogroup" aria-label="Dosage unit">
                   {UNITS.map((u) => (
                     <button
                       key={u}
                       type="button"
+                      role="radio"
+                      aria-checked={unit === u}
                       onClick={() => setUnit(u)}
                       className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                         unit === u
@@ -183,14 +194,16 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
 
           {/* Frequency */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">
+            <p id="add-med-freq-label" className="text-sm font-medium">
               Frequency <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <div className="flex flex-wrap gap-1.5">
+            </p>
+            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-labelledby="add-med-freq-label">
               {FREQUENCIES.map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
+                  role="radio"
+                  aria-checked={frequency === value}
                   onClick={() => setFrequency(frequency === value ? '' : value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                     frequency === value
@@ -206,10 +219,11 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
 
           {/* Start date/time */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">
+            <label htmlFor="add-med-start-at" className="text-sm font-medium">
               {isEdit ? 'Date & time' : 'Start date'}
             </label>
             <Input
+              id="add-med-start-at"
               type="datetime-local"
               value={startAt}
               onChange={(e) => setStartAt(e.target.value)}
@@ -218,8 +232,9 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
 
           {/* Course toggle */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
+            <label htmlFor="add-med-is-course" className="flex items-center gap-2 cursor-pointer select-none">
               <input
+                id="add-med-is-course"
                 type="checkbox"
                 checked={isCourse}
                 onChange={(e) => setIsCourse(e.target.checked)}
@@ -230,8 +245,9 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
             </label>
             {isCourse && (
               <div className="space-y-1 pl-6">
-                <label className="text-xs text-muted-foreground">Course end date</label>
+                <label htmlFor="add-med-course-end" className="text-xs text-muted-foreground">Course end date</label>
                 <Input
+                  id="add-med-course-end"
                   type="date"
                   value={courseEndDate}
                   onChange={(e) => setCourseEndDate(e.target.value)}
@@ -242,10 +258,11 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
 
           {/* Notes */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">
+            <label htmlFor="add-med-notes" className="text-sm font-medium">
               Notes <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <Textarea
+              id="add-med-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. prescribed by Dr. Smith, give with food…"

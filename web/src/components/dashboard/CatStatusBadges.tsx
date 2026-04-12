@@ -10,11 +10,14 @@ interface ChipProps {
 function StatusChip({ emoji, label, done, doneClass }: ChipProps) {
   return (
     <span
+      role="status"
+      aria-label={`${label}: ${done ? 'done' : 'not done'}`}
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
         done ? doneClass : 'bg-muted text-muted-foreground/50'
       }`}
     >
-      {emoji} {label}
+      <span aria-hidden="true">{emoji}</span>
+      {label}
     </span>
   )
 }
@@ -66,8 +69,12 @@ export function CatStatusBadges({ status }: { status: CatTodayStatus }) {
         />
       ))}
       {status.recentSymptomAt && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-          🤒 Symptom logged
+        <span
+          role="status"
+          aria-label="Symptom logged"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+        >
+          <span aria-hidden="true">🤒</span> Symptom logged
         </span>
       )}
     </div>

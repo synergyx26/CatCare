@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
+import { X } from 'lucide-react'
 import { api } from '@/api/client'
 import { notify } from '@/lib/notify'
 import { Input } from '@/components/ui/input'
@@ -60,9 +61,14 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="quick-log-dose-title"
+    >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
 
       {/* Sheet */}
       <div className="relative z-10 w-full sm:max-w-sm bg-background rounded-t-2xl sm:rounded-2xl shadow-xl">
@@ -70,36 +76,39 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-base">Log dose</h2>
+              <h2 id="quick-log-dose-title" className="font-semibold text-base">Log dose</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {medicationName}{doseLabel ? ` · ${doseLabel}` : ''}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-muted-foreground hover:text-foreground text-lg leading-none"
-              aria-label="Close"
+              className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md"
+              aria-label="Close dialog"
             >
-              ✕
+              <X className="size-4" aria-hidden="true" />
             </button>
           </div>
 
           {/* Date & time */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">Date & time</label>
+            <label htmlFor="dose-occurred-at" className="text-sm font-medium">Date &amp; time</label>
             <Input
+              id="dose-occurred-at"
               type="datetime-local"
               value={occurredAt}
               onChange={(e) => setOccurredAt(e.target.value)}
+              aria-required="true"
             />
           </div>
 
           {/* Notes */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">
+            <label htmlFor="dose-notes" className="text-sm font-medium">
               Notes <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <Textarea
+              id="dose-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any observations…"

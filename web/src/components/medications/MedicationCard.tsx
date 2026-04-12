@@ -155,6 +155,8 @@ export function MedicationCard({
           className="w-full px-4 pt-3.5 pb-3 flex items-start justify-between gap-3 text-left"
           onClick={() => setExpanded((x) => !x)}
           aria-expanded={expanded}
+          aria-controls={`med-card-body-${startEvent.id}`}
+          aria-label={`${name}${expanded ? ', collapse' : ', expand'}`}
         >
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -193,14 +195,14 @@ export function MedicationCard({
               </p>
             )}
           </div>
-          <div className="shrink-0 text-muted-foreground mt-0.5">
+          <div className="shrink-0 text-muted-foreground mt-0.5" aria-hidden="true">
             {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
           </div>
         </button>
 
         {/* ── Expanded body ─────────────────────────────────────────────────── */}
         {expanded && (
-          <div className="border-t border-border/40">
+          <div id={`med-card-body-${startEvent.id}`} className="border-t border-border/40">
             {/* Dose timeline */}
             <div className="px-4 py-3 space-y-2 max-h-72 overflow-y-auto">
               {visibleTimeline.length === 0 ? (
@@ -218,8 +220,8 @@ export function MedicationCard({
                         {showDay && (
                           <p className="text-xs text-muted-foreground/60 font-medium mb-1 mt-2 first:mt-0">{day}</p>
                         )}
-                        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 py-0.5">
-                          <span className="text-amber-500">⚠</span>
+                        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 py-0.5" role="alert">
+                          <span aria-hidden="true" className="text-amber-500">⚠</span>
                           <span>
                             Expected ~{formatTime(row.expectedAt)} · No dose logged
                           </span>
@@ -239,7 +241,7 @@ export function MedicationCard({
                         <p className="text-xs text-muted-foreground/60 font-medium mb-1 mt-2 first:mt-0">{day}</p>
                       )}
                       <div className="flex items-center gap-2 text-xs">
-                        <Pill className="size-3 text-red-400 shrink-0" />
+                        <Pill className="size-3 text-red-400 shrink-0" aria-hidden="true" />
                         <span className="text-foreground">{formatTime(event.occurred_at)}</span>
                         <span className="text-muted-foreground">· {who}</span>
                         {event.notes && (
@@ -287,10 +289,10 @@ export function MedicationCard({
                       <span className="text-muted-foreground/40">·</span>
                       <button
                         onClick={() => setShowEdit(true)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label={`Edit ${name}`}
+                        className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
+                        aria-label={`Edit ${name} medication`}
                       >
-                        <Pencil className="size-3" />
+                        <Pencil className="size-3" aria-hidden="true" />
                       </button>
                     </>
                   )}

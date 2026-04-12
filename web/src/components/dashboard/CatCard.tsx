@@ -72,7 +72,7 @@ export function CatCard({
       }`}
     >
       {isBirthday && (
-        <div className="bg-gradient-to-r from-rose-50 via-pink-50 to-amber-50/70 dark:from-rose-950/20 dark:via-pink-950/15 dark:to-amber-950/10 px-4 py-1.5 flex items-center gap-1.5 border-b border-rose-100 dark:border-rose-800/20">
+        <div className="bg-gradient-to-r from-rose-50 via-pink-50 to-amber-50/70 dark:from-rose-950/20 dark:via-pink-950/20 dark:to-amber-950/10 px-4 py-1.5 flex items-center gap-1.5 border-b border-rose-100 dark:border-rose-800/20">
           <span aria-hidden="true" className="text-sm leading-none">🎂</span>
           <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
             {catAge === 0 ? 'First birthday!' : catAge !== null ? `${catAge} years old today` : 'Birthday today!'}
@@ -83,6 +83,7 @@ export function CatCard({
         {/* Top row: avatar + name + status line + chips */}
         <button
           onClick={() => navigate(`/households/${householdId}/cats/${cat.id}`)}
+          aria-label={`View ${cat.name}'s profile`}
           className="flex w-full items-center gap-3 text-left"
         >
           <div className="relative shrink-0 size-10">
@@ -92,7 +93,7 @@ export function CatCard({
                 alt={cat.name}
                 className={`size-10 rounded-xl border object-cover ${
                   isBirthday
-                    ? 'border-rose-300 dark:border-rose-700 ring-2 ring-rose-400/70 ring-offset-1 dark:ring-rose-600/70'
+                    ? 'border-rose-300 dark:border-rose-700/60 ring-2 ring-rose-400/70 ring-offset-1 dark:ring-rose-600/60'
                     : 'border-border/40'
                 }`}
               />
@@ -100,10 +101,10 @@ export function CatCard({
               <div
                 className={`flex size-10 items-center justify-center rounded-xl text-base font-bold ${
                   isBirthday
-                    ? 'bg-gradient-to-br from-rose-100 to-pink-100 text-rose-700 dark:from-rose-900/30 dark:to-pink-900/30 dark:text-rose-400 ring-2 ring-rose-400/70 ring-offset-1 dark:ring-rose-600/70'
+                    ? 'bg-gradient-to-br from-rose-100 to-pink-100 text-rose-700 dark:from-rose-900/35 dark:to-pink-900/35 dark:text-rose-400 ring-2 ring-rose-400/70 ring-offset-1 dark:ring-rose-600/60'
                     : allGood
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                      : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
+                      : 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400'
                 }`}
               >
                 {cat.name.charAt(0).toUpperCase()}
@@ -132,41 +133,45 @@ export function CatCard({
         </button>
 
         {/* Quick-action row */}
-        <div className="flex gap-2 border-t border-border/40 pt-3">
+        <div className="flex gap-2 border-t border-border/40 pt-3" role="group" aria-label={`Quick actions for ${cat.name}`}>
           <Button
             variant="ghost"
             size="sm"
+            aria-label={`Log feeding for ${cat.name}`}
             className="flex-1 active:scale-95 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30"
             onClick={() => onLog(cat, 'feeding')}
           >
-            <UtensilsCrossed className="size-3.5" />
+            <UtensilsCrossed className="size-3.5" aria-hidden="true" />
             Feed
           </Button>
           <Button
             variant="ghost"
             size="sm"
+            aria-label={`Log litter for ${cat.name}`}
             className="flex-1 active:scale-95 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/30"
             onClick={() => onLog(cat, 'litter')}
           >
-            <Trash2 className="size-3.5" />
+            <Trash2 className="size-3.5" aria-hidden="true" />
             Litter
           </Button>
           <Button
             variant="ghost"
             size="sm"
+            aria-label={`Log water for ${cat.name}`}
             className="flex-1 active:scale-95 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30"
             onClick={() => onLog(cat, 'water')}
           >
-            <Droplets className="size-3.5" />
+            <Droplets className="size-3.5" aria-hidden="true" />
             Water
           </Button>
           <Button
             variant="ghost"
             size="sm"
+            aria-label={`Log more care for ${cat.name}`}
             className="flex-1 active:scale-95 rounded-xl"
             onClick={() => onLog(cat)}
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-3.5" aria-hidden="true" />
             More
           </Button>
         </div>

@@ -210,6 +210,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
 
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [submitAttempted,   setSubmitAttempted]   = useState(false)
 
   // ── Feeding helpers ─────────────────────────────────────────────────────────
   const presets = catPresets[foodType]
@@ -384,32 +385,39 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="log-care-modal-title"
+      >
         {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
 
         {/* Sheet */}
         <div className="relative z-10 w-full sm:max-w-sm bg-background rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-xl shadow-sky-500/5 max-h-[90vh] overflow-y-auto">
 
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-base">{modalTitle}</h2>
-            <Button variant="ghost" size="icon-sm" onClick={onClose}>
-              <X className="size-4" />
-              <span className="sr-only">Close</span>
+            <h2 id="log-care-modal-title" className="font-semibold text-base">{modalTitle}</h2>
+            <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close dialog">
+              <X className="size-4" aria-hidden="true" />
             </Button>
           </div>
 
           {/* Care type selector */}
           {!isEditing && (
             <div className="space-y-2">
-              <p className="text-sm font-medium">Type</p>
-              <div className="flex gap-2 flex-wrap">
+              <p id="care-type-label" className="text-sm font-medium">Type</p>
+              <div className="flex gap-2 flex-wrap" role="radiogroup" aria-labelledby="care-type-label">
                 {CARE_TYPES.map(({ value, label }) => {
                   const allowed = isEventTypeAllowed(value, tier)
                   return (
                     <button
                       key={value}
+                      role="radio"
+                      aria-checked={eventType === value}
+                      aria-disabled={!allowed}
                       onClick={() => {
                         if (!allowed) {
                           notify.tierLimit('Upgrade to Pro or Premium to log this event type.')
@@ -424,7 +432,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                           : `${pillClass(eventType === value)} flex items-center gap-1`
                       }
                     >
-                      {!allowed && <Lock className="size-3 shrink-0" />}
+                      {!allowed && <Lock className="size-3 shrink-0" aria-hidden="true" />}
                       {label}
                     </button>
                   )
@@ -455,11 +463,13 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
               )}
 
               <div className="space-y-2">
-                <p className="text-sm font-medium">Food type</p>
-                <div className="flex gap-2 flex-wrap">
+                <p id="food-type-label" className="text-sm font-medium">Food type</p>
+                <div className="flex gap-2 flex-wrap" role="radiogroup" aria-labelledby="food-type-label">
                   {FOOD_TYPES.map(({ value, label }) => (
                     <button
                       key={value}
+                      role="radio"
+                      aria-checked={foodType === value}
                       onClick={() => pickFoodType(value)}
                       className={pillClass(foodType === value)}
                     >
@@ -471,11 +481,13 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
 
               {foodType !== 'treats' && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Amount</p>
-                  <div className="flex gap-2 flex-wrap">
+                  <p id="amount-label" className="text-sm font-medium">Amount</p>
+                  <div className="flex gap-2 flex-wrap" role="radiogroup" aria-labelledby="amount-label">
                     {presets.map((g) => (
                       <button
                         key={g}
+                        role="radio"
+                        aria-checked={!isCustom && selectedAmount === g}
                         onClick={() => pickPreset(g)}
                         className={pillClass(!isCustom && selectedAmount === g)}
                       >
@@ -483,6 +495,8 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                       </button>
                     ))}
                     <button
+                      role="radio"
+                      aria-checked={isCustom}
                       onClick={() => { setIsCustom(true); setSelectedAmount(null) }}
                       className={pillClass(isCustom)}
                     >
@@ -492,7 +506,9 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
 
                   {isCustom && (
                     <div className="flex items-center gap-2 pt-1">
+                      <label htmlFor="custom-amount" className="sr-only">Custom amount in grams</label>
                       <Input
+                        id="custom-amount"
                         type="number"
                         min="1"
                         placeholder="e.g. 75"
@@ -501,7 +517,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                         className="w-28"
                         autoFocus
                       />
-                      <span className="text-sm text-muted-foreground">grams</span>
+                      <span className="text-sm text-muted-foreground" aria-hidden="true">grams</span>
                     </div>
                   )}
                 </div>
@@ -512,22 +528,35 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
           {/* Weight fields */}
           {eventType === 'weight' && (
             <div className="space-y-2">
-              <p className="text-sm font-medium">Weight</p>
+              <label htmlFor="weight-value" className="text-sm font-medium block">
+                Weight <span aria-hidden="true" className="text-destructive">*</span>
+              </label>
               <div className="flex items-center gap-2">
                 <Input
+                  id="weight-value"
                   type="number"
                   min="0"
                   step="0.01"
                   placeholder="e.g. 4.5"
                   value={weightValue}
                   onChange={(e) => setWeightValue(e.target.value)}
+                  aria-required="true"
+                  aria-invalid={submitAttempted && (weightValue === '' || isNaN(parseFloat(weightValue))) ? 'true' : undefined}
+                  aria-describedby={submitAttempted && (weightValue === '' || isNaN(parseFloat(weightValue))) ? 'weight-error' : undefined}
                   className="w-28"
                   autoFocus
                 />
-                <div className="flex gap-1">
+                {submitAttempted && (weightValue === '' || isNaN(parseFloat(weightValue))) && (
+                  <p id="weight-error" role="alert" className="text-xs text-destructive">
+                    Please enter a valid weight
+                  </p>
+                )}
+                <div className="flex gap-1" role="radiogroup" aria-label="Weight unit">
                   {(['kg', 'g'] as WeightUnit[]).map((u) => (
                     <button
                       key={u}
+                      role="radio"
+                      aria-checked={weightUnit === u}
                       onClick={() => setWeightUnit(u)}
                       className={pillClass(weightUnit === u)}
                     >
@@ -543,20 +572,32 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
           {eventType === 'medication' && (
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-sm font-medium">Medication name</label>
+                <label htmlFor="med-name" className="text-sm font-medium">
+                  Medication name <span aria-hidden="true" className="text-destructive">*</span>
+                </label>
                 <Input
+                  id="med-name"
                   placeholder="e.g. Prednisolone"
                   value={medicationName}
                   onChange={(e) => setMedicationName(e.target.value)}
+                  aria-required="true"
+                  aria-invalid={submitAttempted && !medicationName.trim() ? 'true' : undefined}
+                  aria-describedby={submitAttempted && !medicationName.trim() ? 'med-name-error' : undefined}
                   autoFocus
                 />
+                {submitAttempted && !medicationName.trim() && (
+                  <p id="med-name-error" role="alert" className="text-xs text-destructive mt-1">
+                    Medication name is required
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium">
+                <label htmlFor="med-dosage" className="text-sm font-medium">
                   Dosage <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <Input
+                    id="med-dosage"
                     type="number"
                     min="0"
                     step="0.1"
@@ -565,10 +606,12 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                     onChange={(e) => setMedicationDosage(e.target.value)}
                     className="w-28"
                   />
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" role="radiogroup" aria-label="Dosage unit">
                     {(['mg', 'ml', 'tablet'] as MedicationUnit[]).map((u) => (
                       <button
                         key={u}
+                        role="radio"
+                        aria-checked={medicationUnit === u}
                         onClick={() => setMedicationUnit(u)}
                         className={pillClass(medicationUnit === u)}
                       >
@@ -580,8 +623,9 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
               </div>
               {/* Start/track toggle */}
               {!isEditing && (
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+                <label htmlFor="track-ongoing-med" className="flex items-center gap-2 cursor-pointer select-none">
                   <input
+                    id="track-ongoing-med"
                     type="checkbox"
                     checked={isStartMedication}
                     onChange={(e) => setIsStartMedication(e.target.checked)}
@@ -593,13 +637,15 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
               {/* Frequency selector — only when tracking as ongoing */}
               {isStartMedication && (
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Frequency</label>
-                  <div className="flex flex-wrap gap-1.5">
+                  <p id="med-freq-label" className="text-sm font-medium">Frequency</p>
+                  <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-labelledby="med-freq-label">
                     {(Object.entries(FREQUENCY_LABELS) as [MedicationFrequency, string][])
                       .filter(([k]) => k !== 'as_needed')
                       .map(([value, label]) => (
                         <button
                           key={value}
+                          role="radio"
+                          aria-checked={medicationFrequency === value}
                           onClick={() => setMedicationFrequency(value)}
                           className={pillClass(medicationFrequency === value)}
                         >
@@ -616,29 +662,42 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
           {eventType === 'vet_visit' && (
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-sm font-medium">Reason for visit</label>
+                <label htmlFor="vet-reason" className="text-sm font-medium">
+                  Reason for visit <span aria-hidden="true" className="text-destructive">*</span>
+                </label>
                 <Input
+                  id="vet-reason"
                   placeholder="e.g. Annual checkup, Illness, Follow-up"
                   value={vetReason}
                   onChange={(e) => setVetReason(e.target.value)}
+                  aria-required="true"
+                  aria-invalid={submitAttempted && !vetReason.trim() ? 'true' : undefined}
+                  aria-describedby={submitAttempted && !vetReason.trim() ? 'vet-reason-error' : undefined}
                   autoFocus
                 />
+                {submitAttempted && !vetReason.trim() && (
+                  <p id="vet-reason-error" role="alert" className="text-xs text-destructive mt-1">
+                    Reason for visit is required
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium">
+                <label htmlFor="vet-name" className="text-sm font-medium">
                   Vet name <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
                 <Input
+                  id="vet-name"
                   placeholder="e.g. Dr. Smith"
                   value={vetName}
                   onChange={(e) => setVetName(e.target.value)}
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium">
+                <label htmlFor="vet-clinic" className="text-sm font-medium">
                   Clinic <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
                 <Input
+                  id="vet-clinic"
                   placeholder="e.g. City Animal Hospital"
                   value={vetClinic}
                   onChange={(e) => setVetClinic(e.target.value)}
@@ -650,11 +709,13 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
           {/* Grooming fields */}
           {eventType === 'grooming' && (
             <div className="space-y-2">
-              <p className="text-sm font-medium">Grooming type</p>
-              <div className="flex gap-2 flex-wrap">
+              <p id="grooming-type-label" className="text-sm font-medium">Grooming type</p>
+              <div className="flex gap-2 flex-wrap" role="radiogroup" aria-labelledby="grooming-type-label">
                 {GROOMING_TYPES.map(({ value, label }) => (
                   <button
                     key={value}
+                    role="radio"
+                    aria-checked={groomingType === value}
                     onClick={() => setGroomingType(value)}
                     className={pillClass(groomingType === value)}
                   >
@@ -669,11 +730,13 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
           {eventType === 'symptom' && (
             <div className="space-y-3">
               <div className="space-y-2">
-                <p className="text-sm font-medium">What happened?</p>
-                <div className="flex gap-2 flex-wrap">
+                <p id="symptom-type-label" className="text-sm font-medium">What happened?</p>
+                <div className="flex gap-2 flex-wrap" role="radiogroup" aria-labelledby="symptom-type-label">
                   {SYMPTOM_TYPES.map(({ value, label }) => (
                     <button
                       key={value}
+                      role="radio"
+                      aria-checked={symptomType === value}
                       onClick={() => setSymptomType(value)}
                       className={pillClass(symptomType === value)}
                     >
@@ -683,11 +746,13 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-sm font-medium">Severity</p>
-                <div className="flex gap-2">
+                <p id="symptom-severity-label" className="text-sm font-medium">Severity</p>
+                <div className="flex gap-2" role="radiogroup" aria-labelledby="symptom-severity-label">
                   {SYMPTOM_SEVERITIES.map(({ value, label }) => (
                     <button
                       key={value}
+                      role="radio"
+                      aria-checked={symptomSeverity === value}
                       onClick={() => setSymptomSeverity(value)}
                       className={
                         symptomSeverity === value
@@ -705,11 +770,12 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium">
+                <label htmlFor="symptom-duration" className="text-sm font-medium">
                   Duration <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <Input
+                    id="symptom-duration"
                     type="number"
                     min="1"
                     placeholder="e.g. 5"
@@ -739,21 +805,24 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
 
           {/* Date & time */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">Date & time</label>
+            <label htmlFor="occurred-at" className="text-sm font-medium">Date &amp; time</label>
             <Input
+              id="occurred-at"
               type="datetime-local"
               value={occurredAt}
               onChange={(e) => setOccurredAt(e.target.value)}
+              aria-required="true"
             />
           </div>
 
           {/* Notes */}
           <div className="space-y-1">
-            <label className="text-sm font-medium">
+            <label htmlFor="care-notes" className="text-sm font-medium">
               Notes{' '}
               <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <Textarea
+              id="care-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={
@@ -768,8 +837,12 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
           {/* Submit */}
           <Button
             className="w-full"
-            onClick={() => mutation.mutate()}
-            disabled={!canSubmit || mutation.isPending}
+            onClick={() => {
+              setSubmitAttempted(true)
+              if (canSubmit) mutation.mutate()
+            }}
+            disabled={mutation.isPending}
+            aria-disabled={!canSubmit}
           >
             {submitLabel}
           </Button>

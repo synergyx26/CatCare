@@ -6,6 +6,21 @@
 
 ## Recently Completed
 
+### UI/UX & Accessibility Pass ✅ *(2026-04-12)*
+- **Typography:** Replaced Geist Variable (developer font) with **Varela Round** (headings) + **Nunito Sans Variable** (body) — warmer, rounder typeface better suited to a pet care product
+- **Accessibility — ARIA labels:** All icon-only buttons now have `aria-label`; emoji badges in `CatStatusBadges` have `role="status"` + `aria-label`; decorative icons have `aria-hidden="true"`
+- **Accessibility — Forms:** All `<label>` elements linked to inputs via `htmlFor`/`id` across `LogCareModal`, `AddMedicationModal`, `QuickLogDoseSheet`; required fields marked with `aria-required` and `*` indicator
+- **Accessibility — Pill selector groups:** All radio-style pill groups (event type, food type, symptom type, severity, frequency, unit) upgraded to `role="radiogroup"` + per-pill `role="radio" aria-checked`
+- **Accessibility — Modals:** `LogCareModal`, `AddMedicationModal`, `QuickLogDoseSheet` now have `role="dialog" aria-modal="true" aria-labelledby`
+- **Accessibility — MedicationCard:** Expand/collapse button has `aria-controls`/`aria-expanded`; ⚠ missed dose warnings have `role="alert"`; edit button has descriptive `aria-label`
+- **Inline validation errors:** `LogCareModal` now shows inline `role="alert"` error messages under required fields (medication name, vet reason, weight) on submit attempt
+- **Active nav state:** Dashboard nav link highlights active page with `bg-sky-50` tint + `aria-current="page"` on both desktop and mobile
+- **Theme toggle:** `aria-label` now describes the action + current state ("Switch to dark mode (currently light)")
+- **Close buttons:** Replaced `✕` emoji buttons in `AddMedicationModal` and `QuickLogDoseSheet` with `<X />` Lucide icon + proper `aria-label="Close dialog"`
+- **Dark mode consistency:** Standardized tint opacity scale (`--dm-tint-subtle` 10%, `--dm-tint-soft` 20%, `--dm-tint-medium` 35%) documented in `index.css`; CatCard birthday ring/avatar tints unified
+- **Nav aria-labels:** Both desktop and mobile `<nav>` elements have `aria-label="Main navigation"`
+- **.gitignore:** Added `.claude/` (Claude Code internals) and `catcare/` (unrelated nested directory)
+
 ### Bug Fixes & UI Polish ✅ *(2026-04-11)*
 - **Stats off-by-one (today missing from heatmap):** `start_time` formula in `cats_controller#stats` generated N buckets covering days-N through day-1, excluding today. Fixed to `(days * offset + days - 1).days.ago` so the current period always includes the current day.
 - **Expired vacation trips returned as active:** `Household#active_vacation_trip` used `where(active: true)` alone — since `active` defaults to `true`, ended trips were returned. Fixed by chaining `.active_on(Date.today)` (date-range SQL scope on VacationTrip).
