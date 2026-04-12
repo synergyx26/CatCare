@@ -389,7 +389,7 @@ export function CareHistoryTablePage() {
               value={startDate}
               max={endDate || DEFAULT_END}
               onChange={(e) => { setStartDate(e.target.value); setActiveQuickDays('custom') }}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-0 block"
+              className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-0 block"
             />
             <div className="h-5 flex items-center">
               {startDate !== DEFAULT_START && (
@@ -407,7 +407,7 @@ export function CareHistoryTablePage() {
               min={startDate}
               max={DEFAULT_END}
               onChange={(e) => { setEndDate(e.target.value); setActiveQuickDays('custom') }}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-0 block"
+              className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-0 block"
             />
             <div className="h-5 flex items-center">
               {endDate !== DEFAULT_END && (
@@ -422,7 +422,7 @@ export function CareHistoryTablePage() {
             <select
               value={catFilter}
               onChange={(e) => setCatFilter(e.target.value === '' ? '' : Number(e.target.value))}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">All cats</option>
               {cats.map((c) => (
@@ -442,7 +442,7 @@ export function CareHistoryTablePage() {
             <select
               value={typeFilter}
               onChange={(e) => handleTypeChange(e.target.value as EventType | '')}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">All types</option>
               {ALL_EVENT_TYPES.map((t) => (
@@ -462,7 +462,7 @@ export function CareHistoryTablePage() {
             <select
               value={memberFilter}
               onChange={(e) => setMemberFilter(e.target.value === '' ? '' : Number(e.target.value))}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Anyone</option>
               {(household?.members ?? []).map((m) => (
@@ -486,7 +486,7 @@ export function CareHistoryTablePage() {
                 <select
                   value={subtypeFilter}
                   onChange={(e) => setSubtypeFilter(e.target.value)}
-                  className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm"
+                  className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">All</option>
                   {subtypeConfig.options.map((o) => (
@@ -498,7 +498,7 @@ export function CareHistoryTablePage() {
                   value={subtypeFilter}
                   onChange={(e) => setSubtypeFilter(e.target.value)}
                   placeholder="Search by name…"
-                  className="h-8 text-sm w-full"
+                  className="h-11 sm:h-9 text-base sm:text-sm w-full"
                 />
               )}
             </div>
@@ -571,7 +571,7 @@ export function CareHistoryTablePage() {
 
           {/* Desktop: full table */}
           <div className="hidden sm:block rounded-2xl border overflow-hidden">
-            <div className="overflow-x-auto max-h-[65vh] overflow-y-auto">
+            <div className="overflow-x-auto max-h-[65dvh] overflow-y-auto">
               <table className="min-w-[640px] w-full text-sm">
                 <thead className="bg-muted/50 border-b sticky top-0 z-10">
                   <tr>
