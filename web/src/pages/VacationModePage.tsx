@@ -78,7 +78,7 @@ function TripForm({ defaultValues, onSubmit, onCancel, isPending, submitLabel }:
           <input
             type="date"
             {...register('start_date')}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full h-11 sm:h-10 rounded-lg border border-input bg-background px-3 text-base sm:text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-ring"
           />
           {errors.start_date && (
             <p className="text-xs text-destructive">{errors.start_date.message}</p>
@@ -90,7 +90,7 @@ function TripForm({ defaultValues, onSubmit, onCancel, isPending, submitLabel }:
           <input
             type="date"
             {...register('end_date')}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full h-11 sm:h-10 rounded-lg border border-input bg-background px-3 text-base sm:text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-ring"
           />
           {errors.end_date && (
             <p className="text-xs text-destructive">{errors.end_date.message}</p>
@@ -107,7 +107,7 @@ function TripForm({ defaultValues, onSubmit, onCancel, isPending, submitLabel }:
             min={1}
             max={30}
             {...register('sitter_visit_frequency_days', { valueAsNumber: true })}
-            className="w-24 rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-24 h-11 sm:h-10 rounded-lg border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <span className="text-sm text-muted-foreground">day(s)</span>
         </div>
@@ -125,7 +125,7 @@ function TripForm({ defaultValues, onSubmit, onCancel, isPending, submitLabel }:
           {...register('notes')}
           rows={2}
           placeholder="e.g. Keys are under the mat, emergency contact is Dr. Smith"
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         />
       </div>
 
