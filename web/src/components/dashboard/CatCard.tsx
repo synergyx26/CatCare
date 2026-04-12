@@ -9,9 +9,10 @@ interface CatCardProps {
   cat: Cat
   householdId: number
   todayEvents: CareEvent[]
+  allMedEvents?: CareEvent[]
   memberMap: Map<number, string>
   currentUserId: number
-  onLog: (cat: Cat, type?: EventType) => void
+  onLog: (cat: Cat, type?: EventType, opts?: { medicationName?: string }) => void
   vacationMode?: boolean
 }
 
@@ -20,6 +21,8 @@ function getStatusLine(status: CatTodayStatus): { text: string; allGood: boolean
   if (status.feedCount < status.feedingsNeeded) issues.push('feeding')
   if (status.trackWater && !status.waterDoneAt) issues.push('water')
   if (status.trackLitter && !status.litterDoneAt) issues.push('litter')
+  const dueMeds = status.medicationTasks.filter(t => t.dosesNeededToday > t.dosesGivenToday)
+  if (dueMeds.length > 0) issues.push('medication')
 
   if (issues.length === 0) return { text: 'All caught up', allGood: true }
   if (issues.length === 1) return { text: `Needs ${issues[0]}`, allGood: false }
@@ -30,6 +33,7 @@ export function CatCard({
   cat,
   householdId,
   todayEvents,
+  allMedEvents,
   memberMap,
   currentUserId,
   onLog,
@@ -46,7 +50,8 @@ export function CatCard({
       track_water:         cat.track_water,
       track_litter:        cat.track_litter,
       track_toothbrushing: cat.track_toothbrushing,
-    }
+    },
+    allMedEvents,
   )
   const { text: statusText, allGood } = getStatusLine(status)
   const isBirthday = isCatBirthday(cat.birthday)

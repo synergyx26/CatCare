@@ -52,6 +52,7 @@ export function DashboardPage() {
   const [logCat, setLogCat] = useState<Cat | null>(null)
   const [editingEvent, setEditingEvent] = useState<CareEvent | null>(null)
   const [logInitType, setLogInitType] = useState<EventType | undefined>(undefined)
+  const [logInitMedName, setLogInitMedName] = useState<string | undefined>(undefined)
   const [showArchived, setShowArchived] = useState(false)
 
   // Care log date navigation
@@ -90,6 +91,7 @@ export function DashboardPage() {
     queryClient.invalidateQueries({ queryKey: ['care_events', primaryHousehold?.id] })
   }
   const allEvents: CareEvent[] = careData?.data?.data ?? []
+  const allMedEvents = allEvents.filter(e => e.event_type === 'medication')
 
   // Vacation mode context — derived from the household's active trip
   const activeTrip: VacationTrip | null = primaryHousehold?.active_vacation_trip ?? null
@@ -172,13 +174,20 @@ export function DashboardPage() {
         track_water:         cat.track_water,
         track_litter:        cat.track_litter,
         track_toothbrushing: cat.track_toothbrushing,
-      })
+      }, allMedEvents)
       const missing: string[] = []
       if (s.feedCount < s.feedingsNeeded)
         missing.push(s.feedingsNeeded > 1 ? `${s.feedCount}/${s.feedingsNeeded} feedings` : 'feeding')
       if (s.trackWater && !s.waterDoneAt)                 missing.push('water')
       if (s.trackLitter && !s.litterDoneAt)               missing.push('litter')
       if (s.trackToothbrushing && !s.toothbrushingDoneAt) missing.push('teeth')
+      s.medicationTasks
+        .filter(t => t.dosesNeededToday > t.dosesGivenToday)
+        .forEach(t => missing.push(
+          t.dosesNeededToday > 1
+            ? `${t.name} (${t.dosesGivenToday}/${t.dosesNeededToday})`
+            : t.name
+        ))
       return { cat, missing }
     })
     .filter(({ missing }) => missing.length > 0)
@@ -284,10 +293,11 @@ export function DashboardPage() {
   })
 
   // ── Modal helpers ────────────────────────────────────────────
-  function openNewLog(cat: Cat, type?: EventType) {
+  function openNewLog(cat: Cat, type?: EventType, opts?: { medicationName?: string }) {
     setLogCat(cat)
     setEditingEvent(null)
     setLogInitType(type)
+    setLogInitMedName(opts?.medicationName)
   }
 
   function openEdit(event: CareEvent) {
@@ -295,12 +305,14 @@ export function DashboardPage() {
     setLogCat(cat)
     setEditingEvent(event)
     setLogInitType(undefined)
+    setLogInitMedName(undefined)
   }
 
   function closeModal() {
     setLogCat(null)
     setEditingEvent(null)
     setLogInitType(undefined)
+    setLogInitMedName(undefined)
   }
 
   usePageTitle(primaryHousehold?.name ?? 'Dashboard')
@@ -547,6 +559,7 @@ export function DashboardPage() {
                   cats={cats}
                   householdId={primaryHousehold!.id}
                   windowEvents={windowEvents}
+                  allMedEvents={allMedEvents}
                   vacationCtx={vacationCtx!}
                   memberMap={memberMap}
                   currentUserId={user?.id ?? -1}
@@ -561,6 +574,7 @@ export function DashboardPage() {
                       cat={cat}
                       householdId={primaryHousehold!.id}
                       todayEvents={windowEvents}
+                      allMedEvents={allMedEvents}
                       memberMap={memberMap}
                       currentUserId={user?.id ?? -1}
                       onLog={openNewLog}
@@ -695,6 +709,7 @@ export function DashboardPage() {
           householdId={primaryHousehold.id}
           initialEvent={editingEvent ?? undefined}
           initialType={logInitType}
+          initialMedicationName={logInitMedName}
           onClose={closeModal}
         />
       )}

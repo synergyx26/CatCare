@@ -163,11 +163,124 @@ export const EVENT_TYPE_LABEL: Record<EventType, string> = {
 // ─── Medication Adherence Helpers ─────────────────────────────────────────────
 
 const FREQUENCY_HOURS: Record<MedicationFrequency, number | null> = {
-  once_daily:  24,
-  twice_daily: 12,
-  every_8h:    8,
-  every_12h:   12,
-  as_needed:   null,
+  once_daily:      24,
+  twice_daily:     12,
+  every_8h:        8,
+  every_12h:       12,
+  as_needed:       null,
+  every_other_day: 48,
+  every_3_days:    72,
+  every_week:      168,
+}
+
+// Doses required per calendar day for intra-day frequencies
+const DOSES_PER_DAY: Partial<Record<MedicationFrequency, number>> = {
+  once_daily:  1,
+  twice_daily: 2,
+  every_8h:    3,
+  every_12h:   2,
+}
+
+// Calendar-day interval for multi-day frequencies
+const INTERVAL_DAYS: Partial<Record<MedicationFrequency, number>> = {
+  every_other_day: 2,
+  every_3_days:    3,
+  every_week:      7,
+}
+
+export interface MedicationTask {
+  name: string
+  frequency: MedicationFrequency
+  dosesNeededToday: number
+  dosesGivenToday: number
+}
+
+/**
+ * Returns active medication tasks for a cat for today.
+ * Handles both intra-day frequencies (once/twice/3x/2x daily) and
+ * multi-day intervals (every other day, every 3 days, weekly).
+ * allMedEvents must contain ALL medication events for the household
+ * (no date filter), sorted any order.
+ */
+export function getActiveMedicationTasks(
+  catId: number,
+  allMedEvents: CareEvent[],
+): MedicationTask[] {
+  const catEvents = allMedEvents
+    .filter(e => e.cat_id === catId)
+    .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
+
+  // Determine active medications: newest start event per name, not stopped
+  // Store startedAt so we can ignore doses that predate the current regimen
+  const processedNames = new Set<string>()
+  const activeMeds = new Map<string, { frequency: MedicationFrequency | null; startedAt: number }>()
+
+  for (const event of catEvents) {
+    const d = event.details as Record<string, unknown>
+    if (d.active_medication !== true) continue
+    const name = (d.medication_name as string) || 'Unknown medication'
+    if (processedNames.has(name)) continue
+    processedNames.add(name)
+    if (d.stopped !== true) {
+      activeMeds.set(name, {
+        frequency: (d.frequency as MedicationFrequency) ?? null,
+        startedAt: new Date(event.occurred_at).getTime(),
+      })
+    }
+  }
+
+  if (activeMeds.size === 0) return []
+
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const todayEnd = new Date()
+  todayEnd.setHours(23, 59, 59, 999)
+
+  const tasks: MedicationTask[] = []
+
+  for (const [name, { frequency, startedAt }] of activeMeds.entries()) {
+    if (!frequency || frequency === 'as_needed') continue
+
+    // Only count doses that belong to this regimen (at or after the start event)
+    const dosesGivenToday = catEvents.filter(e => {
+      const d = e.details as Record<string, unknown>
+      if (d.active_medication === true) return false
+      if ((d.medication_name as string) !== name) return false
+      const t = new Date(e.occurred_at).getTime()
+      return t >= todayStart.getTime() && t <= todayEnd.getTime() && t >= startedAt
+    }).length
+
+    let dosesNeededToday: number
+
+    if (DOSES_PER_DAY[frequency] !== undefined) {
+      dosesNeededToday = DOSES_PER_DAY[frequency]!
+    } else if (INTERVAL_DAYS[frequency] !== undefined) {
+      const intervalDays = INTERVAL_DAYS[frequency]!
+      // Only consider doses on or after the start event
+      const lastDose = catEvents.find(e => {
+        const d = e.details as Record<string, unknown>
+        if (d.active_medication === true) return false
+        if ((d.medication_name as string) !== name) return false
+        return new Date(e.occurred_at).getTime() >= startedAt
+      })
+      if (!lastDose) {
+        dosesNeededToday = 1
+      } else {
+        const lastDoseDay = new Date(lastDose.occurred_at)
+        lastDoseDay.setHours(0, 0, 0, 0)
+        const daysSince = Math.floor(
+          (todayStart.getTime() - lastDoseDay.getTime()) / (24 * 60 * 60 * 1000)
+        )
+        dosesNeededToday = daysSince >= intervalDays ? 1 : 0
+      }
+    } else {
+      continue
+    }
+
+    tasks.push({ name, frequency, dosesNeededToday, dosesGivenToday })
+  }
+
+  return tasks
 }
 
 /**
@@ -285,6 +398,7 @@ export interface CatTodayStatus {
   trackToothbrushing: boolean
   toothbrushingDoneAt: string | null
   recentSymptomAt: string | null
+  medicationTasks: MedicationTask[]
 }
 
 export function getCatTodayStatus(
@@ -292,7 +406,8 @@ export function getCatTodayStatus(
   todayEvents: CareEvent[],
   memberMap: Map<number, string>,
   currentUserId: number,
-  requirements?: CatCareRequirements
+  requirements?: CatCareRequirements,
+  allMedEvents?: CareEvent[],
 ): CatTodayStatus {
   const catEvents = todayEvents.filter((e) => e.cat_id === catId)
 
@@ -356,5 +471,6 @@ export function getCatTodayStatus(
     trackToothbrushing:  requirements?.track_toothbrushing ?? false,
     toothbrushingDoneAt: lastToothbrushing?.occurred_at ?? null,
     recentSymptomAt:     lastSymptom?.occurred_at ?? null,
+    medicationTasks:     allMedEvents ? getActiveMedicationTasks(catId, allMedEvents) : [],
   }
 }

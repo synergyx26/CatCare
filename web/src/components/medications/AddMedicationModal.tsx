@@ -12,11 +12,14 @@ type MedUnit = 'mg' | 'ml' | 'tablet'
 const UNITS: MedUnit[] = ['mg', 'ml', 'tablet']
 
 const FREQUENCIES: { value: MedicationFrequency; label: string }[] = [
-  { value: 'once_daily',  label: FREQUENCY_LABELS.once_daily  },
-  { value: 'twice_daily', label: FREQUENCY_LABELS.twice_daily },
-  { value: 'every_8h',   label: FREQUENCY_LABELS.every_8h    },
-  { value: 'every_12h',  label: FREQUENCY_LABELS.every_12h   },
-  { value: 'as_needed',  label: FREQUENCY_LABELS.as_needed   },
+  { value: 'once_daily',      label: FREQUENCY_LABELS.once_daily      },
+  { value: 'twice_daily',     label: FREQUENCY_LABELS.twice_daily     },
+  { value: 'every_8h',        label: FREQUENCY_LABELS.every_8h        },
+  { value: 'every_12h',       label: FREQUENCY_LABELS.every_12h       },
+  { value: 'every_other_day', label: FREQUENCY_LABELS.every_other_day },
+  { value: 'every_3_days',    label: FREQUENCY_LABELS.every_3_days    },
+  { value: 'every_week',      label: FREQUENCY_LABELS.every_week      },
+  { value: 'as_needed',       label: FREQUENCY_LABELS.as_needed       },
 ]
 
 function toLocalDate(date: Date): string {
@@ -95,7 +98,7 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
       return api.createCareEvent(householdId, payload)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['care_events', householdId, catId, 'medication'] })
+      queryClient.invalidateQueries({ queryKey: ['care_events'] })
       notify.success(isEdit ? 'Medication updated' : 'Medication started')
       onClose()
     },

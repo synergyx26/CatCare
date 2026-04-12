@@ -16,7 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { Cat, CareEvent, EventType, SubscriptionTier } from '@/types/api'
+import type { Cat, CareEvent, EventType, SubscriptionTier, MedicationFrequency } from '@/types/api'
+import { FREQUENCY_LABELS } from '@/types/api'
 import { useAuthStore } from '@/store/authStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -144,6 +145,8 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   const initMedicationName = (initDetails.medication_name as string) || initialMedicationName || ''
   const initMedicationDosage = (initDetails.dosage as string) ?? ''
   const initMedicationUnit = (initDetails.unit as MedicationUnit) ?? 'mg'
+  const initIsStartMedication = activeMedication === true || initDetails.active_medication === true
+  const initMedicationFrequency = (initDetails.frequency as MedicationFrequency) ?? 'once_daily'
 
   // ── State ───────────────────────────────────────────────────────────────────
   const [eventType,       setEventType]       = useState<EventType>(initType)
@@ -178,9 +181,11 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   )
 
   // Medication
-  const [medicationName,   setMedicationName]   = useState(initMedicationName)
-  const [medicationDosage, setMedicationDosage] = useState(initMedicationDosage)
-  const [medicationUnit,   setMedicationUnit]   = useState<MedicationUnit>(initMedicationUnit)
+  const [medicationName,      setMedicationName]      = useState(initMedicationName)
+  const [medicationDosage,    setMedicationDosage]    = useState(initMedicationDosage)
+  const [medicationUnit,      setMedicationUnit]      = useState<MedicationUnit>(initMedicationUnit)
+  const [isStartMedication,   setIsStartMedication]   = useState(initIsStartMedication)
+  const [medicationFrequency, setMedicationFrequency] = useState<MedicationFrequency>(initMedicationFrequency)
 
   // Vet visit
   const [vetReason,  setVetReason]  = useState((initDetails.reason as string) ?? '')
@@ -279,7 +284,10 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
       return {
         medication_name: medicationName.trim(),
         ...(medicationDosage ? { dosage: medicationDosage, unit: medicationUnit } : {}),
-        ...(activeMedication ? { active_medication: true } : {}),
+        ...(isStartMedication ? {
+          active_medication: true,
+          frequency: medicationFrequency,
+        } : {}),
       }
     }
     if (eventType === 'vet_visit') {
@@ -570,6 +578,37 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                   </div>
                 </div>
               </div>
+              {/* Start/track toggle */}
+              {!isEditing && (
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isStartMedication}
+                    onChange={(e) => setIsStartMedication(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  <span className="text-sm font-medium">Track as ongoing medication</span>
+                </label>
+              )}
+              {/* Frequency selector — only when tracking as ongoing */}
+              {isStartMedication && (
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Frequency</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(Object.entries(FREQUENCY_LABELS) as [MedicationFrequency, string][])
+                      .filter(([k]) => k !== 'as_needed')
+                      .map(([value, label]) => (
+                        <button
+                          key={value}
+                          onClick={() => setMedicationFrequency(value)}
+                          className={pillClass(medicationFrequency === value)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

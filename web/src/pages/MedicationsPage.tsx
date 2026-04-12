@@ -98,9 +98,13 @@ export function MedicationsPage() {
     }
   }
 
-  // Attach dose history to each regimen
+  // Attach dose history to each regimen — only doses on/after the start event
+  // (pre-start manual logs are historical context, not adherence data for this regimen)
   for (const [name, regimen] of regimenMap) {
-    regimen.doseHistory = dosesByName.get(name) ?? []
+    const startMs = new Date(regimen.startEvent.occurred_at).getTime()
+    regimen.doseHistory = (dosesByName.get(name) ?? []).filter(
+      d => new Date(d.occurred_at).getTime() >= startMs
+    )
   }
 
   const active  = Array.from(regimenMap.values()).filter((r) => !r.stopped)

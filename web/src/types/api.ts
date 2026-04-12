@@ -189,14 +189,19 @@ export type EventType =
   | 'note' | 'medication' | 'vet_visit' | 'grooming' | 'symptom' | 'tooth_brushing'
 
 // Medication frequency — stored in details.frequency on the "start" event (active_medication: true)
-export type MedicationFrequency = 'once_daily' | 'twice_daily' | 'every_8h' | 'every_12h' | 'as_needed'
+export type MedicationFrequency =
+  | 'once_daily' | 'twice_daily' | 'every_8h' | 'every_12h' | 'as_needed'
+  | 'every_other_day' | 'every_3_days' | 'every_week'
 
 export const FREQUENCY_LABELS: Record<MedicationFrequency, string> = {
-  once_daily:  'Once daily',
-  twice_daily: 'Twice daily',
-  every_8h:   'Every 8 hours',
-  every_12h:  'Every 12 hours',
-  as_needed:  'As needed',
+  once_daily:      'Once daily',
+  twice_daily:     'Twice daily',
+  every_8h:        'Every 8 hours',
+  every_12h:       'Every 12 hours',
+  as_needed:       'As needed',
+  every_other_day: 'Every other day',
+  every_3_days:    'Every 3 days',
+  every_week:      'Once a week',
 }
 
 // details JSONB shapes per event_type:

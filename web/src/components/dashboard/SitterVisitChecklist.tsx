@@ -1,15 +1,16 @@
-import { UtensilsCrossed, Droplets, Trash2 } from 'lucide-react'
-import { getCatTodayStatus, type VacationContext, type CatCareRequirements } from '@/lib/helpers'
+import { UtensilsCrossed, Droplets, Trash2, Pill } from 'lucide-react'
+import { getCatTodayStatus, getActiveMedicationTasks, type VacationContext, type CatCareRequirements } from '@/lib/helpers'
 import type { Cat, CareEvent, EventType } from '@/types/api'
 
 interface SitterVisitChecklistProps {
   cats: Cat[]
   householdId: number
   windowEvents: CareEvent[]
+  allMedEvents: CareEvent[]
   vacationCtx: VacationContext
   memberMap: Map<number, string>
   currentUserId: number
-  onLog: (cat: Cat, type?: EventType) => void
+  onLog: (cat: Cat, type?: EventType, opts?: { medicationName?: string }) => void
   requirements: Map<number, CatCareRequirements>
 }
 
@@ -26,6 +27,7 @@ function formatTimeAgo(isoString: string): string {
 export function SitterVisitChecklist({
   cats,
   windowEvents,
+  allMedEvents,
   vacationCtx,
   memberMap,
   currentUserId,
@@ -34,19 +36,22 @@ export function SitterVisitChecklist({
 }: SitterVisitChecklistProps) {
   const rows = cats.map((cat) => {
     const reqs = requirements.get(cat.id)
-    const status = getCatTodayStatus(cat.id, windowEvents, memberMap, currentUserId, reqs)
+    const status = getCatTodayStatus(cat.id, windowEvents, memberMap, currentUserId, reqs, allMedEvents)
 
     const needed: string[] = []
     if (status.feedCount < status.feedingsNeeded) needed.push('feeding')
     if (status.trackWater && !status.waterDoneAt) needed.push('water')
     if (status.trackLitter && !status.litterDoneAt) needed.push('litter')
 
+    const dueMeds = getActiveMedicationTasks(cat.id, allMedEvents)
+      .filter(t => t.dosesNeededToday > t.dosesGivenToday)
+
     // Most recent event for this cat in the window
     const lastEvent = windowEvents
       .filter((e) => e.cat_id === cat.id)
       .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())[0]
 
-    return { cat, needed, lastEvent, allGood: needed.length === 0 }
+    return { cat, needed, dueMeds, lastEvent, allGood: needed.length === 0 && dueMeds.length === 0 }
   })
 
   const allGood = rows.every((r) => r.allGood)
@@ -72,7 +77,7 @@ export function SitterVisitChecklist({
         </div>
       ) : (
         <div className="space-y-2">
-          {rows.map(({ cat, needed, lastEvent, allGood: catGood }) => (
+          {rows.map(({ cat, needed, dueMeds, lastEvent, allGood: catGood }) => (
             <div
               key={cat.id}
               className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
@@ -106,7 +111,14 @@ export function SitterVisitChecklist({
                   </p>
                 ) : (
                   <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                    Needs: {needed.join(', ')}
+                    Needs: {[
+                      ...needed,
+                      ...dueMeds.map(m =>
+                        m.dosesNeededToday > 1
+                          ? `${m.name} (${m.dosesGivenToday}/${m.dosesNeededToday})`
+                          : m.name
+                      ),
+                    ].join(', ')}
                     {lastEvent ? ` · last ${formatTimeAgo(lastEvent.occurred_at)}` : ' · no recent care'}
                   </p>
                 )}
@@ -142,6 +154,16 @@ export function SitterVisitChecklist({
                       <Trash2 className="size-3.5" />
                     </button>
                   )}
+                  {dueMeds.map(med => (
+                    <button
+                      key={med.name}
+                      onClick={() => onLog(cat, 'medication', { medicationName: med.name })}
+                      className="flex size-7 items-center justify-center rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 transition-colors"
+                      title={`Log ${med.name}`}
+                    >
+                      <Pill className="size-3.5" />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>

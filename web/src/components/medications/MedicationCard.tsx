@@ -73,8 +73,10 @@ export function MedicationCard({
   })
 
   // Most recent dose (excludes the start event itself)
-  const lastDose     = doseHistory[0]
-  const nextDueLabel = getNextDoseLabel(frequency, lastDose?.occurred_at ?? startEvent.occurred_at)
+  const lastDose = doseHistory[0]
+  // Only compute next-due from an actual logged dose — the start event is not a dose,
+  // so using startEvent.occurred_at as a fallback produces misleading overdue values.
+  const nextDueLabel = lastDose ? getNextDoseLabel(frequency, lastDose.occurred_at) : null
 
   // Build unified timeline
   const timeline = buildDoseTimeline(
@@ -109,7 +111,7 @@ export function MedicationCard({
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['care_events', householdId, catId, 'medication'] })
+      queryClient.invalidateQueries({ queryKey: ['care_events'] })
       notify.success('Medication stopped')
     },
     onError: (err: AxiosError<ApiError>) => {
@@ -126,7 +128,7 @@ export function MedicationCard({
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['care_events', householdId, catId, 'medication'] })
+      queryClient.invalidateQueries({ queryKey: ['care_events'] })
       notify.success('Medication reactivated')
     },
     onError: (err: AxiosError<ApiError>) => {
