@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Lock, AlertTriangle } from 'lucide-react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { ChevronLeft, ChevronRight, Lock, AlertTriangle, SlidersHorizontal, Check } from 'lucide-react'
 import type { DayStats, EventType, SubscriptionTier } from '@/types/api'
 import { EVENT_COLORS, EVENT_LABELS } from '@/lib/eventColors'
 
@@ -204,59 +204,95 @@ interface EventTypeFilterProps {
   onCareOnly: () => void
 }
 
-function EventTypeFilter({ presentTypes, activeFilters, onToggle, onAll, onCareOnly }: EventTypeFilterProps) {
+function EventTypeFilterCombobox({ presentTypes, activeFilters, onToggle, onAll, onCareOnly }: EventTypeFilterProps) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Close on outside click or Escape
+  useEffect(() => {
+    if (!open) return
+    const handleClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [open])
+
   if (presentTypes.length === 0) return null
 
   const allActive = presentTypes.every(t => activeFilters.has(t))
+  const activeCount = presentTypes.filter(t => activeFilters.has(t)).length
+  const label = allActive ? 'All' : activeCount === 0 ? 'None' : `${activeCount}/${presentTypes.length}`
 
   return (
-    <div className="flex items-center gap-1 flex-wrap shrink-0">
+    <div ref={containerRef} className="relative">
       <button
-        onClick={onAll}
-        className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
-          allActive
-            ? 'bg-primary/10 border-primary/30 text-primary'
-            : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
-        }`}
-        aria-label="Include all event types in activity intensity"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`Filter event types: ${allActive ? 'all active' : `${activeCount} of ${presentTypes.length} active`}`}
+        className="flex items-center gap-1 text-[10px] px-1.5 py-1 rounded-lg border border-border bg-card hover:bg-muted/60 text-foreground transition-colors"
       >
-        All
+        <SlidersHorizontal className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
+        <span>{label}</span>
+        <ChevronRight className={`w-3 h-3 text-muted-foreground transition-transform duration-150 ${open ? '-rotate-90' : 'rotate-90'}`} aria-hidden="true" />
       </button>
-      <button
-        onClick={onCareOnly}
-        className="text-[10px] px-1.5 py-0.5 rounded border border-border bg-muted/40 text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="Include care events only in activity intensity"
-      >
-        Care
-      </button>
-      {presentTypes.map(t => {
-        const active = activeFilters.has(t)
-        return (
+
+      {open && (
+        <div
+          role="listbox"
+          aria-multiselectable="true"
+          aria-label="Filter event types"
+          className="absolute top-full right-0 mt-1 z-20 bg-popover border border-border rounded-xl shadow-lg overflow-hidden min-w-[152px] py-1"
+        >
+          {/* Shortcuts */}
           <button
-            key={t}
-            role="checkbox"
-            aria-checked={active}
-            aria-label={`${active ? 'Exclude' : 'Include'} ${EVENT_LABELS[t]} in activity intensity`}
-            onClick={() => onToggle(t)}
-            className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
-              active
-                ? 'border-transparent'
-                : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
-            }`}
-            style={active ? {
-              background: EVENT_COLORS[t] + '26',  // ~15% opacity
-              borderColor: EVENT_COLORS[t] + '66', // ~40% opacity
-              color: EVENT_COLORS[t],
-            } : undefined}
+            role="option"
+            aria-selected={allActive}
+            onClick={onAll}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] hover:bg-muted/60 transition-colors"
           >
-            <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ background: active ? EVENT_COLORS[t] : undefined }}
-            />
-            {EVENT_LABELS[t]}
+            <Check className={`w-3 h-3 shrink-0 text-primary ${allActive ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true" />
+            <span className={allActive ? 'text-primary font-medium' : 'text-foreground'}>All events</span>
           </button>
-        )
-      })}
+          <button
+            role="option"
+            aria-selected={false}
+            onClick={onCareOnly}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] hover:bg-muted/60 transition-colors text-foreground"
+          >
+            <span className="w-3 h-3 shrink-0" aria-hidden="true" />
+            Care only
+          </button>
+          <div className="border-t border-border/50 my-1" role="separator" />
+          {/* Per-type toggles */}
+          {presentTypes.map(t => {
+            const active = activeFilters.has(t)
+            return (
+              <button
+                key={t}
+                role="option"
+                aria-selected={active}
+                onClick={() => onToggle(t)}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] hover:bg-muted/60 transition-colors text-foreground"
+              >
+                <Check className={`w-3 h-3 shrink-0 text-primary ${active ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true" />
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ background: EVENT_COLORS[t] }}
+                  aria-hidden="true"
+                />
+                {EVENT_LABELS[t]}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -377,13 +413,13 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
 
   return (
     <div className="flex flex-col h-full gap-1.5 overflow-hidden">
-      {/* Header: month nav */}
-      <div className="flex items-center justify-between shrink-0">
+      {/* Header: month nav + filter combobox */}
+      <div className="relative flex items-center shrink-0">
         <button
           onClick={handlePrev}
           disabled={!canGoBack}
           aria-label="Previous month"
-          className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
+          className={`relative z-10 flex items-center justify-center w-6 h-6 rounded transition-colors ${
             canGoBack
               ? 'hover:bg-muted text-foreground'
               : 'text-muted-foreground/40 cursor-not-allowed'
@@ -395,29 +431,32 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
             <ChevronLeft className="w-4 h-4" />
           )}
         </button>
-        <span className="text-xs font-semibold text-foreground">{monthLabel}</span>
-        <button
-          onClick={handleNext}
-          disabled={!canGoForward}
-          aria-label="Next month"
-          className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
-            canGoForward
-              ? 'hover:bg-muted text-foreground'
-              : 'text-muted-foreground/40 cursor-not-allowed'
-          }`}
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        {/* Month label absolutely centered so the filter combobox doesn't shift it */}
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-foreground pointer-events-none">
+          {monthLabel}
+        </span>
+        <div className="relative z-10 ml-auto flex items-center gap-1">
+          <EventTypeFilterCombobox
+            presentTypes={presentTypes}
+            activeFilters={activeFilters}
+            onToggle={handleToggleFilter}
+            onAll={handleAll}
+            onCareOnly={handleCareOnly}
+          />
+          <button
+            onClick={handleNext}
+            disabled={!canGoForward}
+            aria-label="Next month"
+            className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
+              canGoForward
+                ? 'hover:bg-muted text-foreground'
+                : 'text-muted-foreground/40 cursor-not-allowed'
+            }`}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
-
-      {/* Event type filter */}
-      <EventTypeFilter
-        presentTypes={presentTypes}
-        activeFilters={activeFilters}
-        onToggle={handleToggleFilter}
-        onAll={handleAll}
-        onCareOnly={handleCareOnly}
-      />
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 shrink-0">
@@ -468,7 +507,7 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
           //   in-range         → plain text
           //   out-of-range     → muted text
           const dayNumberClass = cell.isToday && isSelected
-            ? 'bg-sky-500 text-white ring-2 ring-sky-300 ring-offset-1 dark:ring-sky-600 dark:ring-offset-card'
+            ? 'bg-sky-500 text-white ring-2 ring-sky-300 dark:ring-sky-600'
             : cell.isToday
               ? 'bg-sky-500 text-white'
               : isSelected
