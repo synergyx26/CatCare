@@ -541,7 +541,7 @@ export function AppLayout() {
       </header>
 
       {/* ── Page content ────────────────────────────────────────── */}
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-10 py-6">
         <Outlet />
       </main>
     </div>

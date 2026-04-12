@@ -331,7 +331,7 @@ export function CareHistoryTablePage() {
       />
 
       {/* ── Filters ──────────────────────────────────────────── */}
-      <div className="rounded-2xl border bg-card p-4 space-y-3 overflow-hidden">
+      <div className="rounded-2xl border bg-card p-4 space-y-3">
 
         {/* Filter header row */}
         <div className="flex items-center justify-between">
@@ -379,7 +379,7 @@ export function CareHistoryTablePage() {
         </div>
 
         {/* Row 1: date range + cat + type + member */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 min-w-0">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
 
           {/* Start date */}
           <div className="space-y-1 min-w-0">
@@ -389,11 +389,13 @@ export function CareHistoryTablePage() {
               value={startDate}
               max={endDate || DEFAULT_END}
               onChange={(e) => { setStartDate(e.target.value); setActiveQuickDays('custom') }}
-              className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm min-w-0 block"
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-0 block"
             />
-            {startDate !== DEFAULT_START && (
-              <ClearBtn onClick={() => setStartDate(DEFAULT_START)} />
-            )}
+            <div className="h-5 flex items-center">
+              {startDate !== DEFAULT_START && (
+                <ClearBtn onClick={() => setStartDate(DEFAULT_START)} />
+              )}
+            </div>
           </div>
 
           {/* End date */}
@@ -405,11 +407,13 @@ export function CareHistoryTablePage() {
               min={startDate}
               max={DEFAULT_END}
               onChange={(e) => { setEndDate(e.target.value); setActiveQuickDays('custom') }}
-              className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm min-w-0 block"
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-0 block"
             />
-            {endDate !== DEFAULT_END && (
-              <ClearBtn onClick={() => setEndDate(DEFAULT_END)} />
-            )}
+            <div className="h-5 flex items-center">
+              {endDate !== DEFAULT_END && (
+                <ClearBtn onClick={() => setEndDate(DEFAULT_END)} />
+              )}
+            </div>
           </div>
 
           {/* Cat */}
@@ -418,16 +422,18 @@ export function CareHistoryTablePage() {
             <select
               value={catFilter}
               onChange={(e) => setCatFilter(e.target.value === '' ? '' : Number(e.target.value))}
-              className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm"
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">All cats</option>
               {cats.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
-            {catFilter !== '' && (
-              <ClearBtn onClick={() => setCatFilter('')} />
-            )}
+            <div className="h-5 flex items-center">
+              {catFilter !== '' && (
+                <ClearBtn onClick={() => setCatFilter('')} />
+              )}
+            </div>
           </div>
 
           {/* Event type */}
@@ -436,34 +442,38 @@ export function CareHistoryTablePage() {
             <select
               value={typeFilter}
               onChange={(e) => handleTypeChange(e.target.value as EventType | '')}
-              className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm"
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">All types</option>
               {ALL_EVENT_TYPES.map((t) => (
                 <option key={t} value={t}>{EVENT_TYPE_LABEL[t]}</option>
               ))}
             </select>
-            {typeFilter !== '' && (
-              <ClearBtn onClick={() => handleTypeChange('')} />
-            )}
+            <div className="h-5 flex items-center">
+              {typeFilter !== '' && (
+                <ClearBtn onClick={() => handleTypeChange('')} />
+              )}
+            </div>
           </div>
 
           {/* Logged by */}
-          <div className="space-y-1 min-w-0 col-span-2 lg:col-span-1">
+          <div className="space-y-1 min-w-0 col-span-2 md:col-span-1">
             <label className="text-xs text-muted-foreground">Logged by</label>
             <select
               value={memberFilter}
               onChange={(e) => setMemberFilter(e.target.value === '' ? '' : Number(e.target.value))}
-              className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm"
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Anyone</option>
               {(household?.members ?? []).map((m) => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
             </select>
-            {memberFilter !== '' && (
-              <ClearBtn onClick={() => setMemberFilter('')} />
-            )}
+            <div className="h-5 flex items-center">
+              {memberFilter !== '' && (
+                <ClearBtn onClick={() => setMemberFilter('')} />
+              )}
+            </div>
           </div>
         </div>
 

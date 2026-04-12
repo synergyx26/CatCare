@@ -242,7 +242,7 @@ export function VacationModePage() {
   if (householdsLoading || tripsLoading) return <PageSkeleton />
 
   return (
-    <div className="space-y-8 max-w-2xl">
+    <div className="space-y-8 max-w-2xl mx-auto">
       <PageHeader
         title="Vacation Mode"
         subtitle="Let the household know you're away and how often the sitter visits."
@@ -286,7 +286,7 @@ export function VacationModePage() {
             </div>
           ) : (
             <div className="rounded-xl border border-sky-200 dark:border-sky-800/30 bg-sky-50/60 dark:bg-sky-950/10 p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground">Start</p>
                   <p className="font-medium">{formatDate(activeTrip.start_date)}</p>
@@ -360,12 +360,12 @@ export function VacationModePage() {
           <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
             {pastTrips.map((trip) => (
               <div key={trip.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                <div className="space-y-0.5 min-w-0">
-                  <p className="text-sm font-medium">
+                <div className="space-y-0.5 min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">
                     {formatDate(trip.start_date)}
                     {trip.end_date ? ` – ${formatDate(trip.end_date)}` : ' – ongoing'}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     Sitter every {trip.sitter_visit_frequency_days}d
                     {trip.notes ? ` · ${trip.notes}` : ''}
                   </p>

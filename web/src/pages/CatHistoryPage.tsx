@@ -664,7 +664,7 @@ export function CatHistoryPage() {
                   resizeConfig={{ handles: ['se'] }}
                   onLayoutChange={handleLayoutChange}
                   margin={[16, 16]}
-                  containerPadding={[0, 0]}
+                  containerPadding={[4, 0]}
                 >
                   {visibleCharts.includes('weight') && (
                     <ChartCard
