@@ -7,8 +7,6 @@ import { EVENT_COLORS, EVENT_LABELS } from '@/lib/eventColors'
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
-const MAX_VISIBLE_DOTS = 4
-
 const ALL_EVENT_TYPES: EventType[] = [
   'feeding', 'litter', 'water', 'weight',
   'note', 'medication', 'vet_visit', 'grooming',
@@ -16,6 +14,15 @@ const ALL_EVENT_TYPES: EventType[] = [
 ]
 
 const CARE_ONLY_TYPES: Set<EventType> = new Set(['feeding', 'litter', 'water', 'medication'])
+
+// Activity intensity: 0=none, 1=light (1–2 events), 2=moderate (3–5), 3=high (6+)
+// Background css per level — for normal in-range cells only (selected/today/missing override these)
+const ACTIVITY_BG = [
+  'hover:bg-muted/50 cursor-pointer',                            // 0: no events
+  'bg-primary/5 hover:bg-primary/10 cursor-pointer',            // 1: light
+  'bg-primary/15 hover:bg-primary/20 cursor-pointer',           // 2: moderate
+  'bg-primary/25 hover:bg-primary/30 cursor-pointer',           // 3: high
+] as const
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,35 +101,22 @@ function buildCalendarDays(
   return cells
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Intensity helpers ────────────────────────────────────────────────────────
 
-interface EventDotRowProps {
-  types: DayStats['types']
-  activeFilters: Set<EventType>
+/** Count events matching active filters for a given day */
+function getFilteredCount(stats: DayStats | null, filters: Set<EventType>): number {
+  if (!stats) return 0
+  return ALL_EVENT_TYPES
+    .filter(t => filters.has(t))
+    .reduce((sum, t) => sum + (stats.types[t] ?? 0), 0)
 }
 
-function EventDotRow({ types, activeFilters }: EventDotRowProps) {
-  const visible = ALL_EVENT_TYPES.filter(t => activeFilters.has(t) && (types[t] ?? 0) > 0)
-  const shown = visible.slice(0, MAX_VISIBLE_DOTS)
-  const overflow = visible.length - MAX_VISIBLE_DOTS
-
-  if (visible.length === 0) return null
-
-  return (
-    <div className="flex items-center gap-[2px] flex-wrap mt-0.5 min-h-[8px]">
-      {shown.map(t => (
-        <span
-          key={t}
-          style={{ background: EVENT_COLORS[t] }}
-          className="w-1.5 h-1.5 rounded-full shrink-0"
-          aria-label={EVENT_LABELS[t]}
-        />
-      ))}
-      {overflow > 0 && (
-        <span className="text-[9px] text-muted-foreground leading-none">+{overflow}</span>
-      )}
-    </div>
-  )
+/** Map a filtered event count to an activity level 0–3 */
+function toActivityLevel(count: number): 0 | 1 | 2 | 3 {
+  if (count <= 0) return 0
+  if (count <= 2) return 1
+  if (count <= 5) return 2
+  return 3
 }
 
 interface DayDetailPanelProps {
@@ -224,14 +218,14 @@ function EventTypeFilter({ presentTypes, activeFilters, onToggle, onAll, onCareO
             ? 'bg-primary/10 border-primary/30 text-primary'
             : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
         }`}
-        aria-label="Show all event types"
+        aria-label="Include all event types in activity intensity"
       >
         All
       </button>
       <button
         onClick={onCareOnly}
         className="text-[10px] px-1.5 py-0.5 rounded border border-border bg-muted/40 text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="Show care events only"
+        aria-label="Include care events only in activity intensity"
       >
         Care
       </button>
@@ -242,7 +236,7 @@ function EventTypeFilter({ presentTypes, activeFilters, onToggle, onAll, onCareO
             key={t}
             role="checkbox"
             aria-checked={active}
-            aria-label={`${active ? 'Hide' : 'Show'} ${EVENT_LABELS[t]} events`}
+            aria-label={`${active ? 'Exclude' : 'Include'} ${EVENT_LABELS[t]} in activity intensity`}
             onClick={() => onToggle(t)}
             className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
               active
@@ -443,6 +437,8 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
 
           const missing = isMissingCare(cell.stats, feedingsPerDay, cell.dateStr)
           const isSelected = selectedDate === cell.dateStr
+          const filteredCount = getFilteredCount(cell.stats, activeFilters)
+          const level = cell.isInRange ? toActivityLevel(filteredCount) : 0
           const eventCount = cell.isInRange ? (cell.stats?.count ?? 0) : 0
           const ariaLabel = [
             cell.dayNumber,
@@ -450,14 +446,36 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
             missing ? 'missing care' : null,
           ].filter(Boolean).join(', ')
 
-          // State communicated through fill only — no rings or borders
+          // Cell background priority:
+          //   1. out-of-range   → dim (no interaction)
+          //   2. selected+today → sky tint (selection overrides activity)
+          //   3. selected only  → primary tint
+          //   4. today only     → sky tint (today identity overrides activity)
+          //   5. missing care   → amber alert (overrides activity)
+          //   6. activity level → heatmap wash (0=plain, 1–3=increasing primary blue)
           const cellBg =
             !cell.isInRange              ? 'opacity-40 cursor-default' :
             isSelected && cell.isToday   ? 'bg-sky-100/80 dark:bg-sky-900/40 cursor-pointer' :
-            isSelected                   ? 'bg-primary/15 cursor-pointer' :
+            isSelected                   ? 'bg-primary/10 dark:bg-primary/20 cursor-pointer' :
             cell.isToday                 ? 'bg-sky-50/80 dark:bg-sky-950/30 cursor-pointer' :
-            missing                      ? 'bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-50/70 cursor-pointer' :
-                                           'hover:bg-muted/50 cursor-pointer'
+            missing                      ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-50/80 cursor-pointer' :
+                                           ACTIVITY_BG[level]
+
+          // Day number badge:
+          //   today            → filled sky-500 circle (permanent identity marker)
+          //   today + selected → filled sky-500 circle + sky ring (selected overlay on top of identity)
+          //   selected only    → ring outline in primary color (transient selection, no fill)
+          //   in-range         → plain text
+          //   out-of-range     → muted text
+          const dayNumberClass = cell.isToday && isSelected
+            ? 'bg-sky-500 text-white ring-2 ring-sky-300 ring-offset-1 dark:ring-sky-600 dark:ring-offset-card'
+            : cell.isToday
+              ? 'bg-sky-500 text-white'
+              : isSelected
+                ? 'ring-2 ring-primary text-primary'
+                : cell.isInRange
+                  ? 'text-foreground'
+                  : 'text-muted-foreground'
 
           return (
             <button
@@ -467,32 +485,19 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
               aria-label={ariaLabel}
               aria-current={cell.isToday ? 'date' : undefined}
               className={[
-                'relative rounded-lg flex flex-col items-start justify-start p-1 text-left transition-colors',
+                'relative rounded-lg flex items-start justify-start p-1.5 text-left transition-colors',
                 cellBg,
               ].join(' ')}
             >
-              {/* Day number — filled circle for today/selected, plain text otherwise */}
+              {/* Day number — filled circle for today, ring outline for selected, plain text otherwise */}
               <span
                 className={[
                   'text-[10px] leading-none font-semibold w-4 h-4 flex items-center justify-center rounded-full shrink-0',
-                  cell.isToday
-                    ? 'bg-sky-500 text-white'
-                    : isSelected
-                      ? 'bg-primary text-primary-foreground'
-                      : cell.isInRange
-                        ? 'text-foreground'
-                        : 'text-muted-foreground',
+                  dayNumberClass,
                 ].join(' ')}
               >
                 {cell.dayNumber}
               </span>
-
-              {/* Event dots — pushed to bottom */}
-              {cell.isInRange && cell.stats && (
-                <div className="mt-auto">
-                  <EventDotRow types={cell.stats.types} activeFilters={activeFilters} />
-                </div>
-              )}
 
               {/* Out-of-range lock icon */}
               {!cell.isInRange && !cell.isFuture && tier !== 'premium' && (
@@ -516,7 +521,21 @@ export function CalendarViewChart({ data, startDate, endDate, tier, feedingsPerD
         })}
       </div>
 
-      {/* Empty state overlay when no events exist in data at all */}
+      {/* Intensity legend */}
+      <div className="flex items-center gap-1.5 shrink-0" aria-hidden="true">
+        <span className="text-[9px] text-muted-foreground">Less</span>
+        <span className="w-3 h-3 rounded-sm bg-muted/40" />
+        <span className="w-3 h-3 rounded-sm bg-primary/5" />
+        <span className="w-3 h-3 rounded-sm bg-primary/15" />
+        <span className="w-3 h-3 rounded-sm bg-primary/25" />
+        <span className="text-[9px] text-muted-foreground">More</span>
+        <span className="ml-auto flex items-center gap-1 text-[9px] text-muted-foreground">
+          <span className="w-2.5 h-2.5 rounded-sm bg-amber-200/80 dark:bg-amber-950/40 inline-block" />
+          Missing care
+        </span>
+      </div>
+
+      {/* Empty state when no events exist in data at all */}
       {data.every(d => d.count === 0) && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <p className="text-xs text-muted-foreground">No care events logged yet</p>
