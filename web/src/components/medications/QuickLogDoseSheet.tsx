@@ -49,7 +49,7 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
         },
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['care_events', householdId, catId, 'medication'] })
+      queryClient.invalidateQueries({ queryKey: ['care_events'] })
       notify.success('Dose logged')
       onClose()
     },

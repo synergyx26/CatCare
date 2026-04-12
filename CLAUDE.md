@@ -279,7 +279,7 @@ PetExpense      — household_id, cat_id (nullable), amount_cents, currency, cat
 **JSONB details shapes:**
 - feeding: `{ food_type, amount_grams, unit }` — unit is free-text (grams, packs, etc.)
 - weight: `{ weight_value, weight_unit }`
-- medication: `{ medication_name, dosage, unit }` — unit is `mg` | `ml` | `tablet`
+- medication: `{ medication_name, dosage?, unit?, active_medication?: bool, stopped?: bool, frequency?: MedicationFrequency, course_end_date?: string }` — unit is `mg` | `ml` | `tablet`; `active_medication: true` marks a regimen start event; `frequency` values: `once_daily | twice_daily | every_8h | every_12h | every_other_day | every_3_days | every_week | as_needed`
 
 ---
 
@@ -338,14 +338,14 @@ web/src/
     usePageTitle.ts         — sets document.title as "{title} · CatCare"
   components/
     EmptyState.tsx          — reusable: Lucide icon + title + description + optional CTA
-    LogCareModal.tsx        — full care logging (all 8 types + edit/delete + AlertDialog confirm); reads feeding_presets from cat prop for quick-pick portion buttons; Free tier locks weight/medication/vet_visit/grooming pills
+    LogCareModal.tsx        — full care logging (all 8 types + edit/delete + AlertDialog confirm); reads feeding_presets from cat prop for quick-pick portion buttons; Free tier locks weight/medication/vet_visit/grooming pills; medication section: "Track as ongoing medication" checkbox + frequency selector (shown when checkbox on or `activeMedication` prop is true)
     layout/
       AppLayout.tsx         — sticky navbar, user dropdown, theme toggle, mobile sheet; desktop nav: Dashboard | Settings ▾ | Insights ▾ | [theme] [avatar]; Insights dropdown groups Calendar + Care History, always visible with Lock icon + tier badge for locked tiers; Settings dropdown: Household / Care (admin only) / Notifications; avatar dropdown: identity + sign-out only (settings removed to avoid duplication); mobile drawer mirrors same structure with Insights and Settings sections
       PageHeader.tsx        — reusable title + subtitle + back link + action slot
     dashboard/
       BirthdayBanner.tsx    — rose/pink gradient banner; shown when any active cat has a birthday today; "Send love" button opens note-log modal; dismissable per-session
-      CatCard.tsx           — cat card with status badges + quick-action buttons; birthday cats get rose ring + gradient header stripe + age label
-      CatStatusBadges.tsx   — fed/litter/water status badges
+      CatCard.tsx           — cat card with status badges + quick-action buttons; birthday cats get rose ring + gradient header stripe + age label; accepts `allMedEvents` to include active medication tasks in status line
+      CatStatusBadges.tsx   — fed/litter/water/toothbrushing status badges + 💊 medication chips (shows `X/Y MedName` for multi-dose, name only for once-daily; due = red filled, pending = faded)
       TodayCareLog.tsx      — today's care event list
       MembersSection.tsx    — member list + role management + invite form (admin only); accepts `tier` prop to enforce Free 2-member limit
       EmergencyContactSection.tsx
@@ -357,7 +357,10 @@ web/src/
       CatCardSkeleton.tsx   — cat card shape skeleton
       CareLogSkeleton.tsx   — care log rows skeleton
     medications/
-      MedicationsSection.tsx — focused medication query; active/stopped split; Stop + Reactivate mutations; tier guard on Log
+      MedicationsSection.tsx  — focused medication query; active/stopped split; Stop + Reactivate mutations; tier guard on Log
+      MedicationCard.tsx      — single regimen card; header shows name/dosage/frequency/course-remaining; next-due label computed from last DOSE only (never from start event); expanded body shows dose timeline with missed-dose markers; Stop/Reactivate/Edit/Log dose actions
+      AddMedicationModal.tsx  — start or edit a medication regimen; fields: name, dosage+unit, frequency (all 8 options), start date, finite-course toggle+end date, notes; onSuccess invalidates `['care_events']` broadly
+      QuickLogDoseSheet.tsx   — bottom sheet to log a dose for a specific regimen; pre-fills medication name from start event
     reminders/
       RemindersSection.tsx  — reminder list + inline RHF+Zod create form; sitter=read-only; "Coming soon" badge
     pdf/
@@ -370,7 +373,7 @@ web/src/
                               missing-day amber highlight, no borders)
   lib/
     eventColors.ts          — EVENT_COLORS and EVENT_LABELS per event type
-    helpers.ts              — date formatting, status helpers; `isCatBirthday(birthday)` (local date, avoids UTC shift), `getCatAge(birthday)` → age in full years
+    helpers.ts              — date formatting, status helpers; `isCatBirthday(birthday)` (local date, avoids UTC shift), `getCatAge(birthday)` → age in full years; `getActiveMedicationTasks(catId, allMedEvents)` → `MedicationTask[]` (doses-needed-today + doses-given-today per active med; scoped to doses on/after start event; handles intra-day and multi-day frequencies); `CatTodayStatus` includes `medicationTasks`; `getCatTodayStatus` accepts optional 6th param `allMedEvents`
     chartLayout.ts          — ChartId type, DEFAULT_LAYOUTS, loadLayouts/saveLayouts/clearLayouts
     reminderHelpers.ts      — formatSchedule(), SCHEDULE_TYPE_OPTIONS for daily/interval/weekly
     vetExport.ts            — assembleVetSummary(), formatDateRange(); assembles 4 query results → VetSummaryData
@@ -393,7 +396,9 @@ web/src/
                               route: /households/:id/vacation
   components/dashboard/
     VacationBanner.tsx      — owner-facing: shown when active vacation trip exists; displays last sitter activity
-    SitterVisitChecklist.tsx — sitter-facing: replaces daily status cards during active trip; shows tasks grouped by cat
+    SitterVisitChecklist.tsx — sitter-facing: replaces daily status cards during active trip; shows tasks grouped by cat; includes due medications in "Needs" text (with X/Y dose progress) + red 💊 quick-log button per due med; accepts `allMedEvents` prop
+  pages/
+    MedicationsPage.tsx     — Pro/Premium only; route /households/:id/cats/:catId/medications; lists active/stopped regimens via MedicationCard; "Add medication" opens AddMedicationModal; dose history scoped to on/after start event so pre-regimen manual logs don't corrupt adherence
 ```
 
 ---
@@ -414,3 +419,5 @@ web/src/
 12. **Admin controllers missing current_household** — `Admin::BaseController` inherits `ApplicationController`, not `Api::V1::BaseController`. Admin controllers that need `current_household` must define it themselves (e.g. `current_user.households.first` for import, or `current_user.households.find(params[:household_id])` if the route has it)
 13. **Import builds clean locally but fails CI** — `tsc --noEmit` does not catch all unused variable errors that `tsc -b` (used by `npm run build`) does. Always run `npm run build` before pushing, not just `tsc --noEmit`
 14. **VacationTrip `active` DB column vs `active?` method** — the `active` column defaults to `true`, so `where(active: true)` returns ALL trips including ended ones. The instance method `active?` and the `active_on(date)` scope do the real date-range check. In `Household#active_vacation_trip`, always chain `.active_on(Date.today)` — never rely on `where(active: true)` alone.
+15. **Medication dose history includes pre-regimen events** — `MedicationsPage` and `getActiveMedicationTasks` both scope dose history to events with `occurred_at >= startEvent.occurred_at`. If you add a new query path that builds dose history, apply the same filter or old manual logs will corrupt next-due calculations.
+16. **TanStack Query key type mismatches** — `useParams` returns strings; passing those strings directly into a query key (`queryKey: ['care_events', householdId, catId]`) and then invalidating with numbers won't match. Always use `Number()` consistently in query keys, or invalidate with a broader prefix key (`['care_events']`) so type mismatches can't silently break cache invalidation.
