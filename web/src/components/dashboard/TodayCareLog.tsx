@@ -5,8 +5,6 @@ import type { Cat, CareEvent, EventType } from '@/types/api'
 
 const EVENT_EMOJI: Record<EventType, string> = {
   feeding:   '🍽️',
-  water:     '💧',
-  litter:    '🧹',
   weight:    '⚖️',
   medication: '💊',
   vet_visit: '🩺',

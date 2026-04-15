@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { notify } from '@/lib/notify'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Pencil, Check } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -10,7 +10,7 @@ import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
 import { Button } from '@/components/ui/button'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { CURRENCIES } from '@/lib/currency'
-import type { Cat, Household } from '@/types/api'
+import type { Cat, Household, HouseholdChoreDefinition } from '@/types/api'
 
 // ─── Country list for phone defaults ─────────────────────────────────────────
 
@@ -66,7 +66,7 @@ const COUNTRIES: { code: string; label: string }[] = [
 
 type FoodKey = 'wet' | 'dry' | 'treats' | 'other'
 
-type CatCareField = 'feedings_per_day' | 'track_water' | 'track_litter' | 'track_toothbrushing'
+type CatCareField = 'feedings_per_day' | 'track_toothbrushing'
 
 const FOOD_LABELS: Record<FoodKey, string> = {
   wet:    'Wet',
@@ -121,6 +121,79 @@ export function HouseholdSettingsPage() {
       setDefaultCountry(primaryHousehold.default_country ?? 'US')
     }
   }, [primaryHousehold?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Household chore definitions ─────────────────────────────────────────────
+
+  const { data: choreDefsData } = useQuery({
+    queryKey: ['household_chore_definitions', hid],
+    queryFn:  () => api.getHouseholdChoreDefinitions(hid),
+    enabled:  !!hid,
+  })
+  const choreDefinitions: HouseholdChoreDefinition[] = choreDefsData?.data?.data ?? []
+
+  const [newChoreName,      setNewChoreName]      = useState('')
+  const [newChoreEmoji,     setNewChoreEmoji]     = useState('')
+  const [newChoreFrequency, setNewChoreFrequency] = useState(1)
+  const [editingDefId,      setEditingDefId]      = useState<number | null>(null)
+  const [editName,          setEditName]          = useState('')
+  const [editEmoji,         setEditEmoji]         = useState('')
+  const [editFrequency,     setEditFrequency]     = useState(1)
+
+  const createDefinitionMutation = useMutation({
+    mutationFn: (data: { name: string; emoji: string; frequency: number }) =>
+      api.createHouseholdChoreDefinition(hid, {
+        household_chore_definition: {
+          name:             data.name,
+          emoji:            data.emoji || null,
+          active:           true,
+          position:         choreDefinitions.length,
+          frequency_per_day: data.frequency,
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['household_chore_definitions', hid] })
+      setNewChoreName('')
+      setNewChoreEmoji('')
+      setNewChoreFrequency(1)
+      notify.success('Chore added.')
+    },
+    onError: () => notify.error('Failed to add chore.'),
+  })
+
+  const updateDefinitionMutation = useMutation({
+    mutationFn: ({ id, patch }: { id: number; patch: Partial<HouseholdChoreDefinition> }) =>
+      api.updateHouseholdChoreDefinition(hid, id, { household_chore_definition: patch }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['household_chore_definitions', hid] })
+      setEditingDefId(null)
+    },
+    onError: () => notify.error('Failed to update chore.'),
+  })
+
+  const deleteDefinitionMutation = useMutation({
+    mutationFn: (id: number) => api.deleteHouseholdChoreDefinition(hid, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['household_chore_definitions', hid] }),
+    onError: () => notify.error('Failed to remove chore.'),
+  })
+
+  function handleAddChore() {
+    const name = newChoreName.trim()
+    if (!name) return
+    createDefinitionMutation.mutate({ name, emoji: newChoreEmoji.trim(), frequency: newChoreFrequency })
+  }
+
+  function startEdit(def: HouseholdChoreDefinition) {
+    setEditingDefId(def.id)
+    setEditName(def.name)
+    setEditEmoji(def.emoji ?? '')
+    setEditFrequency(def.frequency_per_day)
+  }
+
+  function commitEdit(id: number) {
+    const name = editName.trim()
+    if (!name) return
+    updateDefinitionMutation.mutate({ id, patch: { name, emoji: editEmoji.trim() || null, frequency_per_day: editFrequency } })
+  }
 
   const localeMutation = useMutation({
     mutationFn: () =>
@@ -261,6 +334,146 @@ export function HouseholdSettingsPage() {
         </div>
       </div>
 
+      {/* ── Household chores ── */}
+      <div className="rounded-2xl bg-card ring-1 ring-border/60 overflow-hidden">
+        <div className="px-4 py-3 border-b border-border/40">
+          <p className="text-sm font-semibold">Household chores</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Shared tasks tracked at the house level. Toggle active/inactive or add custom chores.
+          </p>
+        </div>
+
+        {/* Existing definitions */}
+        {choreDefinitions.length > 0 && (
+          <div className="divide-y divide-border/30">
+            {choreDefinitions.map((def) => (
+              <div key={def.id} className="flex items-center gap-3 px-4 py-2.5">
+                {editingDefId === def.id ? (
+                  <>
+                    <input
+                      type="text"
+                      value={editEmoji}
+                      onChange={(e) => setEditEmoji(e.target.value)}
+                      placeholder="emoji"
+                      maxLength={4}
+                      className="h-8 w-14 rounded-lg border border-border bg-background px-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(def.id) }}
+                      className="h-8 flex-1 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <select
+                      value={editFrequency}
+                      onChange={(e) => setEditFrequency(Number(e.target.value))}
+                      className="h-8 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      aria-label="Times per day"
+                    >
+                      {[1, 2, 3, 4].map((n) => (
+                        <option key={n} value={n}>{n}×/day</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => commitEdit(def.id)}
+                      disabled={!editName.trim() || updateDefinitionMutation.isPending}
+                      className="flex size-7 items-center justify-center rounded-lg bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 disabled:opacity-40 transition-colors"
+                      aria-label="Save"
+                    >
+                      <Check className="size-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setEditingDefId(null)}
+                      className="flex size-7 items-center justify-center rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                      aria-label="Cancel"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-base w-6 text-center shrink-0">
+                      {def.emoji ?? '•'}
+                    </span>
+                    <span className={`flex-1 text-sm font-medium ${!def.active ? 'text-muted-foreground line-through' : ''}`}>
+                      {def.name}
+                    </span>
+                    {def.frequency_per_day > 1 && (
+                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                        {def.frequency_per_day}×/day
+                      </span>
+                    )}
+                    {/* Active toggle */}
+                    <TrackToggle
+                      label={def.active ? 'ON' : 'OFF'}
+                      checked={def.active}
+                      onChange={(v) => updateDefinitionMutation.mutate({ id: def.id, patch: { active: v } })}
+                    />
+                    {/* Edit */}
+                    <button
+                      onClick={() => startEdit(def)}
+                      className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+                      aria-label={`Edit ${def.name}`}
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    {/* Delete */}
+                    <button
+                      onClick={() => deleteDefinitionMutation.mutate(def.id)}
+                      disabled={deleteDefinitionMutation.isPending}
+                      className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-40 transition-colors"
+                      aria-label={`Remove ${def.name}`}
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add new chore */}
+        <div className="flex items-center gap-2 px-4 py-3 border-t border-border/40 bg-muted/20">
+          <input
+            type="text"
+            value={newChoreEmoji}
+            onChange={(e) => setNewChoreEmoji(e.target.value)}
+            placeholder="emoji"
+            maxLength={4}
+            className="h-8 w-14 rounded-lg border border-border bg-background px-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <input
+            type="text"
+            value={newChoreName}
+            onChange={(e) => setNewChoreName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAddChore() }}
+            placeholder="New chore name…"
+            className="h-8 flex-1 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <select
+            value={newChoreFrequency}
+            onChange={(e) => setNewChoreFrequency(Number(e.target.value))}
+            className="h-8 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label="Times per day"
+          >
+            {[1, 2, 3, 4].map((n) => (
+              <option key={n} value={n}>{n}×/day</option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            onClick={handleAddChore}
+            disabled={!newChoreName.trim() || createDefinitionMutation.isPending}
+            className="h-8 gap-1 px-3"
+          >
+            <Plus className="size-3.5" />
+            Add
+          </Button>
+        </div>
+      </div>
+
       <div className="rounded-2xl bg-sky-50 dark:bg-sky-950/20 ring-1 ring-sky-200/60 dark:ring-sky-800/30 p-4">
         <p className="text-sm text-sky-700 dark:text-sky-300">
           Dashboard badges and "needs attention" counts respect these settings. Portion presets
@@ -337,22 +550,7 @@ function CatCareCard({ cat, onFieldChange, onPresetsChange }: CatCareCardProps) 
             </div>
 
             <TrackToggle
-              emoji="💧"
-              label="Water"
-              checked={cat.track_water}
-              onChange={(v) => onFieldChange(cat.id, 'track_water', v)}
-            />
-
-            <TrackToggle
-              emoji="🧹"
-              label="Litter"
-              checked={cat.track_litter}
-              onChange={(v) => onFieldChange(cat.id, 'track_litter', v)}
-            />
-
-            <TrackToggle
-              emoji="🦷"
-              label="Teeth"
+              label={`🦷 Teeth · ${cat.track_toothbrushing ? 'On' : 'Off'}`}
               checked={cat.track_toothbrushing}
               onChange={(v) => onFieldChange(cat.id, 'track_toothbrushing', v)}
             />
@@ -464,12 +662,10 @@ function PresetRow({ label, amounts, onAdd, onRemove }: PresetRowProps) {
 // ─── Toggle button ────────────────────────────────────────────────────────────
 
 function TrackToggle({
-  emoji,
   label,
   checked,
   onChange,
 }: {
-  emoji: string
   label: string
   checked: boolean
   onChange: (value: boolean) => void
@@ -478,18 +674,15 @@ function TrackToggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
         checked
           ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
           : 'bg-muted text-muted-foreground ring-1 ring-border/60 hover:bg-muted/80'
       }`}
       aria-pressed={checked}
-      aria-label={`${checked ? 'Disable' : 'Enable'} ${label} tracking`}
+      aria-label={`${checked ? 'Disable' : 'Enable'} tracking`}
     >
-      {emoji} {label}
-      <span className="ml-0.5 text-[10px] font-semibold opacity-60">
-        {checked ? 'ON' : 'OFF'}
-      </span>
+      {label}
     </button>
   )
 }

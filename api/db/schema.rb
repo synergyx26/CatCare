@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_11_080000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_15_200001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -116,6 +116,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_11_080000) do
     t.integer "position", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["household_id"], name: "index_household_batch_actions_on_household_id"
+  end
+
+  create_table "household_chore_definitions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "emoji"
+    t.integer "frequency_per_day", default: 1, null: false
+    t.bigint "household_id", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id", "position"], name: "index_household_chore_definitions_on_household_id_and_position"
+    t.index ["household_id"], name: "index_household_chore_definitions_on_household_id"
+  end
+
+  create_table "household_chores", force: :cascade do |t|
+    t.bigint "chore_definition_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "household_id", null: false
+    t.integer "logged_by_id", null: false
+    t.text "notes"
+    t.datetime "occurred_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chore_definition_id"], name: "index_household_chores_on_chore_definition_id"
+    t.index ["household_id", "occurred_at"], name: "index_household_chores_on_household_id_and_occurred_at"
+    t.index ["household_id"], name: "index_household_chores_on_household_id"
   end
 
   create_table "household_invites", force: :cascade do |t|
@@ -264,6 +290,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_11_080000) do
   add_foreign_key "care_notes", "households"
   add_foreign_key "cats", "households"
   add_foreign_key "household_batch_actions", "households"
+  add_foreign_key "household_chore_definitions", "households"
+  add_foreign_key "household_chores", "household_chore_definitions", column: "chore_definition_id"
+  add_foreign_key "household_chores", "households"
   add_foreign_key "household_invites", "households"
   add_foreign_key "household_memberships", "households"
   add_foreign_key "household_memberships", "users"

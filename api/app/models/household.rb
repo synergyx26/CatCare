@@ -10,10 +10,23 @@ class Household < ApplicationRecord
   has_many :household_batch_actions, dependent: :destroy
   has_many :vacation_trips, dependent: :destroy
   has_many :pet_expenses, dependent: :destroy
+  has_many :household_chores,            dependent: :destroy
+  has_many :household_chore_definitions, dependent: :destroy
 
   validates :name, presence: true
 
+  after_create :create_default_chore_definitions
+
   def active_vacation_trip
     vacation_trips.where(active: true).active_on(Date.today).order(start_date: :desc).first
+  end
+
+  private
+
+  def create_default_chore_definitions
+    household_chore_definitions.create!([
+      { name: "Litter boxes",   emoji: "🧹", active: true, position: 0 },
+      { name: "Water fountain", emoji: "💧", active: true, position: 1 },
+    ])
   end
 end

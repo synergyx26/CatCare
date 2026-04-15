@@ -10,8 +10,8 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/EmptyState'
 import { EVENT_COLORS } from '@/lib/eventColors'
 import { formatEventSummary, EVENT_TYPE_LABEL } from '@/lib/helpers'
-import type { CareEvent, Cat, EventType, Household, SubscriptionTier } from '@/types/api'
-import { Download, Filter, Lock, RotateCcw, TableProperties, X } from 'lucide-react'
+import type { CareEvent, Cat, EventType, Household, HouseholdChore, HouseholdChoreDefinition, SubscriptionTier } from '@/types/api'
+import { Download, Filter, Home, Lock, RotateCcw, TableProperties, X } from 'lucide-react'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,18 +38,56 @@ const THIRTY_AGO     = new Date(TODAY); THIRTY_AGO.setDate(TODAY.getDate() - 30)
 const DEFAULT_START  = toInputDate(THIRTY_AGO)
 const DEFAULT_END    = toInputDate(TODAY)
 
-function exportToCsv(events: CareEvent[], cats: Cat[], memberMap: Map<number, string>) {
+// ── Unified row type ─────────────────────────────────────────────────────────
+
+type UnifiedRow =
+  | { kind: 'event'; data: CareEvent }
+  | { kind: 'chore'; data: HouseholdChore }
+
+const CHORE_COLOR = '#6366f1' // indigo-500
+
+// ── TypeFilter extended to include chores ────────────────────────────────────
+
+type TypeFilterValue = EventType | '' | 'chore'
+
+// ── CSV export ───────────────────────────────────────────────────────────────
+
+function exportToCsv(
+  rows: UnifiedRow[],
+  cats: Cat[],
+  memberMap: Map<number, string>,
+  definitionMap: Map<number, HouseholdChoreDefinition>,
+) {
   const catMap = new Map(cats.map((c) => [c.id, c.name]))
-  const header = ['Date/Time', 'Cat', 'Type', 'Details', 'Notes', 'Logged by']
-  const rows   = events.map((e) => [
-    formatDateTime(e.occurred_at),
-    catMap.get(e.cat_id) ?? String(e.cat_id),
-    EVENT_TYPE_LABEL[e.event_type] ?? e.event_type,
-    formatEventSummary(e),
-    e.notes ?? '',
-    memberMap.get(e.logged_by_id) ?? String(e.logged_by_id),
-  ])
-  const csvContent = [header, ...rows]
+  const header = ['Date/Time', 'Cat / Source', 'Type', 'Details', 'Notes', 'Logged by']
+  const csvRows = rows.map((row) => {
+    if (row.kind === 'event') {
+      const e = row.data
+      return [
+        formatDateTime(e.occurred_at),
+        catMap.get(e.cat_id) ?? String(e.cat_id),
+        EVENT_TYPE_LABEL[e.event_type] ?? e.event_type,
+        formatEventSummary(e),
+        e.notes ?? '',
+        memberMap.get(e.logged_by_id) ?? String(e.logged_by_id),
+      ]
+    } else {
+      const c   = row.data
+      const def = definitionMap.get(c.chore_definition_id)
+      const defLabel = def
+        ? [def.emoji, def.name].filter(Boolean).join(' ')
+        : `Chore #${c.chore_definition_id}`
+      return [
+        formatDateTime(c.occurred_at),
+        'Household',
+        'Household chore',
+        defLabel,
+        c.notes ?? '',
+        memberMap.get(c.logged_by_id) ?? String(c.logged_by_id),
+      ]
+    }
+  })
+  const csvContent = [header, ...csvRows]
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     .join('\n')
   // UTF-8 BOM so Excel/Numbers reads multi-byte chars (·, etc.) correctly
@@ -152,7 +190,7 @@ function ClearBtn({ onClick }: { onClick: () => void }) {
 // ── All event types ───────────────────────────────────────────────────────────
 
 const ALL_EVENT_TYPES: EventType[] = [
-  'feeding', 'litter', 'water', 'weight', 'note',
+  'feeding', 'weight', 'note',
   'medication', 'vet_visit', 'grooming', 'symptom', 'tooth_brushing',
 ]
 
@@ -196,20 +234,28 @@ export function CareHistoryTablePage() {
   // Seed catFilter from ?catId= so CatHistoryPage can jump here pre-filtered
   const initialCatId = searchParams.get('catId') ? Number(searchParams.get('catId')) : ''
 
-  const [startDate,       setStartDate]       = useState(DEFAULT_START)
-  const [endDate,         setEndDate]         = useState(DEFAULT_END)
-  const [catFilter,       setCatFilter]       = useState<number | ''>(initialCatId)
-  const [typeFilter,      setTypeFilter]      = useState<EventType | ''>('')
-  const [subtypeFilter,   setSubtypeFilter]   = useState('')
-  const [memberFilter,    setMemberFilter]    = useState<number | ''>('')
+  const [startDate,             setStartDate]             = useState(DEFAULT_START)
+  const [endDate,               setEndDate]               = useState(DEFAULT_END)
+  const [catFilter,             setCatFilter]             = useState<number | ''>(initialCatId)
+  const [typeFilter,            setTypeFilter]            = useState<TypeFilterValue>('')
+  const [subtypeFilter,         setSubtypeFilter]         = useState('')
+  const [choreDefinitionFilter, setChoreDefinitionFilter] = useState<number | ''>('')
+  const [memberFilter,          setMemberFilter]          = useState<number | ''>('')
   // null = custom / no quick range active; number = days value (null days = all-time)
   const [activeQuickDays, setActiveQuickDays] = useState<number | null | 'custom'>('custom')
 
-  const subtypeConfig = typeFilter ? SUBTYPE_CONFIG[typeFilter] : undefined
+  // Derived visibility flags
+  const showChores = typeFilter === '' || typeFilter === 'chore'
+  const showEvents = typeFilter !== 'chore'
 
-  function handleTypeChange(value: EventType | '') {
+  const subtypeConfig = (typeFilter && typeFilter !== 'chore')
+    ? SUBTYPE_CONFIG[typeFilter as EventType]
+    : undefined
+
+  function handleTypeChange(value: TypeFilterValue) {
     setTypeFilter(value)
     setSubtypeFilter('')
+    if (value !== 'chore') setChoreDefinitionFilter('')
   }
 
   function applyQuickRange(range: QuickRange) {
@@ -226,12 +272,13 @@ export function CareHistoryTablePage() {
   }
 
   const hasActiveFilters =
-    startDate !== DEFAULT_START ||
-    endDate   !== DEFAULT_END   ||
-    catFilter     !== ''        ||
-    typeFilter    !== ''        ||
-    subtypeFilter !== ''        ||
-    memberFilter  !== ''
+    startDate !== DEFAULT_START      ||
+    endDate   !== DEFAULT_END        ||
+    catFilter             !== ''     ||
+    typeFilter            !== ''     ||
+    subtypeFilter         !== ''     ||
+    choreDefinitionFilter !== ''     ||
+    memberFilter          !== ''
 
   function resetAllFilters() {
     setStartDate(DEFAULT_START)
@@ -239,6 +286,7 @@ export function CareHistoryTablePage() {
     setCatFilter('')
     setTypeFilter('')
     setSubtypeFilter('')
+    setChoreDefinitionFilter('')
     setMemberFilter('')
     setActiveQuickDays('custom')
   }
@@ -275,15 +323,62 @@ export function CareHistoryTablePage() {
 
   // Sub-type filter is client-side (details lives in JSONB — not worth a round-trip)
   const events = useMemo(
-    () => applySubtypeFilter(rawEvents, typeFilter, subtypeFilter),
+    () => applySubtypeFilter(rawEvents, typeFilter as EventType | '', subtypeFilter),
     [rawEvents, typeFilter, subtypeFilter]
   )
+
+  // ── Chore queries ─────────────────────────────────────────────────────────
+  const { data: choreDefsData } = useQuery({
+    queryKey: ['chore_definitions', hId],
+    queryFn:  () => api.getHouseholdChoreDefinitions(hId),
+    enabled:  isPremium,
+    staleTime: 5 * 60 * 1000,
+  })
+  const choreDefs: HouseholdChoreDefinition[] = choreDefsData?.data?.data ?? []
+
+  const { data: choresData } = useQuery({
+    queryKey: ['household_chores_history', hId, startDate, endDate, memberFilter],
+    queryFn:  () =>
+      api.getHouseholdChores(hId, {
+        startDate:  startDate  || undefined,
+        endDate:    endDate    || undefined,
+        loggedById: memberFilter ? Number(memberFilter) : undefined,
+      }),
+    enabled:   isPremium && showChores,
+    staleTime: 60_000,
+  })
+  const rawChores: HouseholdChore[] = choresData?.data?.data ?? []
+
+  // Chore definition sub-filter is client-side
+  const filteredChores = useMemo(() => {
+    if (!choreDefinitionFilter) return rawChores
+    return rawChores.filter((c) => c.chore_definition_id === choreDefinitionFilter)
+  }, [rawChores, choreDefinitionFilter])
 
   const memberMap = useMemo(
     () => new Map<number, string>((household?.members ?? []).map((m) => [m.id, m.name])),
     [household]
   )
   const catMap = useMemo(() => new Map(cats.map((c) => [c.id, c.name])), [cats])
+
+  const definitionMap = useMemo(
+    () => new Map(choreDefs.map((d) => [d.id, d])),
+    [choreDefs]
+  )
+
+  // Merge events + chores into a single chronological list
+  const allRows: UnifiedRow[] = useMemo(() => {
+    const eventRows: UnifiedRow[] = showEvents
+      ? events.map((e) => ({ kind: 'event' as const, data: e }))
+      : []
+    // Chore rows are household-level — hidden when filtering by a specific cat
+    const choreRows: UnifiedRow[] = (showChores && catFilter === '')
+      ? filteredChores.map((c) => ({ kind: 'chore' as const, data: c }))
+      : []
+    return [...eventRows, ...choreRows].sort(
+      (a, b) => new Date(b.data.occurred_at).getTime() - new Date(a.data.occurred_at).getTime()
+    )
+  }, [showEvents, showChores, catFilter, events, filteredChores])
 
   // ── Premium gate ──────────────────────────────────────────────
   if (!isPremium) {
@@ -314,15 +409,15 @@ export function CareHistoryTablePage() {
     <div className="space-y-5">
       <PageHeader
         title="Care History"
-        subtitle={`${events.length} event${events.length !== 1 ? 's' : ''} in selected range`}
+        subtitle={`${allRows.length} record${allRows.length !== 1 ? 's' : ''} in selected range`}
         backTo={{ label: 'Dashboard', onClick: () => navigate('/dashboard') }}
         action={
           <Button
             size="sm"
             variant="outline"
             className="gap-2"
-            disabled={events.length === 0}
-            onClick={() => exportToCsv(events, cats, memberMap)}
+            disabled={allRows.length === 0}
+            onClick={() => exportToCsv(allRows, cats, memberMap, definitionMap)}
           >
             <Download className="size-4" />
             Export CSV
@@ -416,13 +511,19 @@ export function CareHistoryTablePage() {
             </div>
           </div>
 
-          {/* Cat */}
+          {/* Cat — disabled when filtering by household chores */}
           <div className="space-y-1 min-w-0">
-            <label className="text-xs text-muted-foreground">Cat</label>
+            <label className={['text-xs', typeFilter === 'chore' ? 'text-muted-foreground/40' : 'text-muted-foreground'].join(' ')}>
+              Cat
+            </label>
             <select
               value={catFilter}
+              disabled={typeFilter === 'chore'}
               onChange={(e) => setCatFilter(e.target.value === '' ? '' : Number(e.target.value))}
-              className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className={[
+                'w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring',
+                typeFilter === 'chore' ? 'opacity-40 cursor-not-allowed' : '',
+              ].join(' ')}
             >
               <option value="">All cats</option>
               {cats.map((c) => (
@@ -430,24 +531,25 @@ export function CareHistoryTablePage() {
               ))}
             </select>
             <div className="h-5 flex items-center">
-              {catFilter !== '' && (
+              {catFilter !== '' && typeFilter !== 'chore' && (
                 <ClearBtn onClick={() => setCatFilter('')} />
               )}
             </div>
           </div>
 
-          {/* Event type */}
+          {/* Type */}
           <div className="space-y-1 min-w-0">
             <label className="text-xs text-muted-foreground">Type</label>
             <select
               value={typeFilter}
-              onChange={(e) => handleTypeChange(e.target.value as EventType | '')}
+              onChange={(e) => handleTypeChange(e.target.value as TypeFilterValue)}
               className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">All types</option>
               {ALL_EVENT_TYPES.map((t) => (
                 <option key={t} value={t}>{EVENT_TYPE_LABEL[t]}</option>
               ))}
+              <option value="chore">Household chore</option>
             </select>
             <div className="h-5 flex items-center">
               {typeFilter !== '' && (
@@ -477,7 +579,7 @@ export function CareHistoryTablePage() {
           </div>
         </div>
 
-        {/* Row 2: sub-type filter — only shown when selected type has sub-types */}
+        {/* Row 2a: event sub-type filter — only shown when selected type has sub-types */}
         {subtypeConfig && (
           <div className="pt-1 border-t border-border/40 flex items-end gap-3">
             <div className="space-y-1 w-full sm:w-56 min-w-0">
@@ -507,6 +609,30 @@ export function CareHistoryTablePage() {
             )}
           </div>
         )}
+
+        {/* Row 2b: chore definition filter — only shown when type = "Household chore" */}
+        {typeFilter === 'chore' && choreDefs.length > 0 && (
+          <div className="pt-1 border-t border-border/40 flex items-end gap-3">
+            <div className="space-y-1 w-full sm:w-56 min-w-0">
+              <label className="text-xs text-muted-foreground">Chore</label>
+              <select
+                value={choreDefinitionFilter}
+                onChange={(e) => setChoreDefinitionFilter(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">All chores</option>
+                {choreDefs.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.emoji ? `${d.emoji} ${d.name}` : d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {choreDefinitionFilter !== '' && (
+              <ClearBtn onClick={() => setChoreDefinitionFilter('')} />
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Table ────────────────────────────────────────────── */}
@@ -516,13 +642,17 @@ export function CareHistoryTablePage() {
             <div key={i} className="h-10 rounded-md bg-muted animate-pulse" />
           ))}
         </div>
-      ) : events.length === 0 ? (
+      ) : allRows.length === 0 ? (
         <EmptyState
           icon={TableProperties}
-          title="No events found"
+          title="No records found"
           description={[
-            typeFilter    ? `No ${EVENT_TYPE_LABEL[typeFilter] ?? typeFilter} events` : 'No events',
-            catFilter     ? ` for ${catMap.get(Number(catFilter)) ?? 'selected cat'}` : '',
+            typeFilter === 'chore'
+              ? 'No household chore entries'
+              : typeFilter
+                ? `No ${EVENT_TYPE_LABEL[typeFilter as EventType] ?? typeFilter} events`
+                : 'No records',
+            catFilter ? ` for ${catMap.get(Number(catFilter)) ?? 'selected cat'}` : '',
             ' in this period.',
             hasActiveFilters ? ' Try adjusting your filters or date range.' : '',
           ].join('')}
@@ -533,39 +663,74 @@ export function CareHistoryTablePage() {
 
           {/* Mobile: card list */}
           <div className="sm:hidden space-y-2">
-            {events.map((event) => {
-              const color      = EVENT_COLORS[event.event_type]
-              const catName    = catMap.get(event.cat_id) ?? '—'
-              const loggerName = memberMap.get(event.logged_by_id)
-                ?? (event.logged_by_id === user?.id ? 'You' : String(event.logged_by_id))
-              const summary    = formatEventSummary(event)
-              return (
-                <div key={event.id} className="rounded-xl border bg-card p-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span
-                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold shrink-0"
-                      style={{ backgroundColor: `${color}20`, color }}
-                    >
-                      {EVENT_TYPE_LABEL[event.event_type] ?? event.event_type}
-                    </span>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {formatDateTime(event.occurred_at)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="font-medium truncate">{catName}</span>
-                    <span className="text-xs text-muted-foreground shrink-0">{loggerName}</span>
-                  </div>
-                  {(summary || event.notes) && (
-                    <div className="text-xs text-muted-foreground space-y-0.5 border-t border-border/40 pt-2">
-                      {summary && <p>{summary}</p>}
-                      {event.notes && (
-                        <p className="truncate" title={event.notes}>{event.notes}</p>
-                      )}
+            {allRows.map((row) => {
+              if (row.kind === 'event') {
+                const event      = row.data
+                const color      = EVENT_COLORS[event.event_type]
+                const catName    = catMap.get(event.cat_id) ?? '—'
+                const loggerName = memberMap.get(event.logged_by_id)
+                  ?? (event.logged_by_id === user?.id ? 'You' : String(event.logged_by_id))
+                const summary    = formatEventSummary(event)
+                return (
+                  <div key={`event-${event.id}`} className="rounded-xl border bg-card p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold shrink-0"
+                        style={{ backgroundColor: `${color}20`, color }}
+                      >
+                        {EVENT_TYPE_LABEL[event.event_type] ?? event.event_type}
+                      </span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {formatDateTime(event.occurred_at)}
+                      </span>
                     </div>
-                  )}
-                </div>
-              )
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span className="font-medium truncate">{catName}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{loggerName}</span>
+                    </div>
+                    {(summary || event.notes) && (
+                      <div className="text-xs text-muted-foreground space-y-0.5 border-t border-border/40 pt-2">
+                        {summary && <p>{summary}</p>}
+                        {event.notes && (
+                          <p className="truncate" title={event.notes}>{event.notes}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              } else {
+                const chore      = row.data
+                const def        = definitionMap.get(chore.chore_definition_id)
+                const loggerName = memberMap.get(chore.logged_by_id)
+                  ?? (chore.logged_by_id === user?.id ? 'You' : String(chore.logged_by_id))
+                return (
+                  <div key={`chore-${chore.id}`} className="rounded-xl border bg-card p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0"
+                        style={{ backgroundColor: `${CHORE_COLOR}15`, color: CHORE_COLOR }}
+                      >
+                        <Home className="size-2.5" aria-hidden="true" />
+                        Household chore
+                      </span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {formatDateTime(chore.occurred_at)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span className="font-medium truncate">
+                        {def ? [def.emoji, def.name].filter(Boolean).join(' ') : `Chore #${chore.chore_definition_id}`}
+                      </span>
+                      <span className="text-xs text-muted-foreground shrink-0">{loggerName}</span>
+                    </div>
+                    {chore.notes && (
+                      <div className="text-xs text-muted-foreground border-t border-border/40 pt-2">
+                        <p className="truncate" title={chore.notes}>{chore.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
             })}
           </div>
 
@@ -576,7 +741,7 @@ export function CareHistoryTablePage() {
                 <thead className="bg-muted/50 border-b sticky top-0 z-10">
                   <tr>
                     <th className="text-left px-4 py-2.5 font-medium text-muted-foreground whitespace-nowrap">Date / Time</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Cat</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Cat / Source</th>
                     <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Type</th>
                     <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Details</th>
                     <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Notes</th>
@@ -584,39 +749,82 @@ export function CareHistoryTablePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {events.map((event) => {
-                    const color      = EVENT_COLORS[event.event_type]
-                    const catName    = catMap.get(event.cat_id) ?? '—'
-                    const loggerName = memberMap.get(event.logged_by_id)
-                      ?? (event.logged_by_id === user?.id ? 'You' : String(event.logged_by_id))
-                    return (
-                      <tr key={event.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap tabular-nums text-xs">
-                          {formatDateTime(event.occurred_at)}
-                        </td>
-                        <td className="px-4 py-2.5 font-medium">{catName}</td>
-                        <td className="px-4 py-2.5">
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
-                            style={{ backgroundColor: `${color}20`, color }}
+                  {allRows.map((row) => {
+                    if (row.kind === 'event') {
+                      const event      = row.data
+                      const color      = EVENT_COLORS[event.event_type]
+                      const catName    = catMap.get(event.cat_id) ?? '—'
+                      const loggerName = memberMap.get(event.logged_by_id)
+                        ?? (event.logged_by_id === user?.id ? 'You' : String(event.logged_by_id))
+                      return (
+                        <tr key={`event-${event.id}`} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap tabular-nums text-xs">
+                            {formatDateTime(event.occurred_at)}
+                          </td>
+                          <td className="px-4 py-2.5 font-medium">{catName}</td>
+                          <td className="px-4 py-2.5">
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+                              style={{ backgroundColor: `${color}20`, color }}
+                            >
+                              {EVENT_TYPE_LABEL[event.event_type] ?? event.event_type}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-muted-foreground">
+                            {formatEventSummary(event) || '—'}
+                          </td>
+                          <td
+                            className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate"
+                            title={event.notes ?? undefined}
                           >
-                            {EVENT_TYPE_LABEL[event.event_type] ?? event.event_type}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-muted-foreground">
-                          {formatEventSummary(event) || '—'}
-                        </td>
-                        <td
-                          className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate"
-                          title={event.notes ?? undefined}
-                        >
-                          {event.notes || '—'}
-                        </td>
-                        <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
-                          {loggerName}
-                        </td>
-                      </tr>
-                    )
+                            {event.notes || '—'}
+                          </td>
+                          <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
+                            {loggerName}
+                          </td>
+                        </tr>
+                      )
+                    } else {
+                      const chore      = row.data
+                      const def        = definitionMap.get(chore.chore_definition_id)
+                      const defLabel   = def
+                        ? [def.emoji, def.name].filter(Boolean).join(' ')
+                        : `Chore #${chore.chore_definition_id}`
+                      const loggerName = memberMap.get(chore.logged_by_id)
+                        ?? (chore.logged_by_id === user?.id ? 'You' : String(chore.logged_by_id))
+                      return (
+                        <tr key={`chore-${chore.id}`} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap tabular-nums text-xs">
+                            {formatDateTime(chore.occurred_at)}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className="inline-flex items-center gap-1 text-muted-foreground">
+                              <Home className="size-3 shrink-0" aria-hidden="true" />
+                              Household
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                              style={{ backgroundColor: `${CHORE_COLOR}15`, color: CHORE_COLOR }}
+                            >
+                              <Home className="size-2.5" aria-hidden="true" />
+                              Household chore
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{defLabel}</td>
+                          <td
+                            className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate"
+                            title={chore.notes ?? undefined}
+                          >
+                            {chore.notes || '—'}
+                          </td>
+                          <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
+                            {loggerName}
+                          </td>
+                        </tr>
+                      )
+                    }
                   })}
                 </tbody>
               </table>

@@ -15,8 +15,6 @@ class Cat < ApplicationRecord
   validates :species, presence: true
   validates :feedings_per_day, presence: true,
     numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 10 }
-  validates :track_water,  inclusion: { in: [true, false] }
-  validates :track_litter, inclusion: { in: [true, false] }
 
   scope :active,   -> { where(active: true) }
   scope :archived, -> { where(active: false, deceased: false) }

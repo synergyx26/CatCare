@@ -8,12 +8,12 @@ import { EVENT_COLORS, EVENT_LABELS } from '@/lib/eventColors'
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 const ALL_EVENT_TYPES: EventType[] = [
-  'feeding', 'litter', 'water', 'weight',
+  'feeding', 'weight',
   'note', 'medication', 'vet_visit', 'grooming',
   'symptom', 'tooth_brushing',
 ]
 
-const CARE_ONLY_TYPES: Set<EventType> = new Set(['feeding', 'litter', 'water', 'medication'])
+const CARE_ONLY_TYPES: Set<EventType> = new Set(['feeding', 'medication'])
 
 // Activity intensity: 0=none, 1=light (1–2 events), 2=moderate (3–5), 3=high (6+)
 // Background css per level — for normal in-range cells only (selected/today/missing override these)

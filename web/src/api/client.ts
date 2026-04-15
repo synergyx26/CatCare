@@ -151,8 +151,6 @@ export const api = {
     data: {
       cat: {
         feedings_per_day?: number
-        track_water?: boolean
-        track_litter?: boolean
         track_toothbrushing?: boolean
         feeding_presets?: { wet: number[]; dry: number[]; treats: number[]; other: number[] }
       }
@@ -192,6 +190,49 @@ export const api = {
 
   deleteCareEvent: (householdId: number, eventId: number) =>
     apiClient.delete(`/households/${householdId}/care_events/${eventId}`),
+
+  // Household chore definitions (user-customisable chore types)
+  getHouseholdChoreDefinitions: (householdId: number) =>
+    apiClient.get(`/households/${householdId}/chore_definitions`),
+
+  createHouseholdChoreDefinition: (householdId: number, data: {
+    household_chore_definition: { name: string; emoji?: string | null; active?: boolean; position?: number; frequency_per_day?: number }
+  }) =>
+    apiClient.post(`/households/${householdId}/chore_definitions`, data),
+
+  updateHouseholdChoreDefinition: (householdId: number, definitionId: number, data: {
+    household_chore_definition: { name?: string; emoji?: string | null; active?: boolean; position?: number; frequency_per_day?: number }
+  }) =>
+    apiClient.patch(`/households/${householdId}/chore_definitions/${definitionId}`, data),
+
+  deleteHouseholdChoreDefinition: (householdId: number, definitionId: number) =>
+    apiClient.delete(`/households/${householdId}/chore_definitions/${definitionId}`),
+
+  // Household chores (logged instances of a chore definition)
+  getHouseholdChores: (householdId: number, options?: {
+    startDate?: string
+    endDate?: string
+    loggedById?: number
+  }) => {
+    const params: Record<string, unknown> = {}
+    if (options?.startDate)  params.start_date   = options.startDate
+    if (options?.endDate)    params.end_date     = options.endDate
+    if (options?.loggedById) params.logged_by_id = options.loggedById
+    return apiClient.get(`/households/${householdId}/chores`, { params })
+  },
+
+  createHouseholdChore: (householdId: number, data: {
+    household_chore: { chore_definition_id: number; occurred_at?: string; notes?: string | null }
+  }) =>
+    apiClient.post(`/households/${householdId}/chores`, data),
+
+  updateHouseholdChore: (householdId: number, choreId: number, data: {
+    household_chore: { occurred_at?: string; notes?: string | null }
+  }) =>
+    apiClient.patch(`/households/${householdId}/chores/${choreId}`, data),
+
+  deleteHouseholdChore: (householdId: number, choreId: number) =>
+    apiClient.delete(`/households/${householdId}/chores/${choreId}`),
 
   // Batch quick actions
   getBatchActions: (householdId: number) =>

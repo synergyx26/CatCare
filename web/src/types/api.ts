@@ -175,17 +175,38 @@ export interface Cat {
   vet_address: string | null
   care_instructions: string | null
   feedings_per_day: number
-  track_water: boolean
-  track_litter: boolean
   feeding_presets: { wet: number[]; dry: number[]; treats: number[]; other: number[] }
   created_at: string
   updated_at: string
 }
 
+// ─── Household Chores ─────────────────────────────────────────────────────────
+
+export interface HouseholdChoreDefinition {
+  id: number
+  household_id: number
+  name: string
+  emoji: string | null
+  active: boolean
+  position: number
+  frequency_per_day: number
+  created_at: string
+}
+
+export interface HouseholdChore {
+  id: number
+  household_id: number
+  logged_by_id: number
+  chore_definition_id: number
+  occurred_at: string
+  notes: string | null
+  created_at: string
+}
+
 // ─── Care Events ──────────────────────────────────────────────────────────────
 
 export type EventType =
-  | 'feeding' | 'litter' | 'water' | 'weight'
+  | 'feeding' | 'weight'
   | 'note' | 'medication' | 'vet_visit' | 'grooming' | 'symptom' | 'tooth_brushing'
 
 // Medication frequency — stored in details.frequency on the "start" event (active_medication: true)
@@ -213,7 +234,7 @@ export const FREQUENCY_LABELS: Record<MedicationFrequency, string> = {
 //   vet_visit:  { reason: string, vet_name?: string, vet_clinic?: string }
 //   grooming:   { grooming_type: 'bath'|'nail_trim'|'full_groom'|'other' }
 //   symptom:    { symptom_type: SymptomType, severity?: 'mild'|'moderate'|'severe', duration_minutes?: number }
-//   litter / water / note: {}
+//   note: {}
 export interface CareEvent {
   id: number
   cat_id: number

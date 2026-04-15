@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { CatStatusBadges } from './CatStatusBadges'
 import { getCatTodayStatus, isCatBirthday, getCatAge, type CatTodayStatus } from '@/lib/helpers'
-import { UtensilsCrossed, Droplets, Trash2, Plus } from 'lucide-react'
+import { UtensilsCrossed, Plus } from 'lucide-react'
 import type { Cat, CareEvent, EventType } from '@/types/api'
 
 interface CatCardProps {
@@ -19,8 +19,6 @@ interface CatCardProps {
 function getStatusLine(status: CatTodayStatus): { text: string; allGood: boolean } {
   const issues: string[] = []
   if (status.feedCount < status.feedingsNeeded) issues.push('feeding')
-  if (status.trackWater && !status.waterDoneAt) issues.push('water')
-  if (status.trackLitter && !status.litterDoneAt) issues.push('litter')
   const dueMeds = status.medicationTasks.filter(t => t.dosesNeededToday > t.dosesGivenToday)
   if (dueMeds.length > 0) issues.push('medication')
 
@@ -47,8 +45,6 @@ export function CatCard({
     currentUserId,
     {
       feedings_per_day:    cat.feedings_per_day,
-      track_water:         cat.track_water,
-      track_litter:        cat.track_litter,
       track_toothbrushing: cat.track_toothbrushing,
     },
     allMedEvents,
@@ -143,26 +139,6 @@ export function CatCard({
           >
             <UtensilsCrossed className="size-3.5" aria-hidden="true" />
             Feed
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Log litter for ${cat.name}`}
-            className="flex-1 active:scale-95 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/30"
-            onClick={() => onLog(cat, 'litter')}
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            Litter
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Log water for ${cat.name}`}
-            className="flex-1 active:scale-95 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30"
-            onClick={() => onLog(cat, 'water')}
-          >
-            <Droplets className="size-3.5" aria-hidden="true" />
-            Water
           </Button>
           <Button
             variant="ghost"

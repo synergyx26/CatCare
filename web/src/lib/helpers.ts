@@ -1,4 +1,4 @@
-import type { CareEvent, EventType, MedicationFrequency } from '@/types/api'
+import type { CareEvent, EventType, MedicationFrequency, HouseholdChore, HouseholdChoreDefinition } from '@/types/api'
 
 // Checks whether today (local time) is a cat's birthday (same month + day).
 // Parses birthday as a local date to avoid UTC-midnight timezone shifts.
@@ -92,10 +92,6 @@ export function formatEventSummary(event: CareEvent): string {
       const amount = d.amount_grams != null ? ` · ${d.amount_grams}g` : ''
       return `${type}${amount}`
     }
-    case 'litter':
-      return 'Litter cleaned'
-    case 'water':
-      return 'Water refreshed'
     case 'weight': {
       if (d.weight_value == null) return 'Weight'
       return `${d.weight_value} ${d.weight_unit ?? 'kg'}`
@@ -149,8 +145,6 @@ export function formatEventSummary(event: CareEvent): string {
 
 export const EVENT_TYPE_LABEL: Record<EventType, string> = {
   feeding:   'Feeding',
-  litter:    'Litter',
-  water:     'Water',
   weight:    'Weight',
   note:      'Note',
   medication: 'Medication',
@@ -381,8 +375,6 @@ export function buildDoseTimeline(
 
 export interface CatCareRequirements {
   feedings_per_day: number
-  track_water: boolean
-  track_litter: boolean
   track_toothbrushing: boolean
 }
 
@@ -391,10 +383,6 @@ export interface CatTodayStatus {
   feedingsNeeded: number
   lastFedAt: string | null
   lastFedBy: string | null
-  litterDoneAt: string | null
-  waterDoneAt: string | null
-  trackWater: boolean
-  trackLitter: boolean
   trackToothbrushing: boolean
   toothbrushingDoneAt: string | null
   recentSymptomAt: string | null
@@ -423,20 +411,6 @@ export function getCatTodayStatus(
         new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
     )
 
-  const lastLitter = catEvents
-    .filter((e) => e.event_type === 'litter')
-    .sort(
-      (a, b) =>
-        new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
-    )[0]
-
-  const lastWater = catEvents
-    .filter((e) => e.event_type === 'water')
-    .sort(
-      (a, b) =>
-        new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
-    )[0]
-
   const lastSymptom = catEvents
     .filter((e) => e.event_type === 'symptom')
     .sort(
@@ -464,13 +438,36 @@ export function getCatTodayStatus(
     feedingsNeeded: requirements?.feedings_per_day ?? 1,
     lastFedAt: lastFeeding?.occurred_at ?? null,
     lastFedBy,
-    litterDoneAt: lastLitter?.occurred_at ?? null,
-    waterDoneAt: lastWater?.occurred_at ?? null,
-    trackWater:          requirements?.track_water ?? true,
-    trackLitter:         requirements?.track_litter ?? true,
     trackToothbrushing:  requirements?.track_toothbrushing ?? false,
     toothbrushingDoneAt: lastToothbrushing?.occurred_at ?? null,
     recentSymptomAt:     lastSymptom?.occurred_at ?? null,
     medicationTasks:     allMedEvents ? getActiveMedicationTasks(catId, allMedEvents) : [],
   }
+}
+
+// ─── Household Chore Helpers ──────────────────────────────────────────────────
+
+/** Returns a map of chore_definition_id → count of times done today. */
+export function getChoreDailyCountMap(
+  chores: HouseholdChore[],
+  definitions: HouseholdChoreDefinition[],
+): Map<number, number> {
+  const todayChores = chores.filter(c => isToday(c.occurred_at))
+  return new Map(
+    definitions.map((def) => [
+      def.id,
+      todayChores.filter(c => c.chore_definition_id === def.id).length,
+    ])
+  )
+}
+
+/** True when every active definition has been done at least frequency_per_day times today. */
+export function areAllChoresDone(
+  chores: HouseholdChore[],
+  definitions: HouseholdChoreDefinition[],
+): boolean {
+  const active = definitions.filter(d => d.active)
+  if (active.length === 0) return true
+  const countMap = getChoreDailyCountMap(chores, active)
+  return active.every(d => (countMap.get(d.id) ?? 0) >= d.frequency_per_day)
 }

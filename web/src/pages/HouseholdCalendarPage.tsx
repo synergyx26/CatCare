@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,6 +10,7 @@ import {
   X,
   AlertTriangle,
   Pencil,
+  Trash2,
 } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -18,14 +19,34 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { LogCareModal } from '@/components/LogCareModal'
 import { EVENT_COLORS, EVENT_LABELS } from '@/lib/eventColors'
 import { formatEventSummary } from '@/lib/helpers'
-import type { Cat, CareEvent, EventType, SubscriptionTier, Household } from '@/types/api'
+import { notify } from '@/lib/notify'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import type { Cat, CareEvent, EventType, SubscriptionTier, Household, HouseholdChore, HouseholdChoreDefinition } from '@/types/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const ALL_EVENT_TYPES: EventType[] = [
-  'feeding', 'litter', 'water', 'weight',
+  'feeding', 'weight',
   'note', 'medication', 'vet_visit', 'grooming',
   'symptom', 'tooth_brushing',
 ]
@@ -190,12 +211,13 @@ interface DayCellProps {
   isInRange: boolean
   feedingsPerDayMap: Map<number, number>
   selectedCatIds: number[]
+  hasChores?: boolean
   onClick: () => void
 }
 
 function DayCell({
   dateStr, events, activeFilters,
-  isSelected, isInRange, feedingsPerDayMap, selectedCatIds, onClick,
+  isSelected, isInRange, feedingsPerDayMap, selectedCatIds, hasChores, onClick,
 }: DayCellProps) {
   const today = getToday()
   const isToday = dateStr === today
@@ -257,8 +279,8 @@ function DayCell({
         {dayNum}
       </span>
 
-      {/* Event type dots — pushed to bottom of cell, horizontal row */}
-      {isInRange && shown.length > 0 && (
+      {/* Event type dots + chore indicator — pushed to bottom of cell */}
+      {isInRange && (shown.length > 0 || hasChores) && (
         <div className="flex flex-wrap gap-1 mt-auto pt-1">
           {shown.map(([type]) => (
             <span
@@ -269,6 +291,13 @@ function DayCell({
           ))}
           {overflow > 0 && (
             <span className="text-[9px] text-muted-foreground leading-none self-center">+{overflow}</span>
+          )}
+          {hasChores && (
+            <span
+              className="w-2 h-2 rounded-sm shrink-0"
+              style={{ background: '#6366f1' }}
+              title="Household chores"
+            />
           )}
         </div>
       )}
@@ -303,18 +332,31 @@ interface DayPanelProps {
   catIndexMap: Map<number, number>
   memberMap: Map<number, string>
   activeFilters: Set<EventType>
-  activeCats: Cat[]                      // currently visible/selected cats
+  activeCats: Cat[]
   onClose: () => void
   onEdit: (event: CareEvent) => void
   onLogCare: (date: string, cat?: Cat) => void
+  // Chores
+  dayChores: HouseholdChore[]
+  choreDefinitions: HouseholdChoreDefinition[]
+  onLogChore: () => void
+  onEditChore: (chore: HouseholdChore) => void
+  onDeleteChore: (id: number) => void
 }
 
 function DayPanel({
   dateStr, events, catMap, catIndexMap, memberMap,
   activeFilters, activeCats, onClose, onEdit, onLogCare,
+  dayChores, choreDefinitions, onLogChore, onEditChore, onDeleteChore,
 }: DayPanelProps) {
   const [catPickerOpen, setCatPickerOpen] = useState(false)
   const visibleEvents = events.filter(e => activeFilters.has(e.event_type))
+
+  const choreDefMap = useMemo(() => {
+    const map = new Map<number, HouseholdChoreDefinition>()
+    for (const d of choreDefinitions) map.set(d.id, d)
+    return map
+  }, [choreDefinitions])
 
   // Group by cat_id, then sort by occurred_at within each group
   const grouped = useMemo(() => {
@@ -426,8 +468,63 @@ function DayPanel({
         })}
       </div>
 
-      {/* Footer: log care */}
-      <div className="shrink-0 px-4 py-3 border-t border-border/60">
+      {/* Household chores for this day */}
+      {dayChores.length > 0 && (
+        <div className="shrink-0 px-4 pb-3 border-t border-border/40 pt-3">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Household chores
+          </p>
+          <div className="space-y-1.5">
+            {[...dayChores]
+              .sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime())
+              .map(chore => {
+                const def = choreDefMap.get(chore.chore_definition_id)
+                return (
+                  <div key={chore.id} className="flex items-start gap-2 group">
+                    {def?.emoji ? (
+                      <span className="text-sm shrink-0 mt-0.5 leading-none">{def.emoji}</span>
+                    ) : (
+                      <span className="w-2 h-2 rounded-sm shrink-0 mt-1.5 bg-indigo-500" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs font-medium text-foreground truncate">
+                          {def?.name ?? 'Chore'}
+                        </span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatTime(chore.occurred_at)}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground/60">
+                        by {memberMap.get(chore.logged_by_id) ?? 'Unknown'}
+                      </p>
+                      {chore.notes && (
+                        <p className="text-xs text-muted-foreground/70 italic truncate">{chore.notes}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => onEditChore(chore)}
+                      className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                      aria-label="Edit chore"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => onDeleteChore(chore.id)}
+                      className="shrink-0 p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                      aria-label="Delete chore"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )
+              })}
+          </div>
+        </div>
+      )}
+
+      {/* Footer: log care + log chore */}
+      <div className="shrink-0 px-4 py-3 border-t border-border/60 space-y-2">
         {catPickerOpen && activeCats.length > 1 && (
           <div className="mb-2">
             <p className="text-xs text-muted-foreground mb-1.5">Which cat?</p>
@@ -457,6 +554,15 @@ function DayPanel({
           <Plus className="w-4 h-4" />
           Log care for {new Date(`${dateStr}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </button>
+        {choreDefinitions.length > 0 && (
+          <button
+            onClick={onLogChore}
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-border text-sm font-medium hover:bg-muted/50 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Log chore
+          </button>
+        )}
       </div>
     </div>
   )
@@ -470,6 +576,8 @@ export function HouseholdCalendarPage() {
   const { user } = useAuthStore()
   const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
 
+  const queryClient = useQueryClient()
+
   // ── Display state ──────────────────────────────────────────────────────────
   const [displayMonth, setDisplayMonth] = useState<MonthYear>(currentMonthYear)
   const [selectedDate, setSelectedDate]  = useState<string | null>(null)
@@ -477,6 +585,13 @@ export function HouseholdCalendarPage() {
   const [activeTypeFilters, setActiveTypeFilters] = useState<Set<EventType>>(new Set(ALL_EVENT_TYPES))
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null)
   const [logModal, setLogModal] = useState<LogModalState>({ open: false })
+
+  // ── Chore state ────────────────────────────────────────────────────────────
+  const [chorePickerDate, setChorePickerDate] = useState<string | null>(null)
+  const [editingCalendarChore, setEditingCalendarChore] = useState<HouseholdChore | null>(null)
+  const [editCalChoreOccurredAt, setEditCalChoreOccurredAt] = useState('')
+  const [editCalChoreNotes, setEditCalChoreNotes] = useState('')
+  const [deletingCalChoreId, setDeletingCalChoreId] = useState<number | null>(null)
 
   // ── Data ───────────────────────────────────────────────────────────────────
   const householdQuery = useQuery({
@@ -496,6 +611,23 @@ export function HouseholdCalendarPage() {
   const eventsQuery = useQuery({
     queryKey: ['care_events', Number(householdId), 'calendar', displayMonth.year, displayMonth.month],
     queryFn: () => api.getCareEvents(Number(householdId), {
+      startDate: toMonthStart(displayMonth),
+      endDate: toMonthEnd(displayMonth),
+    }),
+    enabled: !!householdId && tier !== 'free',
+    staleTime: 2 * 60 * 1000,
+  })
+
+  const choreDefsQuery = useQuery({
+    queryKey: ['household_chore_definitions', Number(householdId)],
+    queryFn: () => api.getHouseholdChoreDefinitions(Number(householdId)),
+    enabled: !!householdId && tier !== 'free',
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const choreQuery = useQuery({
+    queryKey: ['household_chores', Number(householdId), 'calendar', displayMonth.year, displayMonth.month],
+    queryFn: () => api.getHouseholdChores(Number(householdId), {
       startDate: toMonthStart(displayMonth),
       endDate: toMonthEnd(displayMonth),
     }),
@@ -542,6 +674,30 @@ export function HouseholdCalendarPage() {
     }
     return map
   }, [cats])
+
+  // Chore definitions (active only)
+  const choreDefinitions: HouseholdChoreDefinition[] = useMemo(() => {
+    const raw = choreDefsQuery.data?.data?.data
+    return Array.isArray(raw) ? (raw as HouseholdChoreDefinition[]).filter(d => d.active) : []
+  }, [choreDefsQuery.data])
+
+  // All chores for the displayed month
+  const monthChores: HouseholdChore[] = useMemo(() => {
+    const raw = choreQuery.data?.data?.data
+    return Array.isArray(raw) ? (raw as HouseholdChore[]) : []
+  }, [choreQuery.data])
+
+  // Map: date string → chore instances on that day
+  const choresByDate = useMemo(() => {
+    const map = new Map<string, HouseholdChore[]>()
+    for (const c of monthChores) {
+      const dateStr = new Date(c.occurred_at).toLocaleDateString('en-CA')
+      const arr = map.get(dateStr) ?? []
+      arr.push(c)
+      map.set(dateStr, arr)
+    }
+    return map
+  }, [monthChores])
 
   // Which cats are active in the filter (or all if none selected)
   const activeCats = useMemo(
@@ -617,6 +773,67 @@ export function HouseholdCalendarPage() {
     if (!targetCat) return
     setLogModal({ open: true, cat: targetCat, date })
   }, [activeCats])
+
+  // ── Chore mutations ────────────────────────────────────────────────────────
+  const choreQueryKey = ['household_chores', Number(householdId), 'calendar', displayMonth.year, displayMonth.month]
+
+  const createChoreMutation = useMutation({
+    mutationFn: ({ definitionId, date }: { definitionId: number; date: string }) =>
+      api.createHouseholdChore(Number(householdId), {
+        household_chore: {
+          chore_definition_id: definitionId,
+          occurred_at: new Date(`${date}T12:00:00`).toISOString(),
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: choreQueryKey })
+      setChorePickerDate(null)
+      notify.success('Chore logged.')
+    },
+    onError: () => notify.error('Failed to log chore.'),
+  })
+
+  const updateChoreMutation = useMutation({
+    mutationFn: ({ id, occurred_at, notes }: { id: number; occurred_at: string; notes: string | null }) =>
+      api.updateHouseholdChore(Number(householdId), id, {
+        household_chore: { occurred_at, notes: notes || null },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: choreQueryKey })
+      setEditingCalendarChore(null)
+      notify.success('Chore updated.')
+    },
+    onError: () => notify.error('Failed to update chore.'),
+  })
+
+  const deleteChoreMutation = useMutation({
+    mutationFn: (id: number) => api.deleteHouseholdChore(Number(householdId), id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: choreQueryKey })
+      setDeletingCalChoreId(null)
+      notify.success('Chore entry deleted.')
+    },
+    onError: () => notify.error('Failed to delete chore.'),
+  })
+
+  function handleEditChore(chore: HouseholdChore) {
+    setEditingCalendarChore(chore)
+    const d = new Date(chore.occurred_at)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    setEditCalChoreOccurredAt(
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    )
+    setEditCalChoreNotes(chore.notes ?? '')
+  }
+
+  function handleSaveChoreEdit() {
+    if (!editingCalendarChore) return
+    updateChoreMutation.mutate({
+      id: editingCalendarChore.id,
+      occurred_at: new Date(editCalChoreOccurredAt).toISOString(),
+      notes: editCalChoreNotes || null,
+    })
+  }
 
   // ── Tier gate ──────────────────────────────────────────────────────────────
   if (tier === 'free') {
@@ -806,6 +1023,7 @@ export function HouseholdCalendarPage() {
                       isInRange={isInRange}
                       feedingsPerDayMap={feedingsPerDayMap}
                       selectedCatIds={selectedCatIds}
+                      hasChores={(choresByDate.get(dateStr)?.length ?? 0) > 0}
                       onClick={() => {
                         if (!isInRange) return
                         setSelectedDate(prev => prev === dateStr ? null : dateStr)
@@ -816,22 +1034,30 @@ export function HouseholdCalendarPage() {
               </div>
             )}
 
-            {/* Missing feeding legend */}
-            {cats.some(c => (c.feedings_per_day ?? 0) > 0) && (
-              <div className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span
-                  className="inline-block w-0 h-0"
-                  style={{
-                    borderStyle: 'solid',
-                    borderWidth: '0 0 10px 10px',
-                    borderColor: 'transparent transparent #f59e0b transparent',
-                  }}
-                  aria-hidden="true"
-                />
-                <AlertTriangle className="w-3 h-3 text-amber-500" />
-                Missing feeding
-              </div>
-            )}
+            {/* Legend */}
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
+              {cats.some(c => (c.feedings_per_day ?? 0) > 0) && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span
+                    className="inline-block w-0 h-0"
+                    style={{
+                      borderStyle: 'solid',
+                      borderWidth: '0 0 10px 10px',
+                      borderColor: 'transparent transparent #f59e0b transparent',
+                    }}
+                    aria-hidden="true"
+                  />
+                  <AlertTriangle className="w-3 h-3 text-amber-500" />
+                  Missing feeding
+                </div>
+              )}
+              {choreDefinitions.length > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500 shrink-0" aria-hidden="true" />
+                  Household chores
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -849,6 +1075,11 @@ export function HouseholdCalendarPage() {
               onClose={() => setSelectedDate(null)}
               onEdit={handleEdit}
               onLogCare={handleLogCare}
+              dayChores={choresByDate.get(selectedDate) ?? []}
+              choreDefinitions={choreDefinitions}
+              onLogChore={() => setChorePickerDate(selectedDate)}
+              onEditChore={handleEditChore}
+              onDeleteChore={id => setDeletingCalChoreId(id)}
             />
           </div>
         )}
@@ -872,6 +1103,11 @@ export function HouseholdCalendarPage() {
             onClose={() => setSelectedDate(null)}
             onEdit={handleEdit}
             onLogCare={handleLogCare}
+            dayChores={choresByDate.get(selectedDate) ?? []}
+            choreDefinitions={choreDefinitions}
+            onLogChore={() => setChorePickerDate(selectedDate)}
+            onEditChore={handleEditChore}
+            onDeleteChore={id => setDeletingCalChoreId(id)}
           />
         </div>
       )}
@@ -886,6 +1122,120 @@ export function HouseholdCalendarPage() {
           onClose={() => setLogModal({ open: false })}
         />
       )}
+
+      {/* ── Chore picker: select which chore to log for a date ───────────────── */}
+      <Dialog
+        open={chorePickerDate !== null}
+        onOpenChange={open => { if (!open) setChorePickerDate(null) }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>
+              Log chore for{' '}
+              {chorePickerDate
+                ? new Date(`${chorePickerDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : ''}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-1 space-y-1.5">
+            {choreDefinitions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No active chore definitions. Add some in Household Settings.
+              </p>
+            ) : (
+              choreDefinitions.map(def => (
+                <button
+                  key={def.id}
+                  onClick={() => {
+                    if (chorePickerDate) {
+                      createChoreMutation.mutate({ definitionId: def.id, date: chorePickerDate })
+                    }
+                  }}
+                  disabled={createChoreMutation.isPending}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border hover:bg-muted/50 transition-colors text-left disabled:opacity-50"
+                >
+                  {def.emoji && (
+                    <span className="text-base leading-none shrink-0">{def.emoji}</span>
+                  )}
+                  <span className="text-sm font-medium">{def.name}</span>
+                  {def.frequency_per_day > 1 && (
+                    <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                      {def.frequency_per_day}× per day
+                    </span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Chore edit dialog ────────────────────────────────────────────────── */}
+      <Dialog
+        open={editingCalendarChore !== null}
+        onOpenChange={open => { if (!open) setEditingCalendarChore(null) }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Edit chore entry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Time</label>
+              <input
+                type="datetime-local"
+                value={editCalChoreOccurredAt}
+                onChange={e => setEditCalChoreOccurredAt(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">
+                Notes <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <textarea
+                value={editCalChoreNotes}
+                onChange={e => setEditCalChoreNotes(e.target.value)}
+                rows={2}
+                placeholder="Any notes..."
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+            <Button onClick={handleSaveChoreEdit} disabled={updateChoreMutation.isPending}>
+              {updateChoreMutation.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Chore delete confirmation ────────────────────────────────────────── */}
+      <AlertDialog
+        open={deletingCalChoreId !== null}
+        onOpenChange={open => { if (!open) setDeletingCalChoreId(null) }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this chore entry?</AlertDialogTitle>
+            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deletingCalChoreId !== null && deleteChoreMutation.mutate(deletingCalChoreId)}
+              disabled={deleteChoreMutation.isPending}
+            >
+              {deleteChoreMutation.isPending ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

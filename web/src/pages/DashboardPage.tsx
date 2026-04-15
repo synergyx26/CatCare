@@ -21,14 +21,17 @@ import { usePageTitle } from '@/hooks/usePageTitle'
 import { isToday, isSameLocalDay, getCatTodayStatus, isWithinLastNDays, type VacationContext, type CatCareRequirements } from '@/lib/helpers'
 import { Link } from 'react-router-dom'
 import { notify } from '@/lib/notify'
-import { Home, PawPrint, Plus, Droplets, Trash2, Settings2, X, Lock, WifiOff, RefreshCw, Pencil, TableProperties } from 'lucide-react'
+import { Home, PawPrint, Plus, Settings2, X, Lock, WifiOff, RefreshCw, Pencil, TableProperties } from 'lucide-react'
 import { VacationBanner } from '@/components/dashboard/VacationBanner'
 import { SitterVisitChecklist } from '@/components/dashboard/SitterVisitChecklist'
+import { HouseholdChoresSection } from '@/components/dashboard/HouseholdChoresSection'
 
 import { BatchActionModal } from '@/components/dashboard/BatchActionModal'
 import type { BatchActionPayload } from '@/components/dashboard/BatchActionModal'
 import type {
   HouseholdBatchAction,
+  HouseholdChore,
+  HouseholdChoreDefinition,
   Household,
   Cat,
   CareEvent,
@@ -159,8 +162,6 @@ export function DashboardPage() {
   const catRequirements = new Map<number, CatCareRequirements>(
     cats.map((cat) => [cat.id, {
       feedings_per_day:    cat.feedings_per_day,
-      track_water:         cat.track_water,
-      track_litter:        cat.track_litter,
       track_toothbrushing: cat.track_toothbrushing,
     }])
   )
@@ -171,15 +172,11 @@ export function DashboardPage() {
     .map((cat) => {
       const s = getCatTodayStatus(cat.id, windowEvents, memberMap, user?.id ?? -1, {
         feedings_per_day:    cat.feedings_per_day,
-        track_water:         cat.track_water,
-        track_litter:        cat.track_litter,
         track_toothbrushing: cat.track_toothbrushing,
       }, allMedEvents)
       const missing: string[] = []
       if (s.feedCount < s.feedingsNeeded)
         missing.push(s.feedingsNeeded > 1 ? `${s.feedCount}/${s.feedingsNeeded} feedings` : 'feeding')
-      if (s.trackWater && !s.waterDoneAt)                 missing.push('water')
-      if (s.trackLitter && !s.litterDoneAt)               missing.push('litter')
       if (s.trackToothbrushing && !s.toothbrushingDoneAt) missing.push('teeth')
       s.medicationTasks
         .filter(t => t.dosesNeededToday > t.dosesGivenToday)
@@ -205,6 +202,34 @@ export function DashboardPage() {
     enabled: !!primaryHousehold && showArchived && currentRole !== 'sitter',
   })
   const archivedCats: Cat[] = archivedCatsData?.data?.data ?? []
+
+  // Household chores — logged instances (today only)
+  const today = new Date().toISOString().split('T')[0]
+  const { data: choresData } = useQuery({
+    queryKey: ['household_chores', primaryHousehold?.id],
+    queryFn: () => api.getHouseholdChores(primaryHousehold!.id, { startDate: today, endDate: today }),
+    enabled: !!primaryHousehold,
+  })
+  const todayChores: HouseholdChore[] = choresData?.data?.data ?? []
+
+  // Household chore definitions (user-customisable chore types)
+  const { data: choreDefsData } = useQuery({
+    queryKey: ['household_chore_definitions', primaryHousehold?.id],
+    queryFn: () => api.getHouseholdChoreDefinitions(primaryHousehold!.id),
+    enabled: !!primaryHousehold,
+  })
+  const choreDefinitions: HouseholdChoreDefinition[] = choreDefsData?.data?.data ?? []
+
+  const logChoreMutation = useMutation({
+    mutationFn: (definitionId: number) =>
+      api.createHouseholdChore(primaryHousehold!.id, {
+        household_chore: { chore_definition_id: definitionId, occurred_at: new Date().toISOString() },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['household_chores', primaryHousehold?.id] })
+    },
+    onError: () => notify.error('Failed to log chore.'),
+  })
 
   // ── Batch logging ─────────────────────────────────────────────
   const [showBatchModal, setShowBatchModal]     = useState(false)
@@ -440,27 +465,9 @@ export function DashboardPage() {
               {cats.length > 1 && (
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs text-muted-foreground shrink-0">Log for all:</span>
-                  {/* Built-in: Water */}
-                  <button
-                    onClick={() => batchMutation.mutate({ label: 'Water', event_type: 'water', details: {} })}
-                    disabled={batchMutation.isPending}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 dark:hover:bg-blue-950/20 dark:hover:border-blue-700 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Droplets className="size-3" />
-                    Water
-                  </button>
-                  {/* Built-in: Litter */}
-                  <button
-                    onClick={() => batchMutation.mutate({ label: 'Litter', event_type: 'litter', details: {} })}
-                    disabled={batchMutation.isPending}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-border hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 dark:hover:bg-purple-950/20 dark:hover:border-purple-700 dark:hover:text-purple-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Trash2 className="size-3" />
-                    Litter
-                  </button>
                   {/* Custom actions */}
                   {customActions.map((action) => {
-                    const FREE_TYPES: string[] = ['feeding', 'litter', 'water', 'note', 'tooth_brushing']
+                    const FREE_TYPES: string[] = ['feeding', 'note', 'tooth_brushing']
                     const actionAllowed = tier === 'pro' || tier === 'premium' || FREE_TYPES.includes(action.event_type)
                     return (
                       <span key={action.id} className="relative group flex items-center">
@@ -565,6 +572,9 @@ export function DashboardPage() {
                   currentUserId={user?.id ?? -1}
                   onLog={openNewLog}
                   requirements={catRequirements}
+                  householdChores={todayChores}
+                  choreDefinitions={choreDefinitions}
+                  onLogChore={(id) => logChoreMutation.mutate(id)}
                 />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -582,6 +592,17 @@ export function DashboardPage() {
                     />
                   ))}
                 </div>
+              )}
+
+              {/* Household chores — below pet needs, above archived/members */}
+              {choreDefinitions.some(d => d.active) && (
+                <HouseholdChoresSection
+                  householdId={primaryHousehold!.id}
+                  chores={todayChores}
+                  definitions={choreDefinitions}
+                  memberMap={memberMap}
+                  onLog={(id) => logChoreMutation.mutate(id)}
+                />
               )}
             </>
           )}

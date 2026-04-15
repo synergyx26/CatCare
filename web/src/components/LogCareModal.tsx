@@ -33,8 +33,6 @@ type SymptomSeverity = 'mild' | 'moderate' | 'severe'
 
 const CARE_TYPES: { value: EventType; label: string }[] = [
   { value: 'feeding',        label: 'Feeding'        },
-  { value: 'litter',         label: 'Litter'         },
-  { value: 'water',          label: 'Water'          },
   { value: 'tooth_brushing', label: 'Toothbrushing'  },
   { value: 'weight',         label: 'Weight'         },
   { value: 'medication',     label: 'Medication'     },
@@ -65,7 +63,7 @@ const SYMPTOM_SEVERITIES: { value: SymptomSeverity; label: string }[] = [
 ]
 
 // Free tier: only these event types are available
-const FREE_EVENT_TYPES: EventType[] = ['feeding', 'litter', 'water', 'tooth_brushing', 'note']
+const FREE_EVENT_TYPES: EventType[] = ['feeding', 'tooth_brushing', 'note']
 
 function isFreeEventType(type: EventType): boolean {
   return FREE_EVENT_TYPES.includes(type)
@@ -159,7 +157,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
       tomorrow.setDate(tomorrow.getDate() + 1)
       return toLocalDateTimeInput(tomorrow)
     }
-    return toLocalDateTimeInput(new Date())  // feeding, litter, water, weight, note, symptom — all default to now
+    return toLocalDateTimeInput(new Date())  // feeding, weight, note, symptom — all default to now
   })
 
   // Feeding

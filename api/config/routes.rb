@@ -36,6 +36,10 @@ Rails.application.routes.draw do
         resources :batch_actions, only: [:index, :create, :update, :destroy],
                                   controller: 'household_batch_actions'
         resources :vacation_trips, only: [:index, :create, :update, :destroy]
+        resources :chores, only: [:index, :create, :update, :destroy],
+                           controller: "household_chores"
+        resources :chore_definitions, only: [:index, :create, :update, :destroy],
+                                      controller: "household_chore_definitions"
         resources :expenses, only: [:index, :create, :update, :destroy],
                              controller: "pet_expenses" do
           collection { get :stats }

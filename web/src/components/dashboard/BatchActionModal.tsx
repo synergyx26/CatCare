@@ -12,8 +12,6 @@ import { useAuthStore } from '@/store/authStore'
 // which require per-cat data that varies per animal)
 const BATCH_TYPES: { value: EventType; label: string }[] = [
   { value: 'feeding',        label: 'Feeding'       },
-  { value: 'litter',         label: 'Litter'        },
-  { value: 'water',          label: 'Water'         },
   { value: 'tooth_brushing', label: 'Toothbrushing' },
   { value: 'medication',     label: 'Medication'    },
   { value: 'symptom',        label: 'Symptom'       },
@@ -27,7 +25,7 @@ type MedUnit       = 'mg' | 'ml' | 'tablet'
 type SymptomType   = 'vomiting' | 'coughing' | 'asthma_attack' | 'sneezing' | 'diarrhea' | 'lethargy' | 'not_eating' | 'limping' | 'eye_discharge' | 'seizure' | 'other'
 type SymptomSeverity = 'mild' | 'moderate' | 'severe'
 
-const FREE_BATCH_TYPES: EventType[] = ['feeding', 'litter', 'water', 'tooth_brushing', 'note']
+const FREE_BATCH_TYPES: EventType[] = ['feeding', 'tooth_brushing', 'note']
 
 function isBatchTypeAllowed(type: EventType, tier: SubscriptionTier): boolean {
   if (tier === 'pro' || tier === 'premium') return true
@@ -76,7 +74,7 @@ export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
   const prefill = initialAction ? detailsToState(initialAction.details) : null
 
   const [label,           setLabel]           = useState(initialAction?.label ?? '')
-  const [eventType,       setEventType]       = useState<EventType>(initialAction?.event_type ?? 'water')
+  const [eventType,       setEventType]       = useState<EventType>(initialAction?.event_type ?? 'feeding')
   const [foodType,        setFoodType]        = useState<FoodType>(prefill?.foodType ?? 'wet')
   const [amountGrams,     setAmountGrams]     = useState(prefill?.amountGrams ?? '')
   const [medName,         setMedName]         = useState(prefill?.medName ?? '')
