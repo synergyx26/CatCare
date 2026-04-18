@@ -41,9 +41,13 @@ import {
   CalendarDays,
   Plane,
   ReceiptText,
+  Check,
+  Plus,
+  Building2,
+  Stethoscope,
 } from 'lucide-react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
-import type { Household } from '@/types/api'
+import type { Household, MemberRole } from '@/types/api'
 
 const THEME_CYCLE: Record<Theme, Theme> = { light: 'dark', dark: 'system', system: 'light' }
 const THEME_ICON: Record<Theme, typeof Sun> = { light: Sun, dark: Moon, system: Monitor }
@@ -64,10 +68,23 @@ function TierBadge({ tier }: { tier: 'pro' | 'premium' }) {
   )
 }
 
+function RoleBadge({ role }: { role: MemberRole }) {
+  const styles: Record<MemberRole, string> = {
+    admin:  'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    member: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+    sitter: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  }
+  return (
+    <span className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0 ${styles[role]}`}>
+      {role}
+    </span>
+  )
+}
+
 export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, clearAuth, setAuth } = useAuthStore()
+  const { user, clearAuth, setAuth, activeHouseholdId, setActiveHousehold } = useAuthStore()
   const { setPreferences } = useNotificationStore()
   const queryClient = useQueryClient()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -109,7 +126,7 @@ export function AppLayout() {
     queryFn: () => api.getHouseholds(),
   })
   const households: Household[] = householdsData?.data?.data ?? []
-  const primaryHousehold = households[0]
+  const primaryHousehold = households.find((h) => h.id === activeHouseholdId) ?? households[0]
   const currentRole = primaryHousehold?.members?.find((m) => m.id === user?.id)?.role ?? null
   const tier = user?.subscription_tier ?? 'free'
   const canAccessCalendar    = tier === 'pro' || tier === 'premium'
@@ -151,6 +168,49 @@ export function AppLayout() {
                   </SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col gap-1 px-2" aria-label="Main navigation">
+                  {/* Household switcher — mobile */}
+                  {households.length > 0 && (
+                    <>
+                      <div className="px-3 pt-2 pb-0.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Household</p>
+                      </div>
+                      {households.map((h) => {
+                        const role = h.members.find((m) => m.id === user?.id)?.role
+                        const isActive = h.id === primaryHousehold?.id
+                        return (
+                          <button
+                            key={h.id}
+                            onClick={() => {
+                              setActiveHousehold(h.id)
+                              navigate('/dashboard')
+                              setMobileOpen(false)
+                            }}
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors w-full text-left ${
+                              isActive
+                                ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300'
+                                : 'hover:bg-muted text-foreground'
+                            }`}
+                          >
+                            <span className="flex size-4 items-center justify-center shrink-0">
+                              {isActive
+                                ? <Check className="size-4" />
+                                : <Building2 className="size-4 text-muted-foreground" />}
+                            </span>
+                            <span className="flex-1 truncate">{h.name}</span>
+                            {role && <RoleBadge role={role} />}
+                          </button>
+                        )
+                      })}
+                      <button
+                        onClick={() => { navigate('/setup'); setMobileOpen(false) }}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
+                        <Plus className="size-4 shrink-0" />
+                        Create new household
+                      </button>
+                    </>
+                  )}
+
                   <button
                     onClick={() => {
                       navigate('/dashboard')
@@ -225,6 +285,18 @@ export function AppLayout() {
                     >
                       <User className="size-4" />
                       Household
+                    </button>
+                  )}
+                  {primaryHousehold && currentRole === 'admin' && (
+                    <button
+                      onClick={() => {
+                        navigate(`/households/${primaryHousehold.id}/contacts`)
+                        setMobileOpen(false)
+                      }}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    >
+                      <Stethoscope className="size-4" />
+                      Contacts &amp; Vets
                     </button>
                   )}
                   {primaryHousehold && currentRole === 'admin' && (
@@ -334,13 +406,43 @@ export function AppLayout() {
               <span className="hidden sm:inline bg-gradient-to-r from-sky-600 to-cyan-600 bg-clip-text text-transparent dark:from-sky-400 dark:to-cyan-400">CatCare</span>
             </Link>
 
-            {/* Household name */}
-            {primaryHousehold && (
+            {/* Household switcher — desktop */}
+            {households.length > 0 && (
               <>
                 <span className="hidden text-muted-foreground sm:inline">/</span>
-                <span className="hidden text-sm font-medium sm:inline">
-                  {primaryHousehold.name}
-                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="hidden sm:flex items-center gap-1 text-sm font-medium rounded-md px-1.5 py-1 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <span className="max-w-36 truncate">{primaryHousehold?.name}</span>
+                    <ChevronDown className="size-3 text-muted-foreground shrink-0" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" sideOffset={8} className="min-w-56 max-w-72">
+                    {households.map((h) => {
+                      const role = h.members.find((m) => m.id === user?.id)?.role
+                      const isActive = h.id === (primaryHousehold?.id)
+                      return (
+                        <DropdownMenuItem
+                          key={h.id}
+                          onClick={() => {
+                            setActiveHousehold(h.id)
+                            navigate('/dashboard')
+                          }}
+                          className="gap-2"
+                        >
+                          <span className="flex size-4 items-center justify-center shrink-0">
+                            {isActive && <Check className="size-4 text-sky-600" />}
+                          </span>
+                          <span className="flex-1 truncate">{h.name}</span>
+                          {role && <RoleBadge role={role} />}
+                        </DropdownMenuItem>
+                      )
+                    })}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/setup')}>
+                      <Plus className="size-4 shrink-0" />
+                      Create new household
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
           </div>
@@ -373,6 +475,12 @@ export function AppLayout() {
                       <User className="size-4" />
                       Household
                     </DropdownMenuItem>
+                    {currentRole === 'admin' && (
+                      <DropdownMenuItem onClick={() => navigate(`/households/${primaryHousehold.id}/contacts`)}>
+                        <Stethoscope className="size-4" />
+                        Contacts &amp; Vets
+                      </DropdownMenuItem>
+                    )}
                     {currentRole === 'admin' && (
                       <DropdownMenuItem onClick={() => navigate(`/households/${primaryHousehold.id}/settings`)}>
                         <Settings2 className="size-4" />

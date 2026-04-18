@@ -190,6 +190,7 @@ export interface HouseholdChoreDefinition {
   active: boolean
   position: number
   frequency_per_day: number
+  location: string | null
   created_at: string
 }
 

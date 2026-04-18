@@ -145,6 +145,9 @@ export const api = {
   updateCat: (householdId: number, catId: number, data: FormData) =>
     apiClient.patch(`/households/${householdId}/cats/${catId}`, data),
 
+  updateCatContacts: (householdId: number, catId: number, data: { cat: { vet_name?: string | null; vet_clinic?: string | null; vet_phone?: string | null; vet_address?: string | null } }) =>
+    apiClient.patch(`/households/${householdId}/cats/${catId}`, data),
+
   updateCatCareRequirements: (
     householdId: number,
     catId: number,
@@ -196,12 +199,12 @@ export const api = {
     apiClient.get(`/households/${householdId}/chore_definitions`),
 
   createHouseholdChoreDefinition: (householdId: number, data: {
-    household_chore_definition: { name: string; emoji?: string | null; active?: boolean; position?: number; frequency_per_day?: number }
+    household_chore_definition: { name: string; emoji?: string | null; active?: boolean; position?: number; frequency_per_day?: number; location?: string | null }
   }) =>
     apiClient.post(`/households/${householdId}/chore_definitions`, data),
 
   updateHouseholdChoreDefinition: (householdId: number, definitionId: number, data: {
-    household_chore_definition: { name?: string; emoji?: string | null; active?: boolean; position?: number; frequency_per_day?: number }
+    household_chore_definition: { name?: string; emoji?: string | null; active?: boolean; position?: number; frequency_per_day?: number; location?: string | null }
   }) =>
     apiClient.patch(`/households/${householdId}/chore_definitions/${definitionId}`, data),
 

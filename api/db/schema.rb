@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_16_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_18_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -124,6 +124,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_16_000001) do
     t.string "emoji"
     t.integer "frequency_per_day", default: 1, null: false
     t.bigint "household_id", null: false
+    t.string "location"
     t.string "name", null: false
     t.integer "position", default: 0, null: false
     t.datetime "updated_at", null: false

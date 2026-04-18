@@ -18,6 +18,7 @@ import { CatHistoryPage } from '@/pages/CatHistoryPage'
 import { EditCatPage } from '@/pages/EditCatPage'
 import { HouseholdProfilePage } from '@/pages/HouseholdProfilePage'
 import { HouseholdSettingsPage } from '@/pages/HouseholdSettingsPage'
+import { ContactsPage } from '@/pages/ContactsPage'
 import { HouseholdNotesPage } from '@/pages/HouseholdNotesPage'
 import { NotificationSettingsPage } from '@/pages/NotificationSettingsPage'
 import { CareHistoryTablePage } from '@/pages/CareHistoryTablePage'
@@ -96,6 +97,10 @@ export default function App() {
               <Route
                 path="/households/:householdId/settings"
                 element={<HouseholdSettingsPage />}
+              />
+              <Route
+                path="/households/:householdId/contacts"
+                element={<ContactsPage />}
               />
               <Route
                 path="/households/:householdId/notes"

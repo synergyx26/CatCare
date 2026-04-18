@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { notify } from '@/lib/notify'
-import { Home } from 'lucide-react'
+import { Home, ArrowLeft } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
 import { Input } from '@/components/ui/input'
@@ -22,7 +22,11 @@ type FormData = z.infer<typeof schema>
 export function HouseholdSetupPage() {
   usePageTitle('Create Household')
   const navigate = useNavigate()
-  const setHousehold = useAuthStore((s) => s.setHousehold)
+  const setActiveHousehold = useAuthStore((s) => s.setActiveHousehold)
+  const activeHouseholdId  = useAuthStore((s) => s.activeHouseholdId)
+  // True when the user already belongs to at least one household — this is an
+  // additional household creation, not the initial onboarding flow.
+  const isAdditional = activeHouseholdId !== null
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -32,7 +36,7 @@ export function HouseholdSetupPage() {
     mutationFn: (data: FormData) => api.createHousehold({ household: data }),
     onSuccess: (res) => {
       const householdId: number = res.data.data.id
-      setHousehold(householdId)
+      setActiveHousehold(householdId)
       notify.success('Household created!')
       navigate(`/households/${householdId}/add-cat`, { replace: true })
     },
@@ -46,7 +50,7 @@ export function HouseholdSetupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 via-white to-cyan-50 dark:from-sky-950/20 dark:via-background dark:to-cyan-950/20 p-4">
       <div className="w-full max-w-md">
-        <OnboardingStepper step={1} />
+        {!isAdditional && <OnboardingStepper step={1} />}
         <div className="bg-card rounded-3xl shadow-xl shadow-sky-500/5 border border-border/50 p-8 space-y-6">
           <div className="flex justify-center">
             <div className="w-16 h-16 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
@@ -80,6 +84,17 @@ export function HouseholdSetupPage() {
             >
               {mutation.isPending ? 'Creating...' : 'Continue'}
             </button>
+
+            {isAdditional && (
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="w-full flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="size-4" />
+                Back to dashboard
+              </button>
+            )}
           </form>
         </div>
       </div>

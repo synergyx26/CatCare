@@ -6,9 +6,11 @@ interface AuthState {
   user: User | null
   token: string | null
   isAuthenticated: boolean
-  primaryHouseholdId: number | null
+  activeHouseholdId: number | null
   setAuth: (user: User, token: string) => void
   clearAuth: () => void
+  setActiveHousehold: (id: number) => void
+  /** @deprecated use setActiveHousehold */
   setHousehold: (id: number) => void
 }
 
@@ -18,7 +20,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
-      primaryHouseholdId: null,
+      activeHouseholdId: null,
 
       setAuth: (user, token) => {
         localStorage.setItem('catcare_token', token)
@@ -27,12 +29,11 @@ export const useAuthStore = create<AuthState>()(
 
       clearAuth: () => {
         localStorage.removeItem('catcare_token')
-        set({ user: null, token: null, isAuthenticated: false, primaryHouseholdId: null })
+        set({ user: null, token: null, isAuthenticated: false, activeHouseholdId: null })
       },
 
-      setHousehold: (id) => {
-        set({ primaryHouseholdId: id })
-      },
+      setActiveHousehold: (id) => set({ activeHouseholdId: id }),
+      setHousehold:       (id) => set({ activeHouseholdId: id }),
     }),
     {
       name: 'catcare_auth',
@@ -40,7 +41,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         token: state.token,
         isAuthenticated: state.isAuthenticated,
-        primaryHouseholdId: state.primaryHouseholdId,
+        activeHouseholdId: state.activeHouseholdId,
       }),
     }
   )

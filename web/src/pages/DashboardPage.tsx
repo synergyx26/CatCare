@@ -25,6 +25,8 @@ import { Home, PawPrint, Plus, Settings2, X, Lock, WifiOff, RefreshCw, Pencil, T
 import { VacationBanner } from '@/components/dashboard/VacationBanner'
 import { SitterVisitChecklist } from '@/components/dashboard/SitterVisitChecklist'
 import { HouseholdChoresSection } from '@/components/dashboard/HouseholdChoresSection'
+import { SitterDashboard } from '@/components/dashboard/SitterDashboard'
+import { CatTaskCard } from '@/components/dashboard/CatTaskCard'
 
 import { BatchActionModal } from '@/components/dashboard/BatchActionModal'
 import type { BatchActionPayload } from '@/components/dashboard/BatchActionModal'
@@ -49,7 +51,7 @@ function getTimeGreeting(name: string): string {
 
 export function DashboardPage() {
   const navigate = useNavigate()
-  const { user, primaryHouseholdId, setHousehold } = useAuthStore()
+  const { user, activeHouseholdId, setActiveHousehold } = useAuthStore()
 
   // Modal state
   const [logCat, setLogCat] = useState<Cat | null>(null)
@@ -65,15 +67,17 @@ export function DashboardPage() {
   const { data: householdsData, isLoading, isError: householdsError, refetch: refetchHouseholds } = useQuery({
     queryKey: ['households'],
     queryFn: () => api.getHouseholds(),
-    // Backfill primaryHouseholdId for existing users after a successful fetch
+    // Seed activeHouseholdId on first login (no persisted value yet)
     select: (res) => {
       const firstId: number | undefined = res.data?.data?.[0]?.id
-      if (firstId && !primaryHouseholdId) setHousehold(firstId)
+      if (firstId && !activeHouseholdId) setActiveHousehold(firstId)
       return res
     },
   })
   const households: Household[] = householdsData?.data?.data ?? []
-  const primaryHousehold: Household | undefined = households[0]
+  // Use the store-selected household; fall back to first if none set yet
+  const primaryHousehold: Household | undefined =
+    households.find((h) => h.id === activeHouseholdId) ?? households[0]
 
   const queryClient = useQueryClient()
 
@@ -342,6 +346,47 @@ export function DashboardPage() {
 
   usePageTitle(primaryHousehold?.name ?? 'Dashboard')
 
+  // ── Sitter view — dedicated dashboard for any sitter role ───
+  if (primaryHousehold && currentRole === 'sitter') {
+    return (
+      <>
+        <SitterDashboard
+          household={primaryHousehold}
+          cats={cats}
+          windowEvents={windowEvents}
+          allMedEvents={allMedEvents}
+          choreDefinitions={choreDefinitions}
+          todayChores={todayChores}
+          memberMap={memberMap}
+          currentUserId={user?.id ?? -1}
+          catRequirements={catRequirements}
+          vacationCtx={vacationCtx}
+          activeTrip={activeTrip}
+          onLog={openNewLog}
+          onLogChore={(id) => logChoreMutation.mutate(id)}
+          selectedDateEvents={selectedDateEvents}
+          selectedDate={selectedDate}
+          onPrevDay={goPrevDay}
+          onNextDay={goNextDay}
+          onGoToToday={goToToday}
+          onEdit={openEdit}
+          isRefreshing={careRefetching}
+          onRefresh={refreshCareLog}
+        />
+        {logCat && (
+          <LogCareModal
+            cat={logCat}
+            householdId={primaryHousehold.id}
+            initialEvent={editingEvent ?? undefined}
+            initialType={logInitType}
+            initialMedicationName={logInitMedName}
+            onClose={closeModal}
+          />
+        )}
+      </>
+    )
+  }
+
   // ── Loading ──────────────────────────────────────────────────
   if (isLoading || (!!primaryHousehold && catsLoading)) {
     return (
@@ -579,16 +624,15 @@ export function DashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {cats.map((cat) => (
-                    <CatCard
+                    <CatTaskCard
                       key={cat.id}
                       cat={cat}
-                      householdId={primaryHousehold!.id}
-                      todayEvents={windowEvents}
+                      windowEvents={windowEvents}
                       allMedEvents={allMedEvents}
                       memberMap={memberMap}
                       currentUserId={user?.id ?? -1}
+                      requirements={catRequirements.get(cat.id)}
                       onLog={openNewLog}
-                      vacationMode={isVacationMode}
                     />
                   ))}
                 </div>

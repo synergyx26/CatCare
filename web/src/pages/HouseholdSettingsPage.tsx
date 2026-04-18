@@ -134,13 +134,15 @@ export function HouseholdSettingsPage() {
   const [newChoreName,      setNewChoreName]      = useState('')
   const [newChoreEmoji,     setNewChoreEmoji]     = useState('')
   const [newChoreFrequency, setNewChoreFrequency] = useState(1)
+  const [newChoreLocation,  setNewChoreLocation]  = useState('')
   const [editingDefId,      setEditingDefId]      = useState<number | null>(null)
   const [editName,          setEditName]          = useState('')
   const [editEmoji,         setEditEmoji]         = useState('')
   const [editFrequency,     setEditFrequency]     = useState(1)
+  const [editLocation,      setEditLocation]      = useState('')
 
   const createDefinitionMutation = useMutation({
-    mutationFn: (data: { name: string; emoji: string; frequency: number }) =>
+    mutationFn: (data: { name: string; emoji: string; frequency: number; location: string }) =>
       api.createHouseholdChoreDefinition(hid, {
         household_chore_definition: {
           name:             data.name,
@@ -148,6 +150,7 @@ export function HouseholdSettingsPage() {
           active:           true,
           position:         choreDefinitions.length,
           frequency_per_day: data.frequency,
+          location:         data.location || null,
         },
       }),
     onSuccess: () => {
@@ -155,6 +158,7 @@ export function HouseholdSettingsPage() {
       setNewChoreName('')
       setNewChoreEmoji('')
       setNewChoreFrequency(1)
+      setNewChoreLocation('')
       notify.success('Chore added.')
     },
     onError: () => notify.error('Failed to add chore.'),
@@ -179,7 +183,7 @@ export function HouseholdSettingsPage() {
   function handleAddChore() {
     const name = newChoreName.trim()
     if (!name) return
-    createDefinitionMutation.mutate({ name, emoji: newChoreEmoji.trim(), frequency: newChoreFrequency })
+    createDefinitionMutation.mutate({ name, emoji: newChoreEmoji.trim(), frequency: newChoreFrequency, location: newChoreLocation.trim() })
   }
 
   function startEdit(def: HouseholdChoreDefinition) {
@@ -187,12 +191,13 @@ export function HouseholdSettingsPage() {
     setEditName(def.name)
     setEditEmoji(def.emoji ?? '')
     setEditFrequency(def.frequency_per_day)
+    setEditLocation(def.location ?? '')
   }
 
   function commitEdit(id: number) {
     const name = editName.trim()
     if (!name) return
-    updateDefinitionMutation.mutate({ id, patch: { name, emoji: editEmoji.trim() || null, frequency_per_day: editFrequency } })
+    updateDefinitionMutation.mutate({ id, patch: { name, emoji: editEmoji.trim() || null, frequency_per_day: editFrequency, location: editLocation.trim() || null } })
   }
 
   const localeMutation = useMutation({
@@ -347,58 +352,74 @@ export function HouseholdSettingsPage() {
         {choreDefinitions.length > 0 && (
           <div className="divide-y divide-border/30">
             {choreDefinitions.map((def) => (
-              <div key={def.id} className="flex items-center gap-3 px-4 py-2.5">
+              <div key={def.id} className="px-4 py-2.5">
                 {editingDefId === def.id ? (
-                  <>
+                  <div className="space-y-2">
+                    {/* Row 1: emoji + name + freq + actions */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editEmoji}
+                        onChange={(e) => setEditEmoji(e.target.value)}
+                        placeholder="emoji"
+                        maxLength={4}
+                        className="h-8 w-14 rounded-lg border border-border bg-background px-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(def.id) }}
+                        className="h-8 flex-1 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <select
+                        value={editFrequency}
+                        onChange={(e) => setEditFrequency(Number(e.target.value))}
+                        className="h-8 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        aria-label="Times per day"
+                      >
+                        {[1, 2, 3, 4].map((n) => (
+                          <option key={n} value={n}>{n}×/day</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => commitEdit(def.id)}
+                        disabled={!editName.trim() || updateDefinitionMutation.isPending}
+                        className="flex size-7 items-center justify-center rounded-lg bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 disabled:opacity-40 transition-colors"
+                        aria-label="Save"
+                      >
+                        <Check className="size-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setEditingDefId(null)}
+                        className="flex size-7 items-center justify-center rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                        aria-label="Cancel"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+                    {/* Row 2: location */}
                     <input
                       type="text"
-                      value={editEmoji}
-                      onChange={(e) => setEditEmoji(e.target.value)}
-                      placeholder="emoji"
-                      maxLength={4}
-                      className="h-8 w-14 rounded-lg border border-border bg-background px-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring"
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                      placeholder="Location (e.g. Kitchen, Bathroom, Laundry room)…"
+                      className="h-8 w-full rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     />
-                    <input
-                      type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(def.id) }}
-                      className="h-8 flex-1 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    <select
-                      value={editFrequency}
-                      onChange={(e) => setEditFrequency(Number(e.target.value))}
-                      className="h-8 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      aria-label="Times per day"
-                    >
-                      {[1, 2, 3, 4].map((n) => (
-                        <option key={n} value={n}>{n}×/day</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => commitEdit(def.id)}
-                      disabled={!editName.trim() || updateDefinitionMutation.isPending}
-                      className="flex size-7 items-center justify-center rounded-lg bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 disabled:opacity-40 transition-colors"
-                      aria-label="Save"
-                    >
-                      <Check className="size-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setEditingDefId(null)}
-                      className="flex size-7 items-center justify-center rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
-                      aria-label="Cancel"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </>
+                  </div>
                 ) : (
-                  <>
+                  <div className="flex items-center gap-3">
                     <span className="text-base w-6 text-center shrink-0">
                       {def.emoji ?? '•'}
                     </span>
-                    <span className={`flex-1 text-sm font-medium ${!def.active ? 'text-muted-foreground line-through' : ''}`}>
-                      {def.name}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium ${!def.active ? 'text-muted-foreground line-through' : ''}`}>
+                        {def.name}
+                      </p>
+                      {def.location && (
+                        <p className="text-xs text-muted-foreground">{def.location}</p>
+                      )}
+                    </div>
                     {def.frequency_per_day > 1 && (
                       <span className="text-xs text-muted-foreground tabular-nums shrink-0">
                         {def.frequency_per_day}×/day
@@ -427,7 +448,7 @@ export function HouseholdSettingsPage() {
                     >
                       <X className="size-3.5" />
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
             ))}
@@ -435,42 +456,51 @@ export function HouseholdSettingsPage() {
         )}
 
         {/* Add new chore */}
-        <div className="flex items-center gap-2 px-4 py-3 border-t border-border/40 bg-muted/20">
+        <div className="px-4 py-3 border-t border-border/40 bg-muted/20 space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={newChoreEmoji}
+              onChange={(e) => setNewChoreEmoji(e.target.value)}
+              placeholder="emoji"
+              maxLength={4}
+              className="h-8 w-14 rounded-lg border border-border bg-background px-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <input
+              type="text"
+              value={newChoreName}
+              onChange={(e) => setNewChoreName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddChore() }}
+              placeholder="New chore name…"
+              className="h-8 flex-1 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <select
+              value={newChoreFrequency}
+              onChange={(e) => setNewChoreFrequency(Number(e.target.value))}
+              className="h-8 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Times per day"
+            >
+              {[1, 2, 3, 4].map((n) => (
+                <option key={n} value={n}>{n}×/day</option>
+              ))}
+            </select>
+            <Button
+              size="sm"
+              onClick={handleAddChore}
+              disabled={!newChoreName.trim() || createDefinitionMutation.isPending}
+              className="h-8 gap-1 px-3"
+            >
+              <Plus className="size-3.5" />
+              Add
+            </Button>
+          </div>
           <input
             type="text"
-            value={newChoreEmoji}
-            onChange={(e) => setNewChoreEmoji(e.target.value)}
-            placeholder="emoji"
-            maxLength={4}
-            className="h-8 w-14 rounded-lg border border-border bg-background px-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring"
+            value={newChoreLocation}
+            onChange={(e) => setNewChoreLocation(e.target.value)}
+            placeholder="Location (optional — e.g. Kitchen, Bathroom)…"
+            className="h-8 w-full rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
-          <input
-            type="text"
-            value={newChoreName}
-            onChange={(e) => setNewChoreName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddChore() }}
-            placeholder="New chore name…"
-            className="h-8 flex-1 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          <select
-            value={newChoreFrequency}
-            onChange={(e) => setNewChoreFrequency(Number(e.target.value))}
-            className="h-8 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            aria-label="Times per day"
-          >
-            {[1, 2, 3, 4].map((n) => (
-              <option key={n} value={n}>{n}×/day</option>
-            ))}
-          </select>
-          <Button
-            size="sm"
-            onClick={handleAddChore}
-            disabled={!newChoreName.trim() || createDefinitionMutation.isPending}
-            className="h-8 gap-1 px-3"
-          >
-            <Plus className="size-3.5" />
-            Add
-          </Button>
         </div>
       </div>
 

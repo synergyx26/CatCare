@@ -50,11 +50,11 @@ module Api
       end
 
       def create_params
-        params.require(:household_chore_definition).permit(:name, :emoji, :active, :position, :frequency_per_day)
+        params.require(:household_chore_definition).permit(:name, :emoji, :active, :position, :frequency_per_day, :location)
       end
 
       def update_params
-        params.require(:household_chore_definition).permit(:name, :emoji, :active, :position, :frequency_per_day)
+        params.require(:household_chore_definition).permit(:name, :emoji, :active, :position, :frequency_per_day, :location)
       end
 
       def serialize_definition(definition)
@@ -66,6 +66,7 @@ module Api
           active:           definition.active,
           position:         definition.position,
           frequency_per_day: definition.frequency_per_day,
+          location:         definition.location,
           created_at:       definition.created_at,
         }
       end
