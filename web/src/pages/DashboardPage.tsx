@@ -94,11 +94,19 @@ export function DashboardPage() {
     enabled: !!primaryHousehold,
   })
 
+  // Dedicated medication query — keeps task tracking fast and independent of
+  // the potentially large all-events payload (historical imported feeding data).
+  const { data: medEventsData } = useQuery({
+    queryKey: ['care_events', primaryHousehold?.id, 'medication'],
+    queryFn: () => api.getCareEvents(primaryHousehold!.id, { eventTypes: ['medication'] }),
+    enabled: !!primaryHousehold,
+  })
+
   function refreshCareLog() {
     queryClient.invalidateQueries({ queryKey: ['care_events', primaryHousehold?.id] })
   }
   const allEvents: CareEvent[] = careData?.data?.data ?? []
-  const allMedEvents = allEvents.filter(e => e.event_type === 'medication')
+  const allMedEvents: CareEvent[] = medEventsData?.data?.data ?? []
 
   // Vacation mode context — derived from the household's active trip
   const activeTrip: VacationTrip | null = primaryHousehold?.active_vacation_trip ?? null

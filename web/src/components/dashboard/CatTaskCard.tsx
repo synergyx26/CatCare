@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { UtensilsCrossed, Pill, ChevronDown, ChevronUp, Info, AlertCircle, CheckCircle2 } from 'lucide-react'
 import type { Cat, CareEvent, EventType } from '@/types/api'
 import { getCatTodayStatus, getActiveMedicationTasks, type CatCareRequirements } from '@/lib/helpers'
@@ -23,6 +24,7 @@ export function CatTaskCard({
   onLog,
 }: CatTaskCardProps) {
   const [careOpen, setCareOpen] = useState(false)
+  const navigate = useNavigate()
 
   const status = getCatTodayStatus(cat.id, windowEvents, memberMap, currentUserId, requirements, allMedEvents)
   const dueMeds = getActiveMedicationTasks(cat.id, allMedEvents)
@@ -43,7 +45,11 @@ export function CatTaskCard({
         : 'border-emerald-200 dark:border-emerald-800/30',
     ].join(' ')}>
       {/* Card header */}
-      <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+      <button
+        onClick={() => navigate(`/households/${cat.household_id}/cats/${cat.id}`)}
+        className="flex items-center gap-3 px-4 pt-4 pb-3 w-full text-left hover:bg-muted/40 transition-colors rounded-t-2xl cursor-pointer"
+        aria-label={`View ${cat.name}'s profile`}
+      >
         {/* Avatar with status ring */}
         <div className={[
           'shrink-0 rounded-xl overflow-hidden',
@@ -86,7 +92,7 @@ export function CatTaskCard({
             </div>
           )}
         </div>
-      </div>
+      </button>
 
       {/* Task rows */}
       {hasPending && (
