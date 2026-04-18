@@ -7,7 +7,6 @@ gem "puma", "~> 7.0"
 # Ruby 4.0 requires these to be explicitly listed (no longer auto-available)
 gem "base64"
 gem "ostruct"
-gem "fiddle"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
