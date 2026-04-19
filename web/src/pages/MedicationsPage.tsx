@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Lock, Plus, ChevronDown, ChevronRight } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
+import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
@@ -15,8 +16,7 @@ export function MedicationsPage() {
   const { householdId, catId } = useParams<{ householdId: string; catId: string }>()
   const navigate = useNavigate()
   const { user } = useAuthStore()
-
-  const tier    = user?.subscription_tier ?? 'free'
+  const tier      = useEffectiveTier()
   const canAccess = tier !== 'free'
 
   const [showAddModal, setShowAddModal] = useState(false)

@@ -233,7 +233,7 @@ module Api
       # Returns the furthest-back offset allowed for this user's tier.
       # Pro allows data up to 180 days old; Premium is unlimited.
       def tier_max_offset(days)
-        case current_user.subscription_tier
+        case effective_tier
         when "pro"     then (180.0 / days).floor - 1
         when "premium" then Float::INFINITY
         else 0  # free
@@ -242,7 +242,7 @@ module Api
 
       # Free: 7d only. Pro: 7d/30d. Premium: all ranges.
       def tier_range_allowed?(range)
-        case current_user.subscription_tier
+        case effective_tier
         when "premium" then true
         when "pro"     then %w[7d 30d].include?(range)
         else range == "7d"
@@ -251,7 +251,7 @@ module Api
 
       # Free: 1 cat. Pro: 3. Premium: unlimited.
       def tier_cat_limit
-        case current_user.subscription_tier
+        case effective_tier
         when "premium" then Float::INFINITY
         when "pro"     then 3
         else 1

@@ -113,7 +113,7 @@ module Api
 
       # Free: 2 members. Pro/Premium: unlimited.
       def tier_member_limit
-        case current_user.subscription_tier
+        case effective_tier
         when "pro", "premium" then Float::INFINITY
         else 2
         end

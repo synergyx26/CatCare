@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
+import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -226,8 +227,8 @@ export function CareHistoryTablePage() {
   const [searchParams]  = useSearchParams()
   const hId             = Number(householdId)
   const { user }        = useAuthStore()
-  const isPremium       = user?.subscription_tier === 'premium'
-  const tier            = (user?.subscription_tier ?? 'free') as SubscriptionTier
+  const tier            = useEffectiveTier()
+  const isPremium       = tier === 'premium'
 
   usePageTitle('Care History')
 

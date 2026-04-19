@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 import { notify } from '@/lib/notify'
 import { X, Lock } from 'lucide-react'
 import { api } from '@/api/client'
@@ -18,8 +19,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import type { Cat, CareEvent, EventType, SubscriptionTier, MedicationFrequency } from '@/types/api'
 import { FREQUENCY_LABELS } from '@/types/api'
-import { useAuthStore } from '@/store/authStore'
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type FoodType       = 'wet' | 'dry' | 'treats' | 'other'
@@ -119,8 +118,7 @@ interface Props {
 
 export function LogCareModal({ cat, householdId, initialEvent, initialType, initialDate, initialMedicationName, activeMedication, onClose }: Props) {
   const queryClient = useQueryClient()
-  const { user } = useAuthStore()
-  const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
+  const tier = useEffectiveTier()
   const isEditing   = !!initialEvent
 
   // If creating and the requested type is restricted, fall back to 'feeding'

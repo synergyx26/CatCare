@@ -149,6 +149,24 @@ body {
   h1, h2, h3 {
     font-family: var(--font-display);
   }
+
+  /* ── Native <select> dark-mode fix ──────────────────────────────────────── */
+  /* color-scheme tells the browser which native palette to use for the        */
+  /* OS-rendered options popup. Without it the options popup ignores our       */
+  /* custom bg and renders dark-text-on-dark-bg in dark mode.                 */
+  select {
+    color-scheme: light;
+    color: var(--foreground);
+  }
+  .dark select {
+    color-scheme: dark;
+    color: var(--foreground);
+  }
+  /* Ensure option text is always legible (Chromium respects this in-popup) */
+  option {
+    color: CanvasText;
+    background-color: Canvas;
+  }
 }
 
 /* ── react-phone-number-input overrides ───────────────────────────────────── */

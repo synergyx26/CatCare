@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { ReceiptText, Plus } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 import { api } from '@/api/client'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
@@ -41,7 +42,7 @@ export function ExpenseTrackerPage() {
   const [modalState, setModalState] = useState<ModalState>({ open: false })
   const [deleteTarget, setDeleteTarget] = useState<PetExpense | null>(null)
 
-  const tier = user?.subscription_tier ?? 'free'
+  const tier = useEffectiveTier()
   const canAccess = tier === 'premium'
 
   // Fetch cats for dropdowns / chart labels

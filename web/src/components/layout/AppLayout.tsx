@@ -45,6 +45,7 @@ import {
   Plus,
   Building2,
   Stethoscope,
+  LayoutGrid,
 } from 'lucide-react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
 import type { Household, MemberRole } from '@/types/api'
@@ -128,7 +129,7 @@ export function AppLayout() {
   const households: Household[] = householdsData?.data?.data ?? []
   const primaryHousehold = households.find((h) => h.id === activeHouseholdId) ?? households[0]
   const currentRole = primaryHousehold?.members?.find((m) => m.id === user?.id)?.role ?? null
-  const tier = user?.subscription_tier ?? 'free'
+  const tier = (primaryHousehold?.effective_tier ?? user?.subscription_tier ?? 'free') as SubscriptionTier
   const canAccessCalendar    = tier === 'pro' || tier === 'premium'
   const canAccessCareHistory = tier === 'premium'
   const canAccessExpenses    = tier === 'premium'
@@ -174,6 +175,13 @@ export function AppLayout() {
                       <div className="px-3 pt-2 pb-0.5">
                         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Household</p>
                       </div>
+                      <button
+                        onClick={() => { navigate('/households'); setMobileOpen(false) }}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-sky-50 transition-colors text-sky-700 dark:text-sky-300 dark:hover:bg-sky-950/30"
+                      >
+                        <LayoutGrid className="size-4 shrink-0" />
+                        All households
+                      </button>
                       {households.map((h) => {
                         const role = h.members.find((m) => m.id === user?.id)?.role
                         const isActive = h.id === primaryHousehold?.id
@@ -416,6 +424,14 @@ export function AppLayout() {
                     <ChevronDown className="size-3 text-muted-foreground shrink-0" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" sideOffset={8} className="min-w-56 max-w-72">
+                    <DropdownMenuItem
+                      onClick={() => navigate('/households')}
+                      className="gap-2 text-sky-700 dark:text-sky-300 font-medium"
+                    >
+                      <LayoutGrid className="size-4 shrink-0" />
+                      All households
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     {households.map((h) => {
                       const role = h.members.find((m) => m.id === user?.id)?.role
                       const isActive = h.id === (primaryHousehold?.id)
@@ -577,17 +593,17 @@ export function AppLayout() {
               <DropdownMenuContent align="end" sideOffset={8} className="min-w-52 w-auto">
                 <div className="px-1.5 py-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">{user?.name}</p>
-                    {user?.subscription_tier && (
+                    <p className="text-sm font-medium text-foreground">{user?.name}</p>
+                    {tier && (
                       <span className={[
                         'text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full',
-                        user.subscription_tier === 'premium'
+                        tier === 'premium'
                           ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
-                          : user.subscription_tier === 'pro'
+                          : tier === 'pro'
                             ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
                             : 'bg-muted text-muted-foreground',
                       ].join(' ')}>
-                        {user.subscription_tier}
+                        {tier}
                       </span>
                     )}
                   </div>

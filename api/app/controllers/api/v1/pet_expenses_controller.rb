@@ -94,7 +94,7 @@ module Api
       end
 
       def tier_feature_allowed?
-        current_user.subscription_tier == "premium"
+        effective_tier == "premium"
       end
 
       def tier_error

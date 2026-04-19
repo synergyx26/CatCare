@@ -68,12 +68,24 @@ module Api
 
       def household_json(household)
         memberships = household.household_memberships.select { |m| m.status == "active" }.index_by(&:user_id)
+        my_membership = memberships[current_user.id]
+        effective_tier_for_household = if my_membership&.role == "sitter"
+          non_sitter_ids = memberships.reject { |_, m| m.role == "sitter" }.keys
+          tiers = household.members
+                           .select { |m| non_sitter_ids.include?(m.id) }
+                           .map(&:subscription_tier)
+          tiers.max_by { |t| TIER_RANK[t] || 0 } || "free"
+        else
+          current_user.subscription_tier
+        end
+
         {
-          id:           household.id,
-          name:         household.name,
-          created_by:   household.created_by,
-          member_count: household.household_memberships.size,
-          members:      household.members.map { |m|
+          id:             household.id,
+          name:           household.name,
+          created_by:     household.created_by,
+          member_count:   household.household_memberships.size,
+          effective_tier: effective_tier_for_household,
+          members:        household.members.map { |m|
             { id: m.id, name: m.name, role: memberships[m.id]&.role, membership_id: memberships[m.id]&.id }
           },
           cat_count:    household.cats.active.size,

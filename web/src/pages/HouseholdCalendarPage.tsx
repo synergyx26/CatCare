@@ -13,7 +13,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { api } from '@/api/client'
-import { useAuthStore } from '@/store/authStore'
+import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { LogCareModal } from '@/components/LogCareModal'
@@ -573,8 +573,7 @@ function DayPanel({
 export function HouseholdCalendarPage() {
   usePageTitle('Care Calendar')
   const { householdId } = useParams<{ householdId: string }>()
-  const { user } = useAuthStore()
-  const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
+  const tier = useEffectiveTier()
 
   const queryClient = useQueryClient()
 

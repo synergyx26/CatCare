@@ -27,13 +27,17 @@ export function CatTaskCard({
   const navigate = useNavigate()
 
   const status = getCatTodayStatus(cat.id, windowEvents, memberMap, currentUserId, requirements, allMedEvents)
-  const dueMeds = getActiveMedicationTasks(cat.id, allMedEvents)
-    .filter(t => t.dosesNeededToday > t.dosesGivenToday)
+  const allActiveMeds = getActiveMedicationTasks(cat.id, allMedEvents)
+    .filter(t => t.dosesNeededToday > 0)
+  const dueMeds = allActiveMeds.filter(t => t.dosesGivenToday < t.dosesNeededToday)
+  const doneMeds = allActiveMeds.filter(t => t.dosesGivenToday >= t.dosesNeededToday)
 
   const pendingFeedings = Math.max(0, status.feedingsNeeded - status.feedCount)
   const toothbrushingDue = status.trackToothbrushing && !status.toothbrushingDoneAt
 
   const hasPending = pendingFeedings > 0 || dueMeds.length > 0 || toothbrushingDue
+
+  const hasAnyTasks = status.feedingsNeeded > 0 || status.trackToothbrushing || allActiveMeds.length > 0
 
   const hasCareInfo = !!(cat.care_instructions || cat.vet_name || cat.vet_phone)
 
@@ -94,49 +98,73 @@ export function CatTaskCard({
         </div>
       </button>
 
-      {/* Task rows */}
-      {hasPending && (
+      {/* Task rows — always shown so completed tasks remain visible */}
+      {hasAnyTasks && (
         <div className="px-4 pb-3 space-y-2">
           {/* Feedings */}
-          {pendingFeedings > 0 && (
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <UtensilsCrossed className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                <span className="text-sm font-medium">
-                  {pendingFeedings > 1
-                    ? `${status.feedCount}/${status.feedingsNeeded} feedings`
-                    : 'Feeding'}
-                </span>
+          {status.feedingsNeeded > 0 && (
+            pendingFeedings > 0 ? (
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <UtensilsCrossed className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span className="text-sm font-medium">
+                    {status.feedingsNeeded > 1
+                      ? `${status.feedCount}/${status.feedingsNeeded} feedings`
+                      : 'Feeding'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => onLog(cat, 'feeding')}
+                  aria-label={`Log feeding for ${cat.name}`}
+                  className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-900/70 text-amber-700 dark:text-amber-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  <UtensilsCrossed className="size-3.5" />
+                  Log
+                </button>
               </div>
-              <button
-                onClick={() => onLog(cat, 'feeding')}
-                aria-label={`Log feeding for ${cat.name}`}
-                className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-900/70 text-amber-700 dark:text-amber-300 text-xs font-semibold transition-colors cursor-pointer"
-              >
-                <UtensilsCrossed className="size-3.5" />
-                Log
-              </button>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <UtensilsCrossed className="size-4 text-emerald-500 shrink-0" />
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                    {status.feedingsNeeded > 1
+                      ? `${status.feedCount}/${status.feedingsNeeded} feedings`
+                      : 'Fed'}
+                  </span>
+                </div>
+                <CheckCircle2 className="size-5 text-emerald-500 shrink-0" aria-label="Done" />
+              </div>
+            )
           )}
 
           {/* Teeth */}
-          {toothbrushingDue && (
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-sky-50 dark:bg-sky-950/20 px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <span className="text-sm" aria-hidden="true">🦷</span>
-                <span className="text-sm font-medium">Tooth brushing</span>
+          {status.trackToothbrushing && (
+            toothbrushingDue ? (
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-sky-50 dark:bg-sky-950/20 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm" aria-hidden="true">🦷</span>
+                  <span className="text-sm font-medium">Tooth brushing</span>
+                </div>
+                <button
+                  onClick={() => onLog(cat, 'tooth_brushing')}
+                  aria-label={`Log tooth brushing for ${cat.name}`}
+                  className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-sky-100 hover:bg-sky-200 dark:bg-sky-900/50 dark:hover:bg-sky-900/70 text-sky-700 dark:text-sky-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Log
+                </button>
               </div>
-              <button
-                onClick={() => onLog(cat, 'tooth_brushing')}
-                aria-label={`Log tooth brushing for ${cat.name}`}
-                className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-sky-100 hover:bg-sky-200 dark:bg-sky-900/50 dark:hover:bg-sky-900/70 text-sky-700 dark:text-sky-300 text-xs font-semibold transition-colors cursor-pointer"
-              >
-                Log
-              </button>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm" aria-hidden="true">🦷</span>
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Tooth brushing</span>
+                </div>
+                <CheckCircle2 className="size-5 text-emerald-500 shrink-0" aria-label="Done" />
+              </div>
+            )
           )}
 
-          {/* Medications */}
+          {/* Pending medications */}
           {dueMeds.map(med => (
             <div
               key={med.name}
@@ -161,6 +189,27 @@ export function CatTaskCard({
                 <Pill className="size-3.5" />
                 Log
               </button>
+            </div>
+          ))}
+
+          {/* Completed medications */}
+          {doneMeds.map(med => (
+            <div
+              key={med.name}
+              className="flex items-center justify-between gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2.5"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Pill className="size-4 text-emerald-500 shrink-0" />
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400 truncate">
+                  {med.name}
+                  {med.dosesNeededToday > 1 && (
+                    <span className="text-xs ml-1.5">
+                      ({med.dosesGivenToday}/{med.dosesNeededToday})
+                    </span>
+                  )}
+                </span>
+              </div>
+              <CheckCircle2 className="size-5 text-emerald-500 shrink-0" aria-label="Done" />
             </div>
           ))}
         </div>

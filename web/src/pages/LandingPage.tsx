@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Cat,
@@ -14,8 +14,12 @@ import {
   PawPrint,
   ChevronDown,
   CalendarDays,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { useThemeStore, type Theme } from '@/store/themeStore'
 
 // ─── Font ─────────────────────────────────────────────────────────────────────
 function useFraunces() {
@@ -669,6 +673,16 @@ function TierBadge({ tier }: { tier: FeatureTier }) {
   )
 }
 
+// ─── Theme helpers ────────────────────────────────────────────────────────────
+
+const THEME_CYCLE: Record<Theme, Theme> = { light: 'dark', dark: 'system', system: 'light' }
+const THEME_ICON: Record<Theme, React.ElementType> = { light: Sun, dark: Moon, system: Monitor }
+const THEME_LABEL: Record<Theme, string> = {
+  light: 'Switch to dark mode',
+  dark: 'Switch to system mode',
+  system: 'Switch to light mode',
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function LandingPage() {
@@ -677,6 +691,7 @@ export function LandingPage() {
 
   const [annual, setAnnual] = useState(false)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const { theme, setTheme } = useThemeStore()
 
   const scrollToPricing = () => {
     document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
@@ -704,6 +719,20 @@ export function LandingPage() {
             >
               Pricing
             </a>
+            {/* Theme toggle */}
+            {(() => {
+              const ThemeIcon = THEME_ICON[theme]
+              return (
+                <button
+                  onClick={() => setTheme(THEME_CYCLE[theme])}
+                  aria-label={THEME_LABEL[theme]}
+                  title={THEME_LABEL[theme]}
+                  className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                >
+                  <ThemeIcon className="w-4 h-4" aria-hidden="true" />
+                </button>
+              )
+            })()}
             <Link
               to="/login"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"

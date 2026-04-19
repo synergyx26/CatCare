@@ -19,6 +19,7 @@ import { CareLogSkeleton } from '@/components/skeletons/CareLogSkeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { isToday, isSameLocalDay, getCatTodayStatus, isWithinLastNDays, type VacationContext, type CatCareRequirements } from '@/lib/helpers'
+import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 import { Link } from 'react-router-dom'
 import { notify } from '@/lib/notify'
 import { Home, PawPrint, Plus, Settings2, X, Lock, WifiOff, RefreshCw, Pencil, TableProperties } from 'lucide-react'
@@ -166,7 +167,7 @@ export function DashboardPage() {
   const currentRole: MemberRole | null =
     primaryHousehold?.members.find((m) => m.id === user?.id)?.role ?? null
 
-  const tier = user?.subscription_tier ?? 'free'
+  const tier = useEffectiveTier()
   const catLimit = tier === 'premium' ? Infinity : tier === 'pro' ? 3 : 1
   const atCatLimit = cats.length >= catLimit
 

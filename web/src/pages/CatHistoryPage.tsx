@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { Cat as CatIcon, ChevronLeft, ChevronRight, Inbox, LayoutGrid, Lock, TableProperties } from 'lucide-react'
 import { usePageTitle } from '@/hooks/usePageTitle'
-import { useAuthStore } from '@/store/authStore'
+import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 import type { Cat, CatStats, SubscriptionTier } from '@/types/api'
 import { WeightTrendChart } from '@/components/charts/WeightTrendChart'
 import { FeedingFrequencyChart } from '@/components/charts/FeedingFrequencyChart'
@@ -78,8 +78,7 @@ function upgradeHint(tier: SubscriptionTier): string {
 export function CatHistoryPage() {
   const { householdId, catId } = useParams<{ householdId: string; catId: string }>()
   const navigate = useNavigate()
-  const { user } = useAuthStore()
-  const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
+  const tier = useEffectiveTier()
 
   // Chart preferences — globally persisted, not per-cat
   const { hidden: hiddenCharts, order: chartOrder, setOrder: setChartOrder } = useChartPrefsStore()

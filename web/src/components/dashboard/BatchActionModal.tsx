@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { HouseholdBatchAction } from '@/types/api'
 import type { EventType, SubscriptionTier } from '@/types/api'
-import { useAuthStore } from '@/store/authStore'
+import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 
 // Event types that make sense for batch logging (exclude weight/vet_visit
 // which require per-cat data that varies per animal)
@@ -67,8 +67,7 @@ function detailsToState(d: Record<string, unknown>) {
 }
 
 export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
-  const { user } = useAuthStore()
-  const tier = (user?.subscription_tier ?? 'free') as SubscriptionTier
+  const tier = useEffectiveTier()
   const isEditing = !!initialAction
 
   const prefill = initialAction ? detailsToState(initialAction.details) : null

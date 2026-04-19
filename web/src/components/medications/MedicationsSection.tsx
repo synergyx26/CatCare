@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Lock, Plus } from 'lucide-react'
 import { api } from '@/api/client'
-import { useAuthStore } from '@/store/authStore'
+import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 import { formatTime } from '@/lib/helpers'
 import { notify } from '@/lib/notify'
 import type { CareEvent, MemberRole } from '@/types/api'
@@ -16,8 +16,7 @@ interface Props {
 
 export function MedicationsSection({ householdId, catId, currentRole, onOpenModal }: Props) {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
-  const tier    = user?.subscription_tier ?? 'free'
+  const tier    = useEffectiveTier()
   const canLog  = tier !== 'free'
   const isSitter = currentRole === 'sitter'
 

@@ -31,6 +31,7 @@ import { AdminImportPage } from '@/pages/AdminImportPage'
 import { LandingPage } from '@/pages/LandingPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
+import { HouseholdsOverviewPage } from '@/pages/HouseholdsOverviewPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,6 +71,7 @@ export default function App() {
 
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/households" element={<HouseholdsOverviewPage />} />
               <Route
                 path="/households/:householdId/add-cat"
                 element={<AddCatPage />}

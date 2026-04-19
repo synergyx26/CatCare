@@ -77,7 +77,7 @@ module Api
       FREE_EVENT_TYPES = %w[feeding note tooth_brushing].freeze
 
       def tier_event_type_allowed?(event_type)
-        return true if %w[pro premium].include?(current_user.subscription_tier)
+        return true if %w[pro premium].include?(effective_tier)
         FREE_EVENT_TYPES.include?(event_type.to_s)
       end
 

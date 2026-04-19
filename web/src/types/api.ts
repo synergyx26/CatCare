@@ -103,6 +103,7 @@ export interface Household {
   name: string
   created_by: number
   member_count: number
+  effective_tier: SubscriptionTier  // highest tier among non-sitter members; own tier for admins/members
   members: HouseholdMember[]
   cat_count: number
   created_at: string
