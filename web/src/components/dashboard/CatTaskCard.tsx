@@ -1,8 +1,26 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UtensilsCrossed, Pill, ChevronDown, ChevronUp, Info, AlertCircle, CheckCircle2 } from 'lucide-react'
-import type { Cat, CareEvent, EventType } from '@/types/api'
+import { UtensilsCrossed, Pill, ChevronDown, ChevronUp, Info, AlertCircle, CheckCircle2, Plus } from 'lucide-react'
+import type { Cat, CareEvent, CareNote, EventType } from '@/types/api'
 import { getCatTodayStatus, getActiveMedicationTasks, type CatCareRequirements } from '@/lib/helpers'
+import { CARE_NOTE_CATEGORY_COLORS, CARE_NOTE_CATEGORY_LABELS } from '@/lib/careNoteCategories'
+
+function ToothIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M9 3h6a2 2 0 0 1 2 2c0 1.5-1 3-1 5 0 4-1 11-2.5 11-.8 0-1.2-1.5-1.5-1.5s-.7 1.5-1.5 1.5C9 21 8 14 8 10c0-2-1-3.5-1-5a2 2 0 0 1 2-2z" />
+    </svg>
+  )
+}
 
 interface CatTaskCardProps {
   cat: Cat
@@ -12,6 +30,7 @@ interface CatTaskCardProps {
   currentUserId: number
   requirements: CatCareRequirements | undefined
   onLog: (cat: Cat, type?: EventType, opts?: { medicationName?: string }) => void
+  careNotes?: CareNote[]
 }
 
 export function CatTaskCard({
@@ -22,6 +41,7 @@ export function CatTaskCard({
   currentUserId,
   requirements,
   onLog,
+  careNotes = [],
 }: CatTaskCardProps) {
   const [careOpen, setCareOpen] = useState(false)
   const navigate = useNavigate()
@@ -39,7 +59,7 @@ export function CatTaskCard({
 
   const hasAnyTasks = status.feedingsNeeded > 0 || status.trackToothbrushing || allActiveMeds.length > 0
 
-  const hasCareInfo = !!(cat.care_instructions || cat.vet_name || cat.vet_phone)
+  const hasCareInfo = careNotes.length > 0 || !!(cat.vet_name || cat.vet_phone)
 
   return (
     <div className={[
@@ -48,33 +68,40 @@ export function CatTaskCard({
         ? 'border-amber-200 dark:border-amber-800/40 shadow-sm shadow-amber-100/50 dark:shadow-amber-950/20'
         : 'border-emerald-200 dark:border-emerald-800/30',
     ].join(' ')}>
-      {/* Card header */}
-      <button
-        onClick={() => navigate(`/households/${cat.household_id}/cats/${cat.id}`)}
-        className="flex items-center gap-3 px-4 pt-4 pb-3 w-full text-left hover:bg-muted/40 transition-colors rounded-t-2xl cursor-pointer"
-        aria-label={`View ${cat.name}'s profile`}
-      >
-        {/* Avatar with status ring */}
-        <div className={[
-          'shrink-0 rounded-xl overflow-hidden',
-          'ring-2',
-          hasPending ? 'ring-amber-400 dark:ring-amber-500' : 'ring-emerald-400 dark:ring-emerald-500',
-        ].join(' ')}>
-          {cat.photo_url ? (
-            <img
-              src={cat.photo_url}
-              alt={cat.name}
-              className="size-14 object-cover"
-            />
-          ) : (
-            <div className="size-14 flex items-center justify-center bg-gradient-to-br from-sky-100 to-sky-200 dark:from-sky-900/40 dark:to-sky-800/40 text-xl font-bold text-sky-600 dark:text-sky-400">
-              {cat.name.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
+      {/* Card header: avatar (nav) + name/status (nav) + ad-hoc log button */}
+      <div className="flex items-center gap-3 px-4 pt-4 pb-3 w-full">
+        {/* Avatar — navigates to profile */}
+        <button
+          onClick={() => navigate(`/households/${cat.household_id}/cats/${cat.id}`)}
+          aria-label={`View ${cat.name}'s profile`}
+          tabIndex={-1}
+          className="shrink-0 hover:opacity-90 transition-opacity"
+        >
+          <div className={[
+            'rounded-xl overflow-hidden',
+            'ring-2',
+            hasPending ? 'ring-amber-400 dark:ring-amber-500' : 'ring-emerald-400 dark:ring-emerald-500',
+          ].join(' ')}>
+            {cat.photo_url ? (
+              <img
+                src={cat.photo_url}
+                alt={cat.name}
+                className="size-14 object-cover"
+              />
+            ) : (
+              <div className="size-14 flex items-center justify-center bg-gradient-to-br from-sky-100 to-sky-200 dark:from-sky-900/40 dark:to-sky-800/40 text-xl font-bold text-sky-600 dark:text-sky-400">
+                {cat.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+        </button>
 
-        {/* Name + status */}
-        <div className="flex-1 min-w-0">
+        {/* Name + status — navigates to profile */}
+        <button
+          onClick={() => navigate(`/households/${cat.household_id}/cats/${cat.id}`)}
+          aria-label={`View ${cat.name}'s profile`}
+          className="flex-1 min-w-0 text-left hover:bg-muted/40 transition-colors rounded-xl px-1 -mx-1 py-0.5"
+        >
           <p className="font-semibold text-base leading-tight truncate">{cat.name}</p>
           {hasPending ? (
             <div className="flex items-center gap-1 mt-0.5">
@@ -95,8 +122,18 @@ export function CatTaskCard({
               <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">All done</p>
             </div>
           )}
-        </div>
-      </button>
+        </button>
+
+        {/* Ad-hoc / general care log button */}
+        <button
+          onClick={() => onLog(cat)}
+          aria-label={`Log care for ${cat.name}`}
+          className="shrink-0 flex items-center gap-1.5 h-8 px-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors active:scale-95"
+        >
+          <Plus className="size-3.5" aria-hidden="true" />
+          Log
+        </button>
+      </div>
 
       {/* Task rows — always shown so completed tasks remain visible */}
       {hasAnyTasks && (
@@ -142,7 +179,7 @@ export function CatTaskCard({
             toothbrushingDue ? (
               <div className="flex items-center justify-between gap-3 rounded-xl bg-sky-50 dark:bg-sky-950/20 px-3 py-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm" aria-hidden="true">🦷</span>
+                  <ToothIcon className="size-4 text-sky-600 dark:text-sky-400 shrink-0" />
                   <span className="text-sm font-medium">Tooth brushing</span>
                 </div>
                 <button
@@ -156,7 +193,7 @@ export function CatTaskCard({
             ) : (
               <div className="flex items-center justify-between gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm" aria-hidden="true">🦷</span>
+                  <ToothIcon className="size-4 text-emerald-500 shrink-0" />
                   <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Tooth brushing</span>
                 </div>
                 <CheckCircle2 className="size-5 text-emerald-500 shrink-0" aria-label="Done" />
@@ -234,13 +271,31 @@ export function CatTaskCard({
           {careOpen && (
             <div
               id={`care-info-${cat.id}`}
-              className="px-4 pb-4 space-y-3"
+              className="px-4 pb-4 space-y-2"
             >
-              {cat.care_instructions && (
-                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                  {cat.care_instructions}
-                </p>
-              )}
+              {/* Care notes for this cat */}
+              {careNotes.map(note => (
+                <div
+                  key={note.id}
+                  className="rounded-xl border border-border/60 bg-card p-3 space-y-1"
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className="inline-block size-2 rounded-full shrink-0"
+                      style={{ backgroundColor: CARE_NOTE_CATEGORY_COLORS[note.category] }}
+                    />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {CARE_NOTE_CATEGORY_LABELS[note.category]}
+                    </p>
+                  </div>
+                  <p className="text-sm font-medium leading-snug">{note.title}</p>
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                    {note.body}
+                  </p>
+                </div>
+              ))}
+
+              {/* Vet contact */}
               {(cat.vet_name || cat.vet_phone) && (
                 <div className="rounded-xl bg-muted/50 px-3 py-2.5 space-y-0.5">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

@@ -38,6 +38,7 @@ import type {
   Household,
   Cat,
   CareEvent,
+  CareNote,
   EventType,
   HouseholdInvite,
   MemberRole,
@@ -102,6 +103,15 @@ export function DashboardPage() {
     queryFn: () => api.getCareEvents(primaryHousehold!.id, { eventTypes: ['medication'] }),
     enabled: !!primaryHousehold,
   })
+
+  // Care notes — same cache key as HouseholdNotesSection so the request is shared
+  const { data: careNotesData } = useQuery({
+    queryKey: ['care_notes', primaryHousehold?.id, null] as const,
+    queryFn: () => api.getCareNotes(primaryHousehold!.id),
+    enabled: !!primaryHousehold,
+    staleTime: 5 * 60 * 1000,
+  })
+  const allCareNotes: CareNote[] = careNotesData?.data?.data ?? []
 
   function refreshCareLog() {
     queryClient.invalidateQueries({ queryKey: ['care_events', primaryHousehold?.id] })
@@ -642,6 +652,7 @@ export function DashboardPage() {
                       currentUserId={user?.id ?? -1}
                       requirements={catRequirements.get(cat.id)}
                       onLog={openNewLog}
+                      careNotes={allCareNotes.filter(n => n.cat_id === cat.id)}
                     />
                   ))}
                 </div>
