@@ -485,7 +485,7 @@ export function CareHistoryTablePage() {
               value={startDate}
               max={endDate || DEFAULT_END}
               onChange={(e) => { setStartDate(e.target.value); setActiveQuickDays('custom') }}
-              className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none min-w-0 block"
+              className="w-full py-3 sm:py-2 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none min-w-0 block"
             />
             <div className="h-5 flex items-center">
               {startDate !== DEFAULT_START && (
@@ -503,7 +503,7 @@ export function CareHistoryTablePage() {
               min={startDate}
               max={DEFAULT_END}
               onChange={(e) => { setEndDate(e.target.value); setActiveQuickDays('custom') }}
-              className="w-full h-11 sm:h-9 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none min-w-0 block"
+              className="w-full py-3 sm:py-2 rounded-md border border-input bg-background px-3 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none min-w-0 block"
             />
             <div className="h-5 flex items-center">
               {endDate !== DEFAULT_END && (

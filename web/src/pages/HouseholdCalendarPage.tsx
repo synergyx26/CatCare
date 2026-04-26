@@ -401,9 +401,9 @@ function DayPanel({
         </button>
       </div>
 
-      {/* Event list — flex-1 + overflow-auto lets it scroll inside the fixed-height container */}
+      {/* Event list + chores — both scroll together inside the fixed-height container */}
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-4">
-        {visibleEvents.length === 0 && (
+        {visibleEvents.length === 0 && dayChores.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
             <CalendarDays className="w-8 h-8 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">No events on this day</p>
@@ -466,62 +466,62 @@ function DayPanel({
             </div>
           )
         })}
-      </div>
 
-      {/* Household chores for this day */}
-      {dayChores.length > 0 && (
-        <div className="shrink-0 px-4 pb-3 border-t border-border/40 pt-3">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Household chores
-          </p>
-          <div className="space-y-1.5">
-            {[...dayChores]
-              .sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime())
-              .map(chore => {
-                const def = choreDefMap.get(chore.chore_definition_id)
-                return (
-                  <div key={chore.id} className="flex items-start gap-2 group">
-                    {def?.emoji ? (
-                      <span className="text-sm shrink-0 mt-0.5 leading-none">{def.emoji}</span>
-                    ) : (
-                      <span className="w-2 h-2 rounded-sm shrink-0 mt-1.5 bg-indigo-500" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs font-medium text-foreground truncate">
-                          {def?.name ?? 'Chore'}
-                        </span>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {formatTime(chore.occurred_at)}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground/60">
-                        by {memberMap.get(chore.logged_by_id) ?? 'Unknown'}
-                      </p>
-                      {chore.notes && (
-                        <p className="text-xs text-muted-foreground/70 italic truncate">{chore.notes}</p>
+        {/* Household chores — inside the scrollable area so they don't crowd events out */}
+        {dayChores.length > 0 && (
+          <div className="border-t border-border/40 pt-3">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Household chores
+            </p>
+            <div className="space-y-1.5">
+              {[...dayChores]
+                .sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime())
+                .map(chore => {
+                  const def = choreDefMap.get(chore.chore_definition_id)
+                  return (
+                    <div key={chore.id} className="flex items-start gap-2 group">
+                      {def?.emoji ? (
+                        <span className="text-sm shrink-0 mt-0.5 leading-none">{def.emoji}</span>
+                      ) : (
+                        <span className="w-2 h-2 rounded-sm shrink-0 mt-1.5 bg-indigo-500" />
                       )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs font-medium text-foreground truncate">
+                            {def?.name ?? 'Chore'}
+                          </span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {formatTime(chore.occurred_at)}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground/60">
+                          by {memberMap.get(chore.logged_by_id) ?? 'Unknown'}
+                        </p>
+                        {chore.notes && (
+                          <p className="text-xs text-muted-foreground/70 italic truncate">{chore.notes}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => onEditChore(chore)}
+                        className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        aria-label="Edit chore"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => onDeleteChore(chore.id)}
+                        className="shrink-0 p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        aria-label="Delete chore"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => onEditChore(chore)}
-                      className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                      aria-label="Edit chore"
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => onDeleteChore(chore.id)}
-                      className="shrink-0 p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                      aria-label="Delete chore"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                )
-              })}
+                  )
+                })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Footer: log care + log chore */}
       <div className="shrink-0 px-4 py-3 border-t border-border/60 space-y-2">
