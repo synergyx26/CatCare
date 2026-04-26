@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -33,9 +32,7 @@ const emailSchema = z.object({
 })
 
 const oauthSchema = z.object({
-  confirm: z.string().refine((v) => v === 'DELETE', {
-    message: 'Type DELETE (all caps) to confirm',
-  }),
+  confirm: z.string().min(1, 'Type DELETE to confirm'),
 })
 
 type EmailForm = z.infer<typeof emailSchema>
@@ -76,17 +73,21 @@ function DeleteAccountDialog({ isOAuth }: { isOAuth: boolean }) {
     mutation.mutate(data.password)
   }
 
-  function handleOAuthSubmit() {
+  function handleOAuthSubmit(data: OAuthForm) {
+    if (data.confirm !== 'DELETE') {
+      oauthForm.setError('confirm', { message: 'Type DELETE (all caps) to confirm' })
+      return
+    }
     mutation.mutate(undefined)
   }
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-rose-200 dark:border-rose-800/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-sm font-medium transition-colors">
-          <Trash2 className="w-4 h-4" />
-          Delete my account
-        </button>
+      <AlertDialogTrigger
+        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-rose-200 dark:border-rose-800/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-sm font-medium transition-colors"
+      >
+        <Trash2 className="w-4 h-4" />
+        Delete my account
       </AlertDialogTrigger>
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
@@ -94,18 +95,16 @@ function DeleteAccountDialog({ isOAuth }: { isOAuth: boolean }) {
             <Trash2 className="w-4 h-4" />
             Delete account permanently
           </AlertDialogTitle>
-          <AlertDialogDescription asChild>
-            <div className="space-y-3 text-sm">
-              <p>
-                This action <strong>cannot be undone</strong>. Here is exactly what will happen:
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Your account and personal data will be permanently deleted</li>
-                <li>Households where you are the only member will be deleted along with all cats and care history</li>
-                <li>In shared households, your care logs will be anonymised (other members' data is preserved)</li>
-                <li>Your active session will be terminated immediately</li>
-              </ul>
-            </div>
+          <AlertDialogDescription render={<div />} className="space-y-3 text-sm text-left">
+            <p>
+              This action <strong>cannot be undone</strong>. Here is exactly what will happen:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <li>Your account and personal data will be permanently deleted</li>
+              <li>Households where you are the only member will be deleted along with all cats and care history</li>
+              <li>In shared households, your care logs will be anonymised (other members' data is preserved)</li>
+              <li>Your active session will be terminated immediately</li>
+            </ul>
           </AlertDialogDescription>
         </AlertDialogHeader>
 

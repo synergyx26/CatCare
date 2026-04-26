@@ -66,6 +66,7 @@ export interface User {
   is_super_admin?: boolean
   created_at?: string
   notification_preferences?: NotificationPreferences
+  provider?: string | null
 }
 
 export interface AuthResponse {
