@@ -140,6 +140,14 @@ export function RegisterPage() {
             >
               {mutation.isPending ? 'Creating account...' : 'Sign up'}
             </button>
+
+            <p className="text-center text-xs text-muted-foreground/70 leading-relaxed">
+              By creating an account you agree to our{' '}
+              <Link to="/privacy" className="underline underline-offset-2 hover:text-muted-foreground transition-colors">
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </form>
 
           {/* Footer link */}

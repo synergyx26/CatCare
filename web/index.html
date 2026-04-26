@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Defence-in-depth CSP. frame-ancestors is NOT honoured from a meta tag
+      (only from the HTTP header in public/_headers), but script/connect/object
+      directives are enforced here if the header is ever absent.
+    -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: blob: data:; font-src 'self' data:; connect-src 'self' https://catcare-v52y.onrender.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://accounts.google.com; frame-src https://accounts.google.com; form-action 'self'; base-uri 'self'; object-src 'none'" />
     <title>CatCare</title>
   </head>
   <body>

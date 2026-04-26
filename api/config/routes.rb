@@ -16,9 +16,12 @@ Rails.application.routes.draw do
       post   "auth/google",         to: "oauth#google"
 
       # Current user profile
-      get   "me",                              to: "users#me"
-      patch "me/subscription_tier",            to: "users#update_subscription_tier"
-      patch "me/notification_preferences",     to: "users#update_notification_preferences"
+      get    "me",                              to: "users#me"
+      patch  "me/subscription_tier",            to: "users#update_subscription_tier"
+      patch  "me/notification_preferences",     to: "users#update_notification_preferences"
+
+      # Account self-service (GDPR right-to-erasure)
+      delete "account",                         to: "account#destroy"
 
       # Households + nested resources
       resources :households, only: [:index, :create, :show, :update] do

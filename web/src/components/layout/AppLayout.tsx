@@ -653,6 +653,10 @@ export function AppLayout() {
                     </div>
                   </>
                 )}
+                <DropdownMenuItem onClick={() => navigate('/account')}>
+                  <User className="size-4" />
+                  My Account
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={handleLogout}>
                   <LogOut className="size-4" />
@@ -668,6 +672,19 @@ export function AppLayout() {
       <main className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-10 py-6">
         <Outlet />
       </main>
+
+      {/* ── Footer ──────────────────────────────────────────────── */}
+      <footer className="border-t border-border/30 mt-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 lg:px-10 py-3 flex items-center justify-between gap-4">
+          <p className="text-xs text-muted-foreground/40">© {new Date().getFullYear()} CatCare</p>
+          <Link
+            to="/privacy"
+            className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            Privacy Policy
+          </Link>
+        </div>
+      </footer>
     </div>
   )
 }

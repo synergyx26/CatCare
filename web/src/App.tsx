@@ -32,6 +32,8 @@ import { LandingPage } from '@/pages/LandingPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { HouseholdsOverviewPage } from '@/pages/HouseholdsOverviewPage'
+import { PrivacyPolicyPage } from '@/pages/PrivacyPolicyPage'
+import { AccountPage } from '@/pages/AccountPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +65,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/invites/:token" element={<InvitePage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
           {/* Protected — wrapped in AppLayout */}
           <Route element={<ProtectedRoute />}>
@@ -109,6 +112,7 @@ export default function App() {
                 element={<HouseholdNotesPage />}
               />
               <Route path="/notification-settings" element={<NotificationSettingsPage />} />
+              <Route path="/account" element={<AccountPage />} />
               <Route
                 path="/households/:householdId/care-history"
                 element={<CareHistoryTablePage />}

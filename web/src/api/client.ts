@@ -429,4 +429,8 @@ export const api = {
 
   getExpenseStats: (householdId: number, range: ExpenseRange = '1m') =>
     apiClient.get(`/households/${householdId}/expenses/stats`, { params: { range } }),
+
+  // Account self-service (GDPR right-to-erasure)
+  deleteAccount: (password?: string) =>
+    apiClient.delete('/account', { data: { password } }),
 }

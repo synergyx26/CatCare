@@ -1,0 +1,64 @@
+# HTTP security headers for Render / Netlify static hosting.
+# Applied to every route served from the built dist/ directory.
+# Keep this file in sync with vite.config.ts server.headers (used in dev).
+
+/*
+  # Clickjacking
+  X-Frame-Options: DENY
+
+  # MIME sniffing
+  X-Content-Type-Options: nosniff
+
+  # Legacy XSS auditor — disabled per OWASP (CSP is the real defence)
+  X-XSS-Protection: 0
+
+  # IE-specific download protection
+  X-Download-Options: noopen
+
+  # Flash cross-domain policy
+  X-Permitted-Cross-Domain-Policies: none
+
+  # Referrer leakage
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Unused browser features — deny everything this app doesn't need
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=()
+
+  # HSTS — tell browsers to always use HTTPS for 2 years
+  # Remove preload if you don't intend to submit this domain to the preload list
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+
+  # COOP — same-origin-allow-popups is required so the Google OAuth popup
+  # can post a message back to the opener window after the user signs in.
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+
+  # CSP — applied to the React SPA
+  #
+  # script-src:
+  #   'self'                           — Vite-bundled JS
+  #   accounts.google.com              — @react-oauth/google injects <script src="https://accounts.google.com/gsi/client">
+  #   apis.google.com                  — Google API loader (used by the GSI library)
+  #
+  # style-src 'unsafe-inline':
+  #   Needed for inline style attributes injected by shadcn/ui component
+  #   animations (Radix/Base UI uses style="" for position/transform).
+  #   Remove if you switch to CSS modules / a CSS-only animation strategy.
+  #
+  # img-src https: blob: data:
+  #   https: covers cat photos served from Supabase Storage (unknown subdomain at build time)
+  #   blob: covers react-pdf blob: object URLs
+  #   data: covers base64 SVGs and favicon data URIs
+  #
+  # connect-src explicit allowlist:
+  #   self                               — relative fetch calls during SSR / same-origin
+  #   catcare-v52y.onrender.com          — Rails API (VITE_API_URL)
+  #   *.ingest.sentry.io                 — Sentry error reporting (EU/US regions)
+  #   *.ingest.us.sentry.io              — Sentry US-region ingest variant
+  #   accounts.google.com                — Google OAuth token endpoint (GSI library)
+  #
+  # frame-src accounts.google.com
+  #   Google OAuth renders a hidden iframe during the sign-in flow.
+  #
+  # frame-ancestors 'none'
+  #   Supersedes X-Frame-Options in CSP-aware browsers.
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: blob: data:; font-src 'self' data:; connect-src 'self' https://catcare-v52y.onrender.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://accounts.google.com; frame-src https://accounts.google.com; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests

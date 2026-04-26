@@ -1305,6 +1305,9 @@ export function LandingPage() {
             © {new Date().getFullYear()} CatCare. Made for cat people.
           </p>
           <div className="flex items-center gap-4">
+            <Link to="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Privacy Policy
+            </Link>
             <Link to="/login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               Sign in
             </Link>
