@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Pencil,
   Trash2,
+  Plane,
 } from 'lucide-react'
 import { api } from '@/api/client'
 import { useEffectiveTier } from '@/hooks/useEffectiveTier'
@@ -39,7 +40,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import type { Cat, CareEvent, EventType, SubscriptionTier, Household, HouseholdChore, HouseholdChoreDefinition } from '@/types/api'
+import type { Cat, CareEvent, EventType, SubscriptionTier, Household, HouseholdChore, HouseholdChoreDefinition, VacationTrip } from '@/types/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -151,6 +152,25 @@ function catAvatarColor(index: number): string {
   return CAT_AVATAR_COLORS[index % CAT_AVATAR_COLORS.length]
 }
 
+function getVacationTripForDate(dateStr: string, trips: VacationTrip[]): VacationTrip | null {
+  for (const trip of trips) {
+    if (dateStr >= trip.start_date && (trip.end_date === null || dateStr <= trip.end_date)) {
+      return trip
+    }
+  }
+  return null
+}
+
+function formatTripDate(dateStr: string): string {
+  return new Date(`${dateStr}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function formatTripDateRange(trip: VacationTrip): string {
+  const start = formatTripDate(trip.start_date)
+  const end = trip.end_date ? formatTripDate(trip.end_date) : 'ongoing'
+  return `${start} – ${end}`
+}
+
 // ─── Sub-component: EventTypePill filter ──────────────────────────────────────
 
 interface TypeFilterProps {
@@ -212,23 +232,25 @@ interface DayCellProps {
   feedingsPerDayMap: Map<number, number>
   selectedCatIds: number[]
   hasChores?: boolean
+  vacationTrip?: VacationTrip | null
   onClick: () => void
 }
 
 function DayCell({
   dateStr, events, activeFilters,
-  isSelected, isInRange, feedingsPerDayMap, selectedCatIds, hasChores, onClick,
+  isSelected, isInRange, feedingsPerDayMap, selectedCatIds, hasChores, vacationTrip, onClick,
 }: DayCellProps) {
   const today = getToday()
   const isToday = dateStr === today
   const isFuture = dateStr > today
+  const isVacation = !!vacationTrip
 
-  // Check missing feedings across tracked cats
+  // Suppress missing feeding indicator during vacation — sitter visits periodically
   const trackedCats = selectedCatIds.length > 0
     ? selectedCatIds.filter(id => (feedingsPerDayMap.get(id) ?? 0) > 0)
     : [...feedingsPerDayMap.entries()].filter(([, fpd]) => fpd > 0).map(([id]) => id)
 
-  const missingFeeding = !isFuture && isInRange && trackedCats.some(catId => {
+  const missingFeeding = !isVacation && !isFuture && isInRange && trackedCats.some(catId => {
     const required = feedingsPerDayMap.get(catId) ?? 0
     if (required === 0) return false
     const fed = events.filter(e => e.cat_id === catId && e.event_type === 'feeding').length
@@ -242,26 +264,29 @@ function DayCell({
     typeGroups.set(e.event_type, (typeGroups.get(e.event_type) ?? 0) + 1)
   }
   const typesShown = [...typeGroups.entries()]
-  const MAX_DOTS = 5
+  const MAX_DOTS = 4
   const shown = typesShown.slice(0, MAX_DOTS)
   const overflow = typesShown.length - MAX_DOTS
 
   const dayNum = Number(dateStr.split('-')[2])
 
-  // Cell background — no borders, state communicated through fill only
+  // Cell background — vacation days get a warm amber tint
   const cellBg =
-    !isInRange          ? 'bg-transparent cursor-default opacity-40' :
-    isSelected && isToday ? 'bg-sky-100/90 dark:bg-sky-900/40 cursor-pointer' :
-    isSelected          ? 'bg-primary/10 dark:bg-primary/15 cursor-pointer' :
-    isToday             ? 'bg-sky-50/80 dark:bg-sky-950/40 cursor-pointer' :
-                          'bg-muted/20 hover:bg-muted/50 cursor-pointer'
+    !isInRange                      ? 'bg-transparent cursor-default opacity-40' :
+    isSelected && isToday           ? 'bg-sky-100/90 dark:bg-sky-900/40 cursor-pointer' :
+    isSelected && isVacation        ? 'bg-amber-100/80 dark:bg-amber-900/25 cursor-pointer' :
+    isSelected                      ? 'bg-primary/10 dark:bg-primary/15 cursor-pointer' :
+    isToday && isVacation           ? 'bg-amber-50/90 dark:bg-amber-950/30 cursor-pointer' :
+    isVacation                      ? 'bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-950/30 cursor-pointer' :
+    isToday                         ? 'bg-sky-50/80 dark:bg-sky-950/40 cursor-pointer' :
+                                      'bg-muted/20 hover:bg-muted/50 cursor-pointer'
 
   return (
     <button
       onClick={onClick}
       disabled={!isInRange}
       aria-pressed={isSelected}
-      aria-label={`${dateStr}${isInRange ? `, ${visibleEvents.length} events` : ''}`}
+      aria-label={`${dateStr}${isInRange ? `, ${visibleEvents.length} events${isVacation ? ', vacation' : ''}` : ''}`}
       className={[
         'relative flex flex-col items-start rounded-xl text-left transition-colors',
         'min-h-[64px] sm:min-h-[88px] w-full p-1.5 sm:p-2.5',
@@ -279,9 +304,15 @@ function DayCell({
         {dayNum}
       </span>
 
-      {/* Event type dots + chore indicator — pushed to bottom of cell */}
-      {isInRange && (shown.length > 0 || hasChores) && (
-        <div className="flex flex-wrap gap-1 mt-auto pt-1">
+      {/* Event type dots + chore + vacation indicators — pushed to bottom */}
+      {isInRange && (shown.length > 0 || hasChores || isVacation) && (
+        <div className="flex flex-wrap gap-1 mt-auto pt-1 items-center">
+          {isVacation && (
+            <Plane
+              className="w-2.5 h-2.5 shrink-0 text-amber-500 dark:text-amber-400"
+              aria-hidden="true"
+            />
+          )}
           {shown.map(([type]) => (
             <span
               key={type}
@@ -302,7 +333,7 @@ function DayCell({
         </div>
       )}
 
-      {/* Missing feeding indicator — amber corner notch */}
+      {/* Missing feeding indicator — amber corner notch (suppressed during vacation) */}
       {missingFeeding && (
         <span
           className="absolute bottom-0 right-0 w-0 h-0"
@@ -342,12 +373,15 @@ interface DayPanelProps {
   onLogChore: () => void
   onEditChore: (chore: HouseholdChore) => void
   onDeleteChore: (id: number) => void
+  // Vacation
+  vacationTrip?: VacationTrip | null
 }
 
 function DayPanel({
   dateStr, events, catMap, catIndexMap, memberMap,
   activeFilters, activeCats, onClose, onEdit, onLogCare,
   dayChores, choreDefinitions, onLogChore, onEditChore, onDeleteChore,
+  vacationTrip,
 }: DayPanelProps) {
   const [catPickerOpen, setCatPickerOpen] = useState(false)
   const visibleEvents = events.filter(e => activeFilters.has(e.event_type))
@@ -400,6 +434,22 @@ function DayPanel({
           <X className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Vacation banner — shown when this day falls within a trip */}
+      {vacationTrip && (
+        <div className="shrink-0 mx-4 mt-3 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/40 flex items-start gap-2.5">
+          <Plane className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">Away</p>
+            <p className="text-[11px] text-amber-600/80 dark:text-amber-400/70 leading-snug mt-0.5">
+              {formatTripDateRange(vacationTrip)}
+              {vacationTrip.notes && (
+                <span className="block truncate">{vacationTrip.notes}</span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Event list + chores — both scroll together inside the fixed-height container */}
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-4">
@@ -634,6 +684,13 @@ export function HouseholdCalendarPage() {
     staleTime: 2 * 60 * 1000,
   })
 
+  const vacationTripsQuery = useQuery({
+    queryKey: ['vacation_trips', Number(householdId)],
+    queryFn: () => api.getVacationTrips(Number(householdId)),
+    enabled: !!householdId && tier !== 'free',
+    staleTime: 5 * 60 * 1000,
+  })
+
   // ── Derived data ───────────────────────────────────────────────────────────
   const household = householdQuery.data?.data?.data as Household | undefined
   const cats: Cat[] = useMemo(() => {
@@ -685,6 +742,12 @@ export function HouseholdCalendarPage() {
     const raw = choreQuery.data?.data?.data
     return Array.isArray(raw) ? (raw as HouseholdChore[]) : []
   }, [choreQuery.data])
+
+  // All vacation trips (used to suppress missing-feeding indicator and show away banner)
+  const vacationTrips: VacationTrip[] = useMemo(() => {
+    const raw = vacationTripsQuery.data?.data?.data
+    return Array.isArray(raw) ? (raw as VacationTrip[]) : []
+  }, [vacationTripsQuery.data])
 
   // Map: date string → chore instances on that day
   const choresByDate = useMemo(() => {
@@ -1023,6 +1086,7 @@ export function HouseholdCalendarPage() {
                       feedingsPerDayMap={feedingsPerDayMap}
                       selectedCatIds={selectedCatIds}
                       hasChores={(choresByDate.get(dateStr)?.length ?? 0) > 0}
+                      vacationTrip={getVacationTripForDate(dateStr, vacationTrips)}
                       onClick={() => {
                         if (!isInRange) return
                         setSelectedDate(prev => prev === dateStr ? null : dateStr)
@@ -1056,6 +1120,12 @@ export function HouseholdCalendarPage() {
                   Household chores
                 </div>
               )}
+              {vacationTrips.length > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Plane className="w-3 h-3 text-amber-500 shrink-0" aria-hidden="true" />
+                  Away (vacation)
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1079,6 +1149,7 @@ export function HouseholdCalendarPage() {
               onLogChore={() => setChorePickerDate(selectedDate)}
               onEditChore={handleEditChore}
               onDeleteChore={id => setDeletingCalChoreId(id)}
+              vacationTrip={getVacationTripForDate(selectedDate, vacationTrips)}
             />
           </div>
         )}
@@ -1107,6 +1178,7 @@ export function HouseholdCalendarPage() {
             onLogChore={() => setChorePickerDate(selectedDate)}
             onEditChore={handleEditChore}
             onDeleteChore={id => setDeletingCalChoreId(id)}
+            vacationTrip={getVacationTripForDate(selectedDate, vacationTrips)}
           />
         </div>
       )}
