@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 gem "rails", "~> 8.1.2"
 gem "pg", "~> 1.1"
-gem "puma", "~> 7.0"
+gem "puma", "~> 8.0"
 
 # Ruby 4.0 requires these to be explicitly listed (no longer auto-available)
 gem "base64"
@@ -34,7 +34,7 @@ gem "rack-cors"
 gem "rack-attack"
 
 # Object storage — S3-compatible adapter for Active Storage (used with Supabase Storage)
-gem "aws-sdk-s3", "~> 1.0", require: false
+gem "aws-sdk-s3", "~> 1.220", require: false
 
 # Authentication
 gem "devise", "~> 5.0"
