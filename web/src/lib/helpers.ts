@@ -1,17 +1,21 @@
 import type { CareEvent, EventType, MedicationFrequency, HouseholdChore, HouseholdChoreDefinition } from '@/types/api'
 
-// Checks whether today (local time) is a cat's birthday (same month + day).
-// Parses birthday as a local date to avoid UTC-midnight timezone shifts.
 export function isCatBirthday(birthday: string | null): boolean {
   if (!birthday) return false
-  const today = new Date()
   const parts = birthday.split('-').map(Number)
   if (parts.length < 3) return false
+  const today = new Date()
   const [, month, day] = parts
   return month === today.getMonth() + 1 && day === today.getDate()
 }
 
-// Returns the cat's age in full years, or null if birthday is unknown.
+// Parses a YYYY-MM-DD string as local midnight, avoiding the UTC-shift
+// that `new Date("YYYY-MM-DD")` introduces for users west of UTC.
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
 export function getCatAge(birthday: string | null): number | null {
   if (!birthday) return null
   const parts = birthday.split('-').map(Number)
@@ -19,12 +23,7 @@ export function getCatAge(birthday: string | null): number | null {
   const [year, month, day] = parts
   const today = new Date()
   let age = today.getFullYear() - year
-  if (
-    today.getMonth() + 1 < month ||
-    (today.getMonth() + 1 === month && today.getDate() < day)
-  ) {
-    age--
-  }
+  if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--
   return age >= 0 ? age : null
 }
 
@@ -194,7 +193,8 @@ export interface MedicationTask {
  * Handles both intra-day frequencies (once/twice/3x/2x daily) and
  * multi-day intervals (every other day, every 3 days, weekly).
  * allMedEvents must contain ALL medication events for the household
- * (no date filter), sorted any order.
+ * (no date filter), sorted any order. Excluded if start date is future
+ * or course_end_date is past (both compared as local calendar days).
  */
 export function getActiveMedicationTasks(
   catId: number,
@@ -204,10 +204,13 @@ export function getActiveMedicationTasks(
     .filter(e => e.cat_id === catId)
     .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
 
-  // Determine active medications: newest start event per name, not stopped
-  // Store startedAt so we can ignore doses that predate the current regimen
+  // Newest start event per name that isn't stopped. courseEndDate gates expiry.
   const processedNames = new Set<string>()
-  const activeMeds = new Map<string, { frequency: MedicationFrequency | null; startedAt: number }>()
+  const activeMeds = new Map<string, {
+    frequency: MedicationFrequency | null
+    startedAt: number
+    courseEndDate: string | null
+  }>()
 
   for (const event of catEvents) {
     const d = event.details as Record<string, unknown>
@@ -219,6 +222,7 @@ export function getActiveMedicationTasks(
       activeMeds.set(name, {
         frequency: (d.frequency as MedicationFrequency) ?? null,
         startedAt: new Date(event.occurred_at).getTime(),
+        courseEndDate: (d.course_end_date as string) ?? null,
       })
     }
   }
@@ -232,8 +236,12 @@ export function getActiveMedicationTasks(
 
   const tasks: MedicationTask[] = []
 
-  for (const [name, { frequency, startedAt }] of activeMeds.entries()) {
+  for (const [name, { frequency, startedAt, courseEndDate }] of activeMeds.entries()) {
     if (!frequency || frequency === 'as_needed') continue
+
+    // Regimen bounds: exclude future-start and expired courses.
+    if (new Date(startedAt).setHours(0, 0, 0, 0) > todayStart.getTime()) continue
+    if (courseEndDate && todayStart.getTime() > parseLocalDate(courseEndDate).getTime()) continue
 
     // Only count doses that belong to this regimen (at or after the start event)
     const dosesGivenToday = catEvents.filter(e => {
