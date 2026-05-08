@@ -21,7 +21,8 @@ const BATCH_TYPES: { value: EventType; label: string }[] = [
 
 type FoodType      = 'wet' | 'dry' | 'treats' | 'other'
 type GroomingType  = 'bath' | 'nail_trim' | 'full_groom' | 'other'
-type MedUnit       = 'mg' | 'ml' | 'tablet'
+type MedUnit       = string
+const PRESET_MED_UNITS_BATCH = ['mg', 'ml', 'tablet'] as const
 type SymptomType   = 'vomiting' | 'coughing' | 'asthma_attack' | 'sneezing' | 'diarrhea' | 'lethargy' | 'not_eating' | 'limping' | 'eye_discharge' | 'seizure' | 'other'
 type SymptomSeverity = 'mild' | 'moderate' | 'severe'
 
@@ -59,7 +60,8 @@ function detailsToState(d: Record<string, unknown>) {
     amountGrams:     d.amount_grams != null ? String(d.amount_grams) : '',
     medName:         (d.medication_name as string)          ?? '',
     medDosage:       (d.dosage          as string)          ?? '',
-    medUnit:         (d.unit            as MedUnit)         ?? 'mg',
+    medUnit:         (PRESET_MED_UNITS_BATCH as readonly string[]).includes(d.unit as string) ? (d.unit as MedUnit) : (d.unit ? 'other' : 'mg'),
+    customMedUnit:   (PRESET_MED_UNITS_BATCH as readonly string[]).includes(d.unit as string) ? '' : ((d.unit as string) ?? ''),
     groomType:       (d.grooming_type   as GroomingType)    ?? 'bath',
     symptomType:     (d.symptom_type    as SymptomType)     ?? 'vomiting',
     symptomSeverity: (d.severity        as SymptomSeverity) ?? 'mild',
@@ -79,6 +81,7 @@ export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
   const [medName,         setMedName]         = useState(prefill?.medName ?? '')
   const [medDosage,       setMedDosage]       = useState(prefill?.medDosage ?? '')
   const [medUnit,         setMedUnit]         = useState<MedUnit>(prefill?.medUnit ?? 'mg')
+  const [customMedUnit,   setCustomMedUnit]   = useState(prefill?.customMedUnit ?? '')
   const [groomType,       setGroomType]       = useState<GroomingType>(prefill?.groomType ?? 'bath')
   const [symptomType,     setSymptomType]     = useState<SymptomType>(prefill?.symptomType ?? 'vomiting')
   const [symptomSeverity, setSymptomSeverity] = useState<SymptomSeverity>(prefill?.symptomSeverity ?? 'mild')
@@ -95,7 +98,7 @@ export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
     if (eventType === 'medication') {
       return {
         medication_name: medName.trim(),
-        ...(medDosage ? { dosage: medDosage, unit: medUnit } : {}),
+        ...(medDosage ? { dosage: medDosage, unit: medUnit === 'other' ? customMedUnit.trim() || 'other' : medUnit } : {}),
       }
     }
     if (eventType === 'grooming') return { grooming_type: groomType }
@@ -232,13 +235,23 @@ export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
                   onChange={(e) => setMedDosage(e.target.value)}
                   className="w-28"
                 />
-                <div className="flex gap-1">
-                  {(['mg', 'ml', 'tablet'] as MedUnit[]).map((u) => (
+                <div className="flex flex-wrap gap-1">
+                  {([...PRESET_MED_UNITS_BATCH, 'other'] as MedUnit[]).map((u) => (
                     <button key={u} onClick={() => setMedUnit(u)} className={pillClass(medUnit === u)}>
                       {u}
                     </button>
                   ))}
                 </div>
+                {medUnit === 'other' && (
+                  <Input
+                    type="text"
+                    placeholder="e.g. puff"
+                    value={customMedUnit}
+                    onChange={(e) => setCustomMedUnit(e.target.value)}
+                    className="w-24 mt-1"
+                    aria-label="Custom unit"
+                  />
+                )}
               </div>
             </div>
           </>

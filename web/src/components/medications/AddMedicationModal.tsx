@@ -9,8 +9,9 @@ import { Textarea } from '@/components/ui/textarea'
 import type { ApiError, CareEvent, MedicationFrequency } from '@/types/api'
 import { FREQUENCY_LABELS } from '@/types/api'
 
-type MedUnit = 'mg' | 'ml' | 'tablet'
-const UNITS: MedUnit[] = ['mg', 'ml', 'tablet']
+type MedUnit = string
+const PRESET_UNITS = ['mg', 'ml', 'tablet'] as const
+const isPresetUnit = (u: string) => (PRESET_UNITS as readonly string[]).includes(u)
 
 const FREQUENCIES: { value: MedicationFrequency; label: string }[] = [
   { value: 'once_daily',      label: FREQUENCY_LABELS.once_daily      },
@@ -51,7 +52,9 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
 
   const [name, setName]           = useState((prefill?.medication_name as string) ?? '')
   const [dosage, setDosage]       = useState((prefill?.dosage as string) ?? '')
-  const [unit, setUnit]           = useState<MedUnit>((prefill?.unit as MedUnit) ?? 'mg')
+  const prefillUnit = (prefill?.unit as string) ?? 'mg'
+  const [unit, setUnit]           = useState<MedUnit>(isPresetUnit(prefillUnit) ? prefillUnit : 'other')
+  const [customUnit, setCustomUnit] = useState(isPresetUnit(prefillUnit) ? '' : prefillUnit)
   const [frequency, setFrequency] = useState<MedicationFrequency | ''>(
     (prefill?.frequency as MedicationFrequency) ?? ''
   )
@@ -68,7 +71,7 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
 
   // Keep unit in sync when dosage is cleared
   useEffect(() => {
-    if (!dosage) setUnit('mg')
+    if (!dosage) { setUnit('mg'); setCustomUnit('') }
   }, [dosage])
 
   const canSubmit = name.trim().length > 0
@@ -78,7 +81,7 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
       const details: Record<string, unknown> = {
         medication_name:  name.trim(),
         active_medication: true,
-        ...(dosage ? { dosage: dosage.trim(), unit } : {}),
+        ...(dosage ? { dosage: dosage.trim(), unit: unit === 'other' ? customUnit.trim() || 'other' : unit } : {}),
         ...(frequency ? { frequency } : {}),
         ...(isCourse && courseEndDate ? { course_end_date: courseEndDate } : {}),
         // Preserve stopped state when editing a stopped med
@@ -170,24 +173,36 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
               />
               {/* Unit pills — only shown when dosage is set */}
               {dosage && (
-                <div className="flex gap-1.5" role="radiogroup" aria-label="Dosage unit">
-                  {UNITS.map((u) => (
-                    <button
-                      key={u}
-                      type="button"
-                      role="radio"
-                      aria-checked={unit === u}
-                      onClick={() => setUnit(u)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        unit === u
-                          ? 'bg-red-500 text-white border-red-500'
-                          : 'border-border hover:bg-muted'
-                      }`}
-                    >
-                      {u}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Dosage unit">
+                    {([...PRESET_UNITS, 'other']).map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        role="radio"
+                        aria-checked={unit === u}
+                        onClick={() => setUnit(u)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          unit === u
+                            ? 'bg-red-500 text-white border-red-500'
+                            : 'border-border hover:bg-muted'
+                        }`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                  {unit === 'other' && (
+                    <Input
+                      type="text"
+                      placeholder="e.g. puff"
+                      value={customUnit}
+                      onChange={(e) => setCustomUnit(e.target.value)}
+                      className="w-24"
+                      aria-label="Custom unit"
+                    />
+                  )}
+                </>
               )}
             </div>
           </div>

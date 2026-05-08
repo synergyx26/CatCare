@@ -23,7 +23,8 @@ import { FREQUENCY_LABELS } from '@/types/api'
 
 type FoodType       = 'wet' | 'dry' | 'treats' | 'other'
 type WeightUnit     = 'kg' | 'g'
-type MedicationUnit = 'mg' | 'ml' | 'tablet'
+type MedicationUnit = string
+const PRESET_MED_UNITS = ['mg', 'ml', 'tablet'] as const
 type GroomingType   = 'bath' | 'nail_trim' | 'full_groom' | 'other'
 type SymptomType    = 'vomiting' | 'coughing' | 'asthma_attack' | 'sneezing' | 'diarrhea' | 'lethargy' | 'not_eating' | 'limping' | 'eye_discharge' | 'seizure' | 'other'
 type SymptomSeverity = 'mild' | 'moderate' | 'severe'
@@ -179,7 +180,13 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   // Medication
   const [medicationName,      setMedicationName]      = useState(initMedicationName)
   const [medicationDosage,    setMedicationDosage]    = useState(initMedicationDosage)
-  const [medicationUnit,      setMedicationUnit]      = useState<MedicationUnit>(initMedicationUnit)
+  const isPresetUnit = (u: string) => (PRESET_MED_UNITS as readonly string[]).includes(u)
+  const [medicationUnit,      setMedicationUnit]      = useState<MedicationUnit>(
+    isPresetUnit(initMedicationUnit) ? initMedicationUnit : 'other'
+  )
+  const [customMedUnit,       setCustomMedUnit]       = useState(
+    isPresetUnit(initMedicationUnit) ? '' : initMedicationUnit
+  )
   const [isStartMedication,   setIsStartMedication]   = useState(initIsStartMedication)
   const [medicationFrequency, setMedicationFrequency] = useState<MedicationFrequency>(initMedicationFrequency)
 
@@ -280,7 +287,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
     if (eventType === 'medication') {
       return {
         medication_name: medicationName.trim(),
-        ...(medicationDosage ? { dosage: medicationDosage, unit: medicationUnit } : {}),
+        ...(medicationDosage ? { dosage: medicationDosage, unit: medicationUnit === 'other' ? customMedUnit.trim() || 'other' : medicationUnit } : {}),
         ...(isStartMedication ? {
           active_medication: true,
           frequency: medicationFrequency,
@@ -591,7 +598,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                 <label htmlFor="med-dosage" className="text-sm font-medium">
                   Dosage <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Input
                     id="med-dosage"
                     type="number"
@@ -602,8 +609,8 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                     onChange={(e) => setMedicationDosage(e.target.value)}
                     className="w-28"
                   />
-                  <div className="flex gap-1" role="radiogroup" aria-label="Dosage unit">
-                    {(['mg', 'ml', 'tablet'] as MedicationUnit[]).map((u) => (
+                  <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Dosage unit">
+                    {([...PRESET_MED_UNITS, 'other'] as MedicationUnit[]).map((u) => (
                       <button
                         key={u}
                         role="radio"
@@ -615,6 +622,16 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                       </button>
                     ))}
                   </div>
+                  {medicationUnit === 'other' && (
+                    <Input
+                      type="text"
+                      placeholder="e.g. puff"
+                      value={customMedUnit}
+                      onChange={(e) => setCustomMedUnit(e.target.value)}
+                      className="w-24"
+                      aria-label="Custom unit"
+                    />
+                  )}
                 </div>
               </div>
               {/* Start/track toggle */}

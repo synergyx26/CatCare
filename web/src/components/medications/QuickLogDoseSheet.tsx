@@ -30,7 +30,7 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
   const unit           = (d.unit   as string) ?? ''
 
   const [occurredAt, setOccurredAt] = useState(toLocalDateTimeInput(new Date()))
-  const [notes, setNotes]           = useState('')
+  const [notes, setNotes]           = useState(startEvent.notes ?? '')
 
   const doseLabel = dosage ? `${dosage} ${unit}` : null
 
@@ -114,7 +114,13 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
               placeholder="Any observations…"
               rows={2}
               className="resize-none"
+              aria-describedby={startEvent.notes ? 'dose-notes-hint' : undefined}
             />
+            {startEvent.notes && (
+              <p id="dose-notes-hint" className="text-xs text-muted-foreground">
+                Pre-filled from medication notes — edit or clear as needed.
+              </p>
+            )}
           </div>
 
           {mutation.isError && (
