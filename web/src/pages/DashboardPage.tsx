@@ -513,7 +513,7 @@ export function DashboardPage() {
       </div>
 
       {/* Two-column layout on large screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 lg:items-start">
+      <div className={`grid grid-cols-1 gap-6 lg:items-start ${cats.length === 1 ? 'lg:grid-cols-2' : 'lg:grid-cols-[3fr_2fr]'}`}>
 
         {/* ── Left column: cats + members ─────────────────────── */}
         <div className="space-y-4">
@@ -649,7 +649,7 @@ export function DashboardPage() {
                   onLogChore={(id) => logChoreMutation.mutate(id)}
                 />
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className={`grid gap-3 ${cats.length > 1 ? 'md:grid-cols-2' : ''}`}>
                   {cats.map((cat) => (
                     <CatTaskCard
                       key={cat.id}
@@ -694,7 +694,7 @@ export function DashboardPage() {
               )}
 
               {showArchived && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className={`grid gap-3 ${archivedCats.length === 1 ? 'grid-cols-1 max-w-md' : 'grid-cols-1 md:grid-cols-2'}`}>
                   {archivedCats.map((cat) => (
                     <div key={cat.id} className="opacity-50">
                       <CatCard

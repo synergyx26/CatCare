@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -21,9 +21,11 @@ import { api } from '@/api/client'
 import { notify } from '@/lib/notify'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { Input } from '@/components/ui/input'
-import { Shield, Trash2, Lock, ExternalLink, Mail, User } from 'lucide-react'
+import { Shield, Trash2, Lock, ExternalLink, Mail, User, Sun, Moon, Monitor, Palette, Check } from 'lucide-react'
 import type { AxiosError } from 'axios'
 import type { ApiError } from '@/types/api'
+import { useThemeStore, type Theme, type ColorAccent } from '@/store/themeStore'
+import { cn } from '@/lib/utils'
 
 // ─── Delete form schemas ──────────────────────────────────────────────────────
 
@@ -172,12 +174,34 @@ function DeleteAccountDialog({ isOAuth }: { isOAuth: boolean }) {
   )
 }
 
+// ─── Accent config ────────────────────────────────────────────────────────────
+
+const ACCENTS: { value: ColorAccent; label: string; light: string; dark: string }[] = [
+  { value: 'blue',    label: 'Blue',    light: 'oklch(0.588 0.158 241.966)', dark: 'oklch(0.746 0.152 232.505)' },
+  { value: 'rose',    label: 'Rose',    light: 'oklch(0.588 0.19 5)',         dark: 'oklch(0.746 0.17 5)' },
+  { value: 'scarlet', label: 'Scarlet', light: 'oklch(0.576 0.21 25)',        dark: 'oklch(0.736 0.18 25)' },
+  { value: 'orange',  label: 'Orange',  light: 'oklch(0.650 0.17 55)',        dark: 'oklch(0.780 0.15 60)' },
+  { value: 'green',   label: 'Green',   light: 'oklch(0.555 0.16 148)',       dark: 'oklch(0.730 0.14 148)' },
+  { value: 'purple',  label: 'Purple',  light: 'oklch(0.555 0.20 292)',       dark: 'oklch(0.730 0.17 292)' },
+]
+
+const MODES: { value: Theme; label: string; Icon: typeof Sun }[] = [
+  { value: 'light',  label: 'Light',  Icon: Sun },
+  { value: 'dark',   label: 'Dark',   Icon: Moon },
+  { value: 'system', label: 'System', Icon: Monitor },
+]
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function AccountPage() {
   usePageTitle('My Account')
   const { user } = useAuthStore()
   const isOAuth = !!user?.provider
+  const { theme, setTheme, colorAccent, setColorAccent } = useThemeStore()
+
+  const effectiveDark =
+    theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-16">
@@ -203,6 +227,73 @@ export function AccountPage() {
               Google account
             </span>
           )}
+        </div>
+      </section>
+
+      {/* Appearance */}
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold flex items-center gap-2">
+          <Palette className="w-4 h-4 text-primary" />
+          Appearance
+        </h2>
+
+        <div className="rounded-xl border border-border/60 bg-card divide-y divide-border/40 text-sm">
+          {/* Light / Dark / System */}
+          <div className="px-5 py-4 space-y-3">
+            <p className="font-medium text-sm">Display mode</p>
+            <div className="flex gap-2">
+              {MODES.map(({ value, label, Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setTheme(value)}
+                  className={cn(
+                    'flex flex-1 flex-col items-center gap-1.5 rounded-lg border py-3 px-2 text-xs font-medium transition-colors',
+                    theme === value
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground'
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color accent */}
+          <div className="px-5 py-4 space-y-3">
+            <p className="font-medium text-sm">Accent colour</p>
+            <div className="flex flex-wrap gap-3">
+              {ACCENTS.map(({ value, label, light, dark }) => {
+                const isSelected = colorAccent === value
+                const swatchColor = effectiveDark ? dark : light
+                return (
+                  <button
+                    key={value}
+                    onClick={() => setColorAccent(value)}
+                    title={label}
+                    aria-label={`${label} accent${isSelected ? ' (selected)' : ''}`}
+                    className={cn(
+                      'relative flex h-8 w-8 items-center justify-center rounded-full transition-all',
+                      isSelected
+                        ? 'ring-2 ring-offset-2 ring-offset-card'
+                        : 'hover:scale-110'
+                    )}
+                    style={{
+                      backgroundColor: swatchColor,
+                      ...(isSelected ? { '--tw-ring-color': swatchColor } as React.CSSProperties : {}),
+                    }}
+                  >
+                    {isSelected && <Check className="w-3.5 h-3.5 text-white drop-shadow" />}
+                    <span className="sr-only">{label}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Changes buttons, links, and interactive highlights throughout the app.
+            </p>
+          </div>
         </div>
       </section>
 

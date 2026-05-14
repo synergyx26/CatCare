@@ -279,3 +279,92 @@ body {
 .react-grid-item.resizing .react-resizable-handle.react-resizable-handle-se {
   opacity: 1;
 }
+
+/* ── Color accent overrides ───────────────────────────────────────────────── */
+/* Each class overrides only the primary/ring tokens — dark mode variants      */
+/* are applied when both .dark and .accent-* are present on <html>.            */
+
+.accent-rose {
+  --primary: oklch(0.588 0.19 5);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.588 0.19 5);
+  --sidebar-primary: oklch(0.588 0.19 5);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.588 0.19 5);
+}
+.dark.accent-rose {
+  --primary: oklch(0.746 0.17 5);
+  --primary-foreground: oklch(0.145 0 0);
+  --ring: oklch(0.746 0.17 5);
+  --sidebar-primary: oklch(0.746 0.17 5);
+  --sidebar-primary-foreground: oklch(0.145 0 0);
+  --sidebar-ring: oklch(0.746 0.17 5);
+}
+
+.accent-scarlet {
+  --primary: oklch(0.576 0.21 25);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.576 0.21 25);
+  --sidebar-primary: oklch(0.576 0.21 25);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.576 0.21 25);
+}
+.dark.accent-scarlet {
+  --primary: oklch(0.736 0.18 25);
+  --primary-foreground: oklch(0.145 0 0);
+  --ring: oklch(0.736 0.18 25);
+  --sidebar-primary: oklch(0.736 0.18 25);
+  --sidebar-primary-foreground: oklch(0.145 0 0);
+  --sidebar-ring: oklch(0.736 0.18 25);
+}
+
+.accent-orange {
+  --primary: oklch(0.650 0.17 55);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.650 0.17 55);
+  --sidebar-primary: oklch(0.650 0.17 55);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.650 0.17 55);
+}
+.dark.accent-orange {
+  --primary: oklch(0.780 0.15 60);
+  --primary-foreground: oklch(0.145 0 0);
+  --ring: oklch(0.780 0.15 60);
+  --sidebar-primary: oklch(0.780 0.15 60);
+  --sidebar-primary-foreground: oklch(0.145 0 0);
+  --sidebar-ring: oklch(0.780 0.15 60);
+}
+
+.accent-green {
+  --primary: oklch(0.555 0.16 148);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.555 0.16 148);
+  --sidebar-primary: oklch(0.555 0.16 148);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.555 0.16 148);
+}
+.dark.accent-green {
+  --primary: oklch(0.730 0.14 148);
+  --primary-foreground: oklch(0.145 0 0);
+  --ring: oklch(0.730 0.14 148);
+  --sidebar-primary: oklch(0.730 0.14 148);
+  --sidebar-primary-foreground: oklch(0.145 0 0);
+  --sidebar-ring: oklch(0.730 0.14 148);
+}
+
+.accent-purple {
+  --primary: oklch(0.555 0.20 292);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.555 0.20 292);
+  --sidebar-primary: oklch(0.555 0.20 292);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.555 0.20 292);
+}
+.dark.accent-purple {
+  --primary: oklch(0.730 0.17 292);
+  --primary-foreground: oklch(0.145 0 0);
+  --ring: oklch(0.730 0.17 292);
+  --sidebar-primary: oklch(0.730 0.17 292);
+  --sidebar-primary-foreground: oklch(0.145 0 0);
+  --sidebar-ring: oklch(0.730 0.17 292);
+}
