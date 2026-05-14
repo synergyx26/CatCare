@@ -87,13 +87,13 @@ function HouseholdCard({
       className={[
         'relative rounded-xl border bg-white dark:bg-card p-5 transition-all duration-150',
         isActive
-          ? 'border-sky-300 shadow-md shadow-sky-100/60 dark:border-sky-700 dark:shadow-sky-950/40 ring-1 ring-sky-200 dark:ring-sky-800'
-          : 'border-border hover:border-sky-200 hover:shadow-sm dark:hover:border-sky-800',
+          ? 'border-primary/50 shadow-md shadow-primary/10 ring-1 ring-primary/20'
+          : 'border-border hover:border-primary/20 hover:shadow-sm',
       ].join(' ')}
     >
       {/* Active indicator */}
       {isActive && (
-        <div className="absolute -top-2.5 left-4 flex items-center gap-1 rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+        <div className="absolute -top-2.5 left-4 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">
           <Check className="size-2.5" />
           Active
         </div>
@@ -105,8 +105,8 @@ function HouseholdCard({
           <div className={[
             'flex size-10 shrink-0 items-center justify-center rounded-xl',
             isActive
-              ? 'bg-sky-500 text-white'
-              : 'bg-sky-50 text-sky-600 dark:bg-sky-950/30 dark:text-sky-400',
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-primary/10 text-primary',
           ].join(' ')}>
             <Building2 className="size-5" />
           </div>
@@ -130,7 +130,7 @@ function HouseholdCard({
       {/* Indicators */}
       <div className="mt-3 flex flex-wrap gap-1.5">
         {household.active_vacation_trip && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
             <Plane className="size-3" />
             Vacation active
           </span>
@@ -158,7 +158,7 @@ function HouseholdCard({
           <Button
             variant="outline"
             size="sm"
-            className="w-full gap-1.5 border-sky-200 text-sky-700 dark:border-sky-800 dark:text-sky-300"
+            className="w-full gap-1.5 border-primary/30 text-primary"
             onClick={onSwitch}
           >
             <Check className="size-3.5" />
@@ -168,7 +168,7 @@ function HouseholdCard({
           <Button
             variant="ghost"
             size="sm"
-            className="w-full gap-1.5 hover:bg-sky-50 hover:text-sky-700 dark:hover:bg-sky-950/30 dark:hover:text-sky-300"
+            className="w-full gap-1.5 hover:bg-primary/10 hover:text-primary"
             onClick={onSwitch}
           >
             Switch to this household
@@ -233,8 +233,8 @@ export function HouseholdsOverviewPage() {
         </div>
       ) : households.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-sky-50 dark:bg-sky-950/30">
-            <Building2 className="size-8 text-sky-400" />
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
+            <Building2 className="size-8 text-primary" />
           </div>
           <div>
             <p className="font-semibold text-foreground">No households yet</p>

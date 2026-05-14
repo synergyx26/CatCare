@@ -177,15 +177,15 @@ export function CatTaskCard({
           {/* Teeth */}
           {status.trackToothbrushing && (
             toothbrushingDue ? (
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-sky-50 dark:bg-sky-950/20 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-primary/5 px-3 py-2.5">
                 <div className="flex items-center gap-2">
-                  <ToothIcon className="size-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                  <ToothIcon className="size-4 text-primary shrink-0" />
                   <span className="text-sm font-medium">Tooth brushing</span>
                 </div>
                 <button
                   onClick={() => onLog(cat, 'tooth_brushing')}
                   aria-label={`Log tooth brushing for ${cat.name}`}
-                  className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-sky-100 hover:bg-sky-200 dark:bg-sky-900/50 dark:hover:bg-sky-900/70 text-sky-700 dark:text-sky-300 text-xs font-semibold transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors cursor-pointer"
                 >
                   Log
                 </button>

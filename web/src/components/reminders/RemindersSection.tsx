@@ -93,7 +93,7 @@ function ReminderFormBody({ form, control, isPending, onCancel, submitLabel, cat
               className={[
                 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ring-1',
                 field.value
-                  ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 ring-sky-300 dark:ring-sky-700'
+                  ? 'bg-primary/10 text-primary ring-primary/40'
                   : 'bg-muted text-muted-foreground ring-border/60 hover:bg-muted/80',
               ].join(' ')}
             >
@@ -123,7 +123,7 @@ function ReminderFormBody({ form, control, isPending, onCancel, submitLabel, cat
                     className={[
                       'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
                       field.value === cat.id
-                        ? 'bg-sky-600 text-white border-transparent'
+                        ? 'bg-primary text-primary-foreground border-transparent'
                         : 'text-muted-foreground border-border bg-background hover:bg-muted/50',
                     ].join(' ')}
                   >
@@ -175,7 +175,7 @@ function ReminderFormBody({ form, control, isPending, onCancel, submitLabel, cat
                 className={[
                   'flex items-center justify-center py-1.5 px-2 rounded-lg text-xs font-medium border transition-colors',
                   scheduleType === opt.value
-                    ? 'bg-sky-50 dark:bg-sky-950/30 border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-400'
+                    ? 'bg-primary/10 border-primary/40 text-primary'
                     : 'border-border text-muted-foreground hover:bg-muted/50',
                 ].join(' ')}
               >
@@ -212,7 +212,7 @@ function ReminderFormBody({ form, control, isPending, onCancel, submitLabel, cat
         <button
           type="submit"
           disabled={isPending}
-          className="px-3 py-1.5 text-xs font-medium bg-sky-600 hover:bg-sky-700 text-white rounded-lg disabled:opacity-50 transition-colors"
+          className="px-3 py-1.5 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg disabled:opacity-50 transition-colors"
         >
           {isPending ? 'Saving…' : submitLabel}
         </button>
@@ -447,7 +447,7 @@ export function RemindersSection({ householdId, catId, currentRole, cats }: Prop
                         {EVENT_LABELS[reminder.care_type] ?? reminder.care_type}
                       </p>
                       {reminder.all_cats && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 shrink-0">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary shrink-0">
                           All cats
                         </span>
                       )}

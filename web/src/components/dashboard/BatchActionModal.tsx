@@ -50,8 +50,8 @@ interface Props {
 const pillClass = (active: boolean) =>
   `px-3 py-1.5 rounded-full text-sm font-medium border transition-colors cursor-pointer ${
     active
-      ? 'bg-sky-500 text-white border-sky-500'
-      : 'border-border hover:bg-sky-50 dark:hover:bg-sky-950/20'
+      ? 'bg-primary text-primary-foreground border-primary'
+      : 'border-border hover:bg-primary/10'
   }`
 
 function detailsToState(d: Record<string, unknown>) {

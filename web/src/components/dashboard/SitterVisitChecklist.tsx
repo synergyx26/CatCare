@@ -104,7 +104,7 @@ export function SitterVisitChecklist({
               className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
                 choresDone
                   ? 'border-emerald-200 dark:border-emerald-800/20 bg-emerald-50/50 dark:bg-emerald-950/10'
-                  : 'border-sky-200 dark:border-sky-800/20 bg-sky-50/50 dark:bg-sky-950/10'
+                  : 'border-primary/20 bg-primary/5'
               }`}
             >
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-100 to-violet-100 dark:from-sky-900/30 dark:to-violet-900/30 text-base">
@@ -116,7 +116,7 @@ export function SitterVisitChecklist({
                 {choresDone ? (
                   <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">All done</p>
                 ) : (
-                  <p className="text-xs text-sky-700 dark:text-sky-400 mt-0.5">
+                  <p className="text-xs text-primary mt-0.5">
                     Needs: {pendingChores.map(d => {
                       const done = todayChores.filter(c => c.chore_definition_id === d.id).length
                       return d.frequency_per_day > 1 ? `${d.name} (${done}/${d.frequency_per_day})` : d.name
@@ -131,7 +131,7 @@ export function SitterVisitChecklist({
                     <button
                       key={def.id}
                       onClick={() => onLogChore(def.id)}
-                      className="flex items-center gap-1 h-7 px-2 rounded-lg bg-sky-100 hover:bg-sky-200 dark:bg-sky-900/40 dark:hover:bg-sky-900/60 text-sky-700 dark:text-sky-300 text-xs transition-colors"
+                      className="flex items-center gap-1 h-7 px-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs transition-colors"
                       title={`Log ${def.name}`}
                     >
                       {def.emoji && <span>{def.emoji}</span>}

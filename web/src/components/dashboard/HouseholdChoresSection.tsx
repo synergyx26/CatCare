@@ -100,7 +100,7 @@ function ChoreRow({
               )}
               <button
                 onClick={onLog}
-                className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-sky-100 hover:bg-sky-200 dark:bg-sky-900/50 dark:hover:bg-sky-900/70 text-sky-700 dark:text-sky-300 text-xs font-semibold transition-colors cursor-pointer active:scale-95"
+                className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors cursor-pointer active:scale-95"
               >
                 <CheckSquare className="size-3.5" />
                 Log

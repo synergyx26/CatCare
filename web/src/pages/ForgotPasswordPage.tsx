@@ -50,7 +50,7 @@ export function ForgotPasswordPage() {
             </div>
             <Link
               to="/login"
-              className="inline-flex items-center gap-2 text-sm text-sky-600 dark:text-sky-400 font-medium hover:underline"
+              className="inline-flex items-center gap-2 text-sm text-primary font-medium hover:underline"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to sign in
@@ -62,13 +62,13 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 via-white to-cyan-50 dark:from-sky-950/20 dark:via-background dark:to-cyan-950/20 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-background p-4">
       <div className="w-full max-w-md">
-        <div className="bg-card rounded-3xl shadow-xl shadow-sky-500/5 border border-border/50 p-8 space-y-6">
+        <div className="bg-card rounded-3xl shadow-xl shadow-primary/5 border border-border/50 p-8 space-y-6">
           {/* Icon */}
           <div className="flex justify-center">
-            <div className="w-20 h-20 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
-              <Cat className="w-10 h-10 text-sky-600 dark:text-sky-400" />
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+              <Cat className="w-10 h-10 text-primary" />
             </div>
           </div>
 
@@ -107,7 +107,7 @@ export function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="w-full h-11 rounded-xl bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-semibold text-sm transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+              className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 active:bg-primary/80 text-primary-foreground font-semibold text-sm transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
             >
               {mutation.isPending ? 'Sending...' : 'Send reset link'}
             </button>
@@ -117,7 +117,7 @@ export function ForgotPasswordPage() {
           <p className="text-center text-sm text-muted-foreground">
             <Link
               to="/login"
-              className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 font-medium hover:underline"
+              className="inline-flex items-center gap-1 text-primary font-medium hover:underline"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Back to sign in

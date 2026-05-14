@@ -145,9 +145,9 @@ export function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50/50 to-background dark:from-sky-950/10 dark:to-background">
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background dark:from-primary/[0.07] dark:to-background">
       {/* ── Sticky top navbar ───────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-sky-100 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-border dark:bg-background/90">
+      <header className="sticky top-0 z-40 border-b border-border bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:bg-background/90">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Left: logo + household name */}
           <div className="flex items-center gap-3">
@@ -177,7 +177,7 @@ export function AppLayout() {
                       </div>
                       <button
                         onClick={() => { navigate('/households'); setMobileOpen(false) }}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-sky-50 transition-colors text-sky-700 dark:text-sky-300 dark:hover:bg-sky-950/30"
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-primary/10 transition-colors text-primary"
                       >
                         <LayoutGrid className="size-4 shrink-0" />
                         All households
@@ -195,7 +195,7 @@ export function AppLayout() {
                             }}
                             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors w-full text-left ${
                               isActive
-                                ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300'
+                                ? 'bg-primary/10 text-primary'
                                 : 'hover:bg-muted text-foreground'
                             }`}
                           >
@@ -226,7 +226,7 @@ export function AppLayout() {
                     }}
                     aria-current={location.pathname === '/dashboard' ? 'page' : undefined}
                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors ${
-                      location.pathname === '/dashboard' ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300' : ''
+                      location.pathname === '/dashboard' ? 'bg-primary/10 text-primary' : ''
                     }`}
                   >
                     <Home className="size-4" aria-hidden="true" />
@@ -408,10 +408,10 @@ export function AppLayout() {
               to="/dashboard"
               className="flex items-center gap-2 font-semibold tracking-tight"
             >
-              <div className="flex size-7 items-center justify-center rounded-lg bg-sky-500 text-white">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <PawPrint className="size-4" />
               </div>
-              <span className="hidden sm:inline bg-gradient-to-r from-sky-600 to-cyan-600 bg-clip-text text-transparent dark:from-sky-400 dark:to-cyan-400">CatCare</span>
+              <span className="hidden sm:inline text-foreground font-semibold">CatCare</span>
             </Link>
 
             {/* Household switcher — desktop */}
@@ -426,7 +426,7 @@ export function AppLayout() {
                   <DropdownMenuContent align="start" sideOffset={8} className="min-w-56 max-w-72">
                     <DropdownMenuItem
                       onClick={() => navigate('/households')}
-                      className="gap-2 text-sky-700 dark:text-sky-300 font-medium"
+                      className="gap-2 text-primary font-medium"
                     >
                       <LayoutGrid className="size-4 shrink-0" />
                       All households
@@ -472,7 +472,7 @@ export function AppLayout() {
                 size="sm"
                 onClick={() => navigate('/dashboard')}
                 aria-current={location.pathname === '/dashboard' ? 'page' : undefined}
-                className={location.pathname === '/dashboard' ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300' : ''}
+                className={location.pathname === '/dashboard' ? 'bg-primary/10 text-primary' : ''}
               >
                 Dashboard
               </Button>
@@ -627,8 +627,8 @@ export function AppLayout() {
                             className={[
                               'flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors',
                               user.subscription_tier === t
-                                ? 'bg-sky-500 text-white cursor-default'
-                                : 'bg-muted text-muted-foreground hover:bg-sky-100 hover:text-sky-700 dark:hover:bg-sky-950/40 dark:hover:text-sky-300',
+                                ? 'bg-primary text-primary-foreground cursor-default'
+                                : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary',
                               tierSwitching ? 'opacity-50' : '',
                             ].join(' ')}
                           >

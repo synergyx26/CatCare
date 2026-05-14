@@ -80,7 +80,7 @@ function Toggle({
       onClick={() => !disabled && onChange(!checked)}
       className={[
         'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-        checked ? 'bg-sky-500' : 'bg-input',
+        checked ? 'bg-primary' : 'bg-input',
       ].join(' ')}
     >
       <span
@@ -267,7 +267,7 @@ function InAppTab() {
                   className={[
                     'flex-1 rounded-lg py-2 text-xs font-medium transition-colors ring-1',
                     duration === d.value
-                      ? 'bg-sky-500 text-white ring-sky-500'
+                      ? 'bg-primary text-primary-foreground ring-primary'
                       : 'bg-background text-muted-foreground ring-border hover:bg-muted',
                   ].join(' ')}
                 >

@@ -26,9 +26,9 @@ export function OnboardingStepper({ step }: Props) {
                 className={[
                   'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors',
                   done
-                    ? 'bg-sky-500 text-white'
+                    ? 'bg-primary text-primary-foreground'
                     : active
-                    ? 'bg-sky-100 dark:bg-sky-900/40 border-2 border-sky-500 text-sky-600 dark:text-sky-400'
+                    ? 'bg-primary/10 border-2 border-primary text-primary'
                     : 'bg-muted text-muted-foreground border-2 border-border',
                 ].join(' ')}
               >
@@ -37,7 +37,7 @@ export function OnboardingStepper({ step }: Props) {
               <span
                 className={[
                   'text-[11px] font-medium whitespace-nowrap',
-                  active ? 'text-sky-600 dark:text-sky-400' : 'text-muted-foreground',
+                  active ? 'text-primary' : 'text-muted-foreground',
                 ].join(' ')}
               >
                 {s.label}
@@ -49,7 +49,7 @@ export function OnboardingStepper({ step }: Props) {
               <div
                 className={[
                   'w-12 h-0.5 mx-1 mb-4 transition-colors',
-                  i < step ? 'bg-sky-500' : 'bg-border',
+                  i < step ? 'bg-primary' : 'bg-border',
                 ].join(' ')}
               />
             )}
