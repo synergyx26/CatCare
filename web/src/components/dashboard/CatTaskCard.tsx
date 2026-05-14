@@ -29,7 +29,7 @@ interface CatTaskCardProps {
   memberMap: Map<number, string>
   currentUserId: number
   requirements: CatCareRequirements | undefined
-  onLog: (cat: Cat, type?: EventType, opts?: { medicationName?: string }) => void
+  onLog: (cat: Cat, type?: EventType, opts?: { medicationName?: string; medicationDosage?: string; medicationUnit?: string }) => void
   careNotes?: CareNote[]
 }
 
@@ -202,32 +202,45 @@ export function CatTaskCard({
           )}
 
           {/* Pending medications */}
-          {dueMeds.map(med => (
-            <div
-              key={med.name}
-              className="flex items-center justify-between gap-3 rounded-xl bg-red-50 dark:bg-red-950/20 px-3 py-2.5"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <Pill className="size-4 text-red-500 shrink-0" />
-                <span className="text-sm font-medium truncate">
-                  {med.name}
-                  {med.dosesNeededToday > 1 && (
-                    <span className="text-xs text-red-600 dark:text-red-400 ml-1.5">
-                      ({med.dosesGivenToday}/{med.dosesNeededToday})
-                    </span>
-                  )}
-                </span>
-              </div>
-              <button
-                onClick={() => onLog(cat, 'medication', { medicationName: med.name })}
-                aria-label={`Log ${med.name} for ${cat.name}`}
-                className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/50 dark:hover:bg-red-900/70 text-red-700 dark:text-red-300 text-xs font-semibold transition-colors cursor-pointer shrink-0"
+          {dueMeds.map(med => {
+            const startEvt = allMedEvents
+              .filter(e => {
+                const d = e.details as Record<string, unknown>
+                return e.cat_id === cat.id && d.active_medication === true && d.medication_name === med.name && d.stopped !== true
+              })
+              .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())[0]
+            const medDosage = startEvt ? (startEvt.details as Record<string, unknown>).dosage as string | undefined : undefined
+            const medUnit   = startEvt ? (startEvt.details as Record<string, unknown>).unit   as string | undefined : undefined
+            return (
+              <div
+                key={med.name}
+                className="flex items-center justify-between gap-3 rounded-xl bg-red-50 dark:bg-red-950/20 px-3 py-2.5"
               >
-                <Pill className="size-3.5" />
-                Log
-              </button>
-            </div>
-          ))}
+                <div className="flex items-center gap-2 min-w-0">
+                  <Pill className="size-4 text-red-500 shrink-0" />
+                  <span className="text-sm font-medium truncate">
+                    {med.name}
+                    {medDosage && (
+                      <span className="text-xs text-muted-foreground ml-1.5">{medDosage}{medUnit ? ` ${medUnit}` : ''}</span>
+                    )}
+                    {med.dosesNeededToday > 1 && (
+                      <span className="text-xs text-red-600 dark:text-red-400 ml-1.5">
+                        ({med.dosesGivenToday}/{med.dosesNeededToday})
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <button
+                  onClick={() => onLog(cat, 'medication', { medicationName: med.name, medicationDosage: medDosage, medicationUnit: medUnit })}
+                  aria-label={`Log ${med.name} for ${cat.name}`}
+                  className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/50 dark:hover:bg-red-900/70 text-red-700 dark:text-red-300 text-xs font-semibold transition-colors cursor-pointer shrink-0"
+                >
+                  <Pill className="size-3.5" />
+                  Log
+                </button>
+              </div>
+            )
+          })}
 
           {/* Completed medications */}
           {doneMeds.map(med => (

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, CheckSquare } from 'lucide-react'
 import { api } from '@/api/client'
 import { formatTime } from '@/lib/helpers'
 import { notify } from '@/lib/notify'
@@ -98,9 +98,13 @@ function ChoreRow({
                   {doneCount}/{freq}
                 </span>
               )}
-              <Button size="sm" variant="ghost" className="rounded-xl h-7 px-3 text-xs" onClick={onLog}>
+              <button
+                onClick={onLog}
+                className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-sky-100 hover:bg-sky-200 dark:bg-sky-900/50 dark:hover:bg-sky-900/70 text-sky-700 dark:text-sky-300 text-xs font-semibold transition-colors cursor-pointer active:scale-95"
+              >
+                <CheckSquare className="size-3.5" />
                 Log
-              </Button>
+              </button>
             </>
           )}
         </div>

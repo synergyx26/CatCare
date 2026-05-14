@@ -60,6 +60,8 @@ export function DashboardPage() {
   const [editingEvent, setEditingEvent] = useState<CareEvent | null>(null)
   const [logInitType, setLogInitType] = useState<EventType | undefined>(undefined)
   const [logInitMedName, setLogInitMedName] = useState<string | undefined>(undefined)
+  const [logInitMedDosage, setLogInitMedDosage] = useState<string | undefined>(undefined)
+  const [logInitMedUnit, setLogInitMedUnit] = useState<string | undefined>(undefined)
   const [showArchived, setShowArchived] = useState(false)
 
   // Care log date navigation
@@ -341,11 +343,13 @@ export function DashboardPage() {
   })
 
   // ── Modal helpers ────────────────────────────────────────────
-  function openNewLog(cat: Cat, type?: EventType, opts?: { medicationName?: string }) {
+  function openNewLog(cat: Cat, type?: EventType, opts?: { medicationName?: string; medicationDosage?: string; medicationUnit?: string }) {
     setLogCat(cat)
     setEditingEvent(null)
     setLogInitType(type)
     setLogInitMedName(opts?.medicationName)
+    setLogInitMedDosage(opts?.medicationDosage)
+    setLogInitMedUnit(opts?.medicationUnit)
   }
 
   function openEdit(event: CareEvent) {
@@ -361,6 +365,8 @@ export function DashboardPage() {
     setEditingEvent(null)
     setLogInitType(undefined)
     setLogInitMedName(undefined)
+    setLogInitMedDosage(undefined)
+    setLogInitMedUnit(undefined)
   }
 
   usePageTitle(primaryHousehold?.name ?? 'Dashboard')
@@ -399,6 +405,8 @@ export function DashboardPage() {
             initialEvent={editingEvent ?? undefined}
             initialType={logInitType}
             initialMedicationName={logInitMedName}
+            initialMedicationDosage={logInitMedDosage}
+            initialMedicationUnit={logInitMedUnit}
             onClose={closeModal}
           />
         )}
@@ -795,6 +803,8 @@ export function DashboardPage() {
           initialEvent={editingEvent ?? undefined}
           initialType={logInitType}
           initialMedicationName={logInitMedName}
+          initialMedicationDosage={logInitMedDosage}
+          initialMedicationUnit={logInitMedUnit}
           onClose={closeModal}
         />
       )}

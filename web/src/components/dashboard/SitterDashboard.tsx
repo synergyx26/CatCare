@@ -30,7 +30,7 @@ interface SitterDashboardProps {
   catRequirements: Map<number, CatCareRequirements>
   vacationCtx?: VacationContext
   activeTrip: VacationTrip | null
-  onLog: (cat: Cat, type?: EventType, opts?: { medicationName?: string }) => void
+  onLog: (cat: Cat, type?: EventType, opts?: { medicationName?: string; medicationDosage?: string; medicationUnit?: string }) => void
   onLogChore: (definitionId: number) => void
   // Care log section
   selectedDateEvents: CareEvent[]

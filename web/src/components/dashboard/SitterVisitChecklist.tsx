@@ -10,7 +10,7 @@ interface SitterVisitChecklistProps {
   vacationCtx: VacationContext
   memberMap: Map<number, string>
   currentUserId: number
-  onLog: (cat: Cat, type?: EventType, opts?: { medicationName?: string }) => void
+  onLog: (cat: Cat, type?: EventType, opts?: { medicationName?: string; medicationDosage?: string; medicationUnit?: string }) => void
   requirements: Map<number, CatCareRequirements>
   // Household-level chores
   householdChores: HouseholdChore[]
@@ -202,16 +202,26 @@ export function SitterVisitChecklist({
                       <UtensilsCrossed className="size-3.5" />
                     </button>
                   )}
-                  {dueMeds.map(med => (
-                    <button
-                      key={med.name}
-                      onClick={() => onLog(cat, 'medication', { medicationName: med.name })}
-                      className="flex size-7 items-center justify-center rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 transition-colors"
-                      title={`Log ${med.name}`}
-                    >
-                      <Pill className="size-3.5" />
-                    </button>
-                  ))}
+                  {dueMeds.map(med => {
+                    const startEvt = allMedEvents
+                      .filter(e => {
+                        const d = e.details as Record<string, unknown>
+                        return e.cat_id === cat.id && d.active_medication === true && d.medication_name === med.name && d.stopped !== true
+                      })
+                      .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())[0]
+                    const medDosage = startEvt ? (startEvt.details as Record<string, unknown>).dosage as string | undefined : undefined
+                    const medUnit   = startEvt ? (startEvt.details as Record<string, unknown>).unit   as string | undefined : undefined
+                    return (
+                      <button
+                        key={med.name}
+                        onClick={() => onLog(cat, 'medication', { medicationName: med.name, medicationDosage: medDosage, medicationUnit: medUnit })}
+                        className="flex size-7 items-center justify-center rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 transition-colors"
+                        title={`Log ${med.name}${medDosage ? ` · ${medDosage}${medUnit ? ` ${medUnit}` : ''}` : ''}`}
+                      >
+                        <Pill className="size-3.5" />
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>

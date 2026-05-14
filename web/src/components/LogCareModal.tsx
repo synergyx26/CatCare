@@ -111,13 +111,15 @@ interface Props {
   initialType?:           EventType
   initialDate?:           string    // ISO date "YYYY-MM-DD"; pre-fills occurred_at to noon on that date
   initialMedicationName?: string
+  initialMedicationDosage?: string
+  initialMedicationUnit?: string
   activeMedication?:      boolean
   onClose:                () => void
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function LogCareModal({ cat, householdId, initialEvent, initialType, initialDate, initialMedicationName, activeMedication, onClose }: Props) {
+export function LogCareModal({ cat, householdId, initialEvent, initialType, initialDate, initialMedicationName, initialMedicationDosage, initialMedicationUnit, activeMedication, onClose }: Props) {
   const queryClient = useQueryClient()
   const tier = useEffectiveTier()
   const isEditing   = !!initialEvent
@@ -140,8 +142,8 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   const initAmountIsPreset = initAmountGrams != null && catPresets[initFoodType].includes(initAmountGrams)
 
   const initMedicationName = (initDetails.medication_name as string) || initialMedicationName || ''
-  const initMedicationDosage = (initDetails.dosage as string) ?? ''
-  const initMedicationUnit = (initDetails.unit as MedicationUnit) ?? 'mg'
+  const initMedicationDosage = (initDetails.dosage as string) || initialMedicationDosage || ''
+  const initMedicationUnit = (initDetails.unit as MedicationUnit) || (initialMedicationUnit as MedicationUnit) || 'mg'
   const initIsStartMedication = activeMedication === true || initDetails.active_medication === true
   const initMedicationFrequency = (initDetails.frequency as MedicationFrequency) ?? 'once_daily'
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_18_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_26_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -48,7 +48,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_000001) do
     t.jsonb "details", default: {}
     t.integer "event_type", default: 0, null: false
     t.bigint "household_id", null: false
-    t.integer "logged_by_id", null: false
+    t.integer "logged_by_id"
     t.text "notes"
     t.datetime "occurred_at", null: false
     t.datetime "updated_at", null: false
@@ -64,7 +64,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_000001) do
     t.bigint "cat_id"
     t.integer "category", default: 0, null: false
     t.datetime "created_at", null: false
-    t.integer "created_by_id", null: false
+    t.integer "created_by_id"
     t.bigint "household_id", null: false
     t.integer "position", default: 0, null: false
     t.string "title", null: false
@@ -81,7 +81,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_000001) do
     t.string "breed"
     t.text "care_instructions"
     t.datetime "created_at", null: false
-    t.integer "created_by_id", null: false
+    t.integer "created_by_id"
     t.boolean "deceased", default: false, null: false
     t.jsonb "feeding_presets", default: {"dry" => [80, 90, 100], "wet" => [50, 60, 70, 80], "other" => [], "treats" => []}, null: false
     t.integer "feedings_per_day", default: 1, null: false
@@ -136,7 +136,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_000001) do
     t.bigint "chore_definition_id", null: false
     t.datetime "created_at", null: false
     t.bigint "household_id", null: false
-    t.integer "logged_by_id", null: false
+    t.integer "logged_by_id"
     t.text "notes"
     t.datetime "occurred_at", null: false
     t.datetime "updated_at", null: false
@@ -198,7 +198,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_000001) do
     t.bigint "cat_id"
     t.integer "category", default: 0, null: false
     t.datetime "created_at", null: false
-    t.bigint "created_by_id", null: false
+    t.bigint "created_by_id"
     t.bigint "household_id", null: false
     t.boolean "is_recurring", default: false, null: false
     t.text "notes"
@@ -252,7 +252,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_000001) do
     t.datetime "created_at", null: false
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
+    t.integer "failed_attempts", default: 0, null: false
     t.string "jti", default: "", null: false
+    t.datetime "locked_at"
     t.string "name", default: "", null: false
     t.jsonb "notification_preferences", default: {"push" => {"enabled" => false, "care_reminders" => true, "vet_appointments" => true, "medication_alerts" => true}, "email" => {"enabled" => true, "care_reminders" => true, "vet_appointments" => true, "medication_alerts" => true}, "in_app" => {"enabled" => true, "duration" => 4000, "position" => "top-right", "error_toasts" => true, "success_toasts" => true, "tier_limit_toasts" => true}}, null: false
     t.string "provider"
@@ -261,17 +263,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_000001) do
     t.string "reset_password_token"
     t.string "subscription_tier", default: "free", null: false
     t.string "uid"
+    t.string "unlock_token"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["jti"], name: "index_users_on_jti", unique: true
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
   end
 
   create_table "vacation_trips", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
-    t.bigint "created_by_id", null: false
+    t.bigint "created_by_id"
     t.date "end_date"
     t.bigint "household_id", null: false
     t.text "notes"
