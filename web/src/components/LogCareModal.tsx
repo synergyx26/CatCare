@@ -382,8 +382,8 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   const pillClass = (active: boolean) =>
     `px-3 py-1.5 rounded-full text-sm font-medium border transition-colors cursor-pointer ${
       active
-        ? 'bg-sky-500 text-white border-sky-500'
-        : 'border-border hover:bg-sky-50 dark:hover:bg-sky-950/20'
+        ? 'bg-primary text-primary-foreground border-primary'
+        : 'border-border hover:bg-primary/10'
     }`
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -400,7 +400,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
         <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
 
         {/* Sheet */}
-        <div className="relative z-10 w-full sm:max-w-sm bg-background rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-xl shadow-sky-500/5 max-h-[90vh] overflow-y-auto">
+        <div className="relative z-10 w-full sm:max-w-2xl bg-background rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-xl shadow-primary/5 max-h-[90dvh] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto">
 
           {/* Header */}
           <div className="flex items-center justify-between">
