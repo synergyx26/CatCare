@@ -18,14 +18,20 @@ Rails.application.configure do
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
-  # Supabase Storage via S3-compatible adapter. See config/storage.yml for env vars.
-  config.active_storage.service = :supabase
+  # Storage backend. Defaults to local disk; set ACTIVE_STORAGE_SERVICE=supabase
+  # (plus the SUPABASE_S3_* vars in config/storage.yml) for deployments that
+  # actually front Supabase Storage. Render's env should set this explicitly
+  # once it does.
+  config.active_storage.service = ENV.fetch("ACTIVE_STORAGE_SERVICE", "local").to_sym
 
-  # Assume all access to the app is happening through a SSL-terminating reverse proxy.
-  config.assume_ssl = true
-
-  # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  config.force_ssl = true
+  # Assume all access to the app is happening through a SSL-terminating reverse
+  # proxy, and force all access over SSL. True by default (Render's setup);
+  # set FORCE_SSL=false for deployments with no TLS termination in front,
+  # e.g. a plain-HTTP LAN deployment — force_ssl would otherwise redirect-loop
+  # and refuse to send session cookies at all.
+  force_ssl = ENV.fetch("FORCE_SSL", "true") == "true"
+  config.assume_ssl = force_ssl
+  config.force_ssl = force_ssl
 
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }

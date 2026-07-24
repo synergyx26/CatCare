@@ -50,6 +50,28 @@ module Api
           render json: { data: serialize_user(user) }
         end
 
+        # POST /api/v1/admin/users/:id/reset_password
+        #
+        # Self-hosted instances can't rely on outbound email for Devise's
+        # :recoverable flow (Resend's shared sender only delivers to the
+        # Resend account owner — see CLAUDE.md). This lets the super admin
+        # set a user's password directly instead. base58 avoids visually
+        # ambiguous characters (0/O, 1/l/I) when relaying the password to
+        # the user by hand.
+        def reset_password
+          user = User.find(params[:id])
+          new_password = params[:password].presence || SecureRandom.base58(16)
+
+          user.password = new_password
+          user.password_confirmation = new_password
+          user.save!
+
+          render json: { data: { id: user.id, email: user.email, password: new_password } }
+        rescue ActiveRecord::RecordInvalid => e
+          render json: { error: "INVALID_PASSWORD", message: e.record.errors.full_messages.join(", ") },
+                        status: :unprocessable_entity
+        end
+
         private
 
         def serialize_user(user)

@@ -391,6 +391,9 @@ export const api = {
   adminUpdateUserTier: (userId: number, tier: string) =>
     apiClient.patch(`/admin/users/${userId}`, { subscription_tier: tier }),
 
+  adminResetUserPassword: (userId: number, password?: string) =>
+    apiClient.post(`/admin/users/${userId}/reset_password`, password ? { password } : {}),
+
   adminImportCareEvents: (events: ImportCareEventRow[]) =>
     apiClient.post('/admin/imports/care_events', { events }, { timeout: 120_000 }),
 

@@ -35,10 +35,10 @@ export default defineConfig({
       'Content-Security-Policy':
         "default-src 'none'; " +
         "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; " +
-        "style-src 'self' 'unsafe-inline'; " +
-        "img-src 'self' https: blob: data:; " +
+        "style-src 'self' 'unsafe-inline' https://accounts.google.com; " +
+        "img-src 'self' https: http://192.168.20.19.nip.io:8085 blob: data:; " +
         "font-src 'self' data:; " +
-        "connect-src 'self' http://localhost:3000 https://catcare-v52y.onrender.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://accounts.google.com ws: wss:; " +
+        "connect-src 'self' http://localhost:3000 https://catcare-v52y.onrender.com http://192.168.20.19.nip.io:8085 http://192.168.20.20:3000 https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://accounts.google.com ws: wss:; " +
         "frame-src https://accounts.google.com; " +
         "frame-ancestors 'none'; " +
         "form-action 'self'; " +

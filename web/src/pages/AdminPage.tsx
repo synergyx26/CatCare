@@ -6,12 +6,25 @@ import type { AdminUser, AdminStats, SubscriptionTier } from '@/types/api'
 import { useNavigate } from 'react-router-dom'
 import {
   Users, Home, Cat as CatIcon, ClipboardList,
-  Search, ChevronLeft, ChevronRight, Shield, ArrowLeft,
+  Search, ChevronLeft, ChevronRight, Shield, ArrowLeft, Copy, KeyRound,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog'
+
+// base58 alphabet (no 0/O/1/l/I) — avoids visually ambiguous characters when
+// an admin relays a generated password to someone else by hand.
+const PASSWORD_CHARS = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+
+function generatePassword(length = 16): string {
+  const bytes = new Uint32Array(length)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => PASSWORD_CHARS[b % PASSWORD_CHARS.length]).join('')
+}
 
 // ── Tier config ───────────────────────────────────────────────────────────────
 
@@ -74,6 +87,11 @@ export function AdminPage() {
   const [editingId, setEditing] = useState<number | null>(null)
   const [editTier, setEditTier] = useState<SubscriptionTier>('free')
 
+  // Password reset dialog
+  const [resetUser, setResetUser]     = useState<AdminUser | null>(null)
+  const [resetInput, setResetInput]   = useState('')
+  const [resetResult, setResetResult] = useState<string | null>(null)
+
   // Queries
   const { data: statsData } = useQuery({
     queryKey: ['admin_stats'],
@@ -106,6 +124,34 @@ export function AdminPage() {
   function openEdit(user: AdminUser) {
     setEditing(user.id)
     setEditTier(user.subscription_tier)
+  }
+
+  // Password reset mutation
+  const resetPassword = useMutation({
+    mutationFn: ({ userId, password }: { userId: number; password?: string }) =>
+      api.adminResetUserPassword(userId, password),
+    onSuccess: (res) => {
+      setResetResult(res.data.data.password as string)
+    },
+    onError: () => toast.error('Failed to reset password'),
+  })
+
+  function openReset(user: AdminUser) {
+    setResetUser(user)
+    setResetInput('')
+    setResetResult(null)
+  }
+
+  function closeReset() {
+    setResetUser(null)
+    setResetInput('')
+    setResetResult(null)
+  }
+
+  function copyResetResult() {
+    if (!resetResult) return
+    navigator.clipboard.writeText(resetResult)
+    toast.success('Copied to clipboard')
   }
 
   function handleSearchChange(val: string) {
@@ -268,12 +314,20 @@ export function AdminPage() {
                         {user.provider ?? 'email'} ·{' '}
                         {new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
                       </p>
-                      <button
-                        onClick={() => openEdit(user)}
-                        className="text-xs text-sky-500 hover:text-sky-600 font-medium"
-                      >
-                        Change tier
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => openReset(user)}
+                          className="text-xs text-violet-500 hover:text-violet-600 font-medium"
+                        >
+                          Reset password
+                        </button>
+                        <button
+                          onClick={() => openEdit(user)}
+                          className="text-xs text-sky-500 hover:text-sky-600 font-medium"
+                        >
+                          Change tier
+                        </button>
+                      </div>
                     </div>
                     {editingId === user.id && (
                       <div className="flex items-center gap-2 pt-1">
@@ -373,14 +427,22 @@ export function AdminPage() {
                           })}
                         </td>
                         <td className="px-4 py-2.5 text-right">
-                          {editingId !== user.id && (
+                          <div className="flex items-center justify-end gap-3">
                             <button
-                              onClick={() => openEdit(user)}
-                              className="text-xs text-sky-500 hover:text-sky-600 font-medium transition-colors"
+                              onClick={() => openReset(user)}
+                              className="text-xs text-violet-500 hover:text-violet-600 font-medium transition-colors"
                             >
-                              Edit tier
+                              Reset password
                             </button>
-                          )}
+                            {editingId !== user.id && (
+                              <button
+                                onClick={() => openEdit(user)}
+                                className="text-xs text-sky-500 hover:text-sky-600 font-medium transition-colors"
+                              >
+                                Edit tier
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -413,6 +475,88 @@ export function AdminPage() {
           )}
         </div>
       </div>
+
+      {/* ── Reset password dialog ── */}
+      <Dialog open={!!resetUser} onOpenChange={(open) => { if (!open) closeReset() }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="size-4 text-violet-500" />
+              Reset password
+            </DialogTitle>
+            <DialogDescription>
+              {resetUser && `For ${resetUser.name} (${resetUser.email}). `}
+              This is a local account — self-hosted instances can't reliably send
+              reset emails, so set a new password directly instead.
+            </DialogDescription>
+          </DialogHeader>
+
+          {resetResult ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                New password — copy it now, it won't be shown again:
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 min-w-0 rounded-md border bg-muted px-3 py-2 text-sm font-mono break-all">
+                  {resetResult}
+                </code>
+                <button
+                  onClick={copyResetResult}
+                  className="shrink-0 flex size-9 items-center justify-center rounded-md border hover:bg-muted transition-colors"
+                  aria-label="Copy password"
+                >
+                  <Copy className="size-4" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  value={resetInput}
+                  onChange={(e) => setResetInput(e.target.value)}
+                  placeholder="Leave blank to auto-generate"
+                  className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setResetInput(generatePassword())}
+                  className="shrink-0 h-9 px-3 rounded-md border text-xs font-medium hover:bg-muted transition-colors"
+                >
+                  Generate
+                </button>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {resetResult ? (
+              <button
+                onClick={closeReset}
+                className="h-9 px-4 rounded-md bg-sky-500 text-white text-sm font-medium hover:bg-sky-600 transition-colors"
+              >
+                Done
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={closeReset}
+                  className="h-9 px-4 rounded-md border text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => resetUser && resetPassword.mutate({ userId: resetUser.id, password: resetInput || undefined })}
+                  disabled={resetPassword.isPending}
+                  className="h-9 px-4 rounded-md bg-violet-500 text-white text-sm font-medium hover:bg-violet-600 disabled:opacity-50 transition-colors"
+                >
+                  {resetPassword.isPending ? 'Resetting…' : 'Reset password'}
+                </button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

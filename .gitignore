@@ -16,3 +16,11 @@ Thumbs.db
 
 # Unrelated nested directory (separate project, not part of CatCare)
 catcare/
+
+# Frontend env — deployment-specific (LAN IP for self-hosted, regenerated
+# fresh by scripts/deploy-catcare.sh each deploy); never a fixed committed value
+web/.env.production
+
+# Personal credentials/migration scratch notes — never commit, contains live
+# plaintext DB passwords, JWT secrets, and API keys
+CatCare Migration.txt
