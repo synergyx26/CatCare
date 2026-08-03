@@ -90,10 +90,12 @@ export function ExpenseModal({ expense, householdId, cats, onClose, currency }: 
   }
 
   const saveMutation = useMutation({
-    mutationFn: () =>
-      isEditing
-        ? api.updateExpense(householdId, expense!.id, { pet_expense: buildPayload() })
-        : api.createExpense(householdId, { pet_expense: buildPayload() as Parameters<typeof api.createExpense>[1]['pet_expense'] }),
+    mutationFn: () => {
+      const pet_expense = buildPayload()
+      return isEditing
+        ? api.updateExpense(householdId, expense!.id, { pet_expense })
+        : api.createExpense(householdId, { pet_expense })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses', householdId] })
       queryClient.invalidateQueries({ queryKey: ['expense_stats', householdId] })

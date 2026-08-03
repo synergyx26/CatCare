@@ -423,7 +423,7 @@ export const api = {
   updateExpense: (
     householdId: number,
     expenseId: number,
-    data: { pet_expense: Partial<Omit<PetExpense, 'id' | 'household_id' | 'created_by_id' | 'total_cost' | 'created_at'>> }
+    data: { pet_expense: Omit<PetExpense, 'id' | 'household_id' | 'created_by_id' | 'total_cost' | 'created_at'> }
   ) =>
     apiClient.patch(`/households/${householdId}/expenses/${expenseId}`, data),
 
