@@ -62,9 +62,15 @@ RUN chmod +x bin/* && \
 # Final stage for app image
 FROM base
 
-# Run and own only the runtime files as a non-root user for security
+# Run and own only the runtime files as a non-root user for security.
+# chown /rails itself (not just its contents) — WORKDIR created it as root
+# in the base stage, and COPY --chown below only sets ownership on the
+# files/dirs it creates, not on this already-existing parent directory.
+# Without this, the rails user can never create new top-level dirs here
+# (e.g. storage/ on first Active Storage write) and gets EACCES.
 RUN groupadd --system --gid 1000 rails && \
-    useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash
+    useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
+    chown rails:rails /rails
 USER 1000:1000
 
 # Copy built artifacts: gems, application
