@@ -294,7 +294,7 @@ MAILER_SENDER=noreply@yourdomain.com
 GOOGLE_CLIENT_ID=<from-render>
 
 # Admin — comma-separated, any listed email gets super admin on login
-SUPER_ADMIN_EMAILS=mjshaw90@gmail.com
+SUPER_ADMIN_EMAIL=mjshaw90@gmail.com
 
 # Disable Sentry on self-hosted (optional)
 SENTRY_DSN=
@@ -486,7 +486,7 @@ docker compose up -d --force-recreate api sidekiq   # restart after image update
 | `RESEND_API_KEY` | Copy from Render (unchanged) |
 | `MAILER_SENDER` | Copy from Render |
 | `GOOGLE_CLIENT_ID` | Copy from Render (unchanged) |
-| `SUPER_ADMIN_EMAILS` | `mjshaw90@gmail.com` (comma-separated for multiple) |
+| `SUPER_ADMIN_EMAIL` | `mjshaw90@gmail.com` (comma-separated for multiple) |
 
 ### Frontend (`.env.production` — baked into build)
 

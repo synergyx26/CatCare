@@ -45,9 +45,10 @@ class User < ApplicationRecord
   validates :subscription_tier, inclusion: { in: SUBSCRIPTION_TIERS }
   validate :notification_preferences_shape
 
-  # SUPER_ADMIN_EMAILS is a comma-separated list — env-controlled, no DB flag.
+  # SUPER_ADMIN_EMAIL supports a comma-separated list (still a single email
+  # works unchanged) — env-controlled, no DB flag.
   def self.super_admin_emails
-    ENV["SUPER_ADMIN_EMAILS"].to_s.split(",").map { |e| e.strip.downcase }.reject(&:empty?)
+    ENV["SUPER_ADMIN_EMAIL"].to_s.split(",").map { |e| e.strip.downcase }.reject(&:empty?)
   end
 
   def self.super_admin_email?(email)

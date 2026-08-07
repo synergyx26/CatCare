@@ -13,10 +13,10 @@ RSpec.describe User, type: :model do
 
   describe ".super_admin_email?" do
     around do |example|
-      original = ENV["SUPER_ADMIN_EMAILS"]
-      ENV["SUPER_ADMIN_EMAILS"] = "admin@example.com, Second.Admin@Example.com"
+      original = ENV["SUPER_ADMIN_EMAIL"]
+      ENV["SUPER_ADMIN_EMAIL"] = "admin@example.com, Second.Admin@Example.com"
       example.run
-      ENV["SUPER_ADMIN_EMAILS"] = original
+      ENV["SUPER_ADMIN_EMAIL"] = original
     end
 
     it "matches any email in the comma-separated list, case-insensitively" do
