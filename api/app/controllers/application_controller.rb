@@ -14,7 +14,6 @@ class ApplicationController < ActionController::API
   private
 
   def super_admin?
-    admin_email = ENV["SUPER_ADMIN_EMAIL"].to_s.strip
-    admin_email.present? && current_user.email.casecmp?(admin_email)
+    User.super_admin_email?(current_user.email)
   end
 end

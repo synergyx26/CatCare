@@ -293,8 +293,8 @@ MAILER_SENDER=noreply@yourdomain.com
 # OAuth
 GOOGLE_CLIENT_ID=<from-render>
 
-# Admin
-SUPER_ADMIN_EMAIL=mjshaw90@gmail.com
+# Admin — comma-separated, any listed email gets super admin on login
+SUPER_ADMIN_EMAILS=mjshaw90@gmail.com
 
 # Disable Sentry on self-hosted (optional)
 SENTRY_DSN=
@@ -486,7 +486,7 @@ docker compose up -d --force-recreate api sidekiq   # restart after image update
 | `RESEND_API_KEY` | Copy from Render (unchanged) |
 | `MAILER_SENDER` | Copy from Render |
 | `GOOGLE_CLIENT_ID` | Copy from Render (unchanged) |
-| `SUPER_ADMIN_EMAIL` | `mjshaw90@gmail.com` |
+| `SUPER_ADMIN_EMAILS` | `mjshaw90@gmail.com` (comma-separated for multiple) |
 
 ### Frontend (`.env.production` — baked into build)
 
@@ -662,3 +662,20 @@ Create the backups directory first: `mkdir -p ~/catcare/backups`
 gunzip -c ~/catcare/backups/db_20260605.sql.gz | \
   psql "postgresql://postgres:<POSTGRES_PASSWORD>@192.168.1.100:5432/postgres"
 ```
+
+### Syncing Supabase Cloud data into the Proxmox LXC path
+
+For the `proxmox-homelab` deployment specifically (see the note at the
+top of this file), a local `db-pull.sh` script at this repo's root
+automates the Phase 2 pg_dump/restore end-to-end: streams a dump
+straight from Supabase Cloud into the LXC's `postgres` container over
+SSH (no dump file ever touches disk on either end), reads the Supabase
+connection string from macOS Keychain rather than a file, and keeps
+`pg_dump`'s version matched to the target server to avoid the
+cross-version `SET` command failures Phase 2 warns about. It's
+intentionally **not** committed to this repo (gitignored) since it
+hardcodes real LXC infrastructure details (IP, SSH user, key path,
+container names) and this repo is public — see the script's own header
+comments for usage, or `proxmox-homelab/README.md`'s CatCare section
+for the fuller picture (Postgres version-matching, multi-admin support,
+Google OAuth via nip.io, adding local users).

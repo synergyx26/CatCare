@@ -45,6 +45,15 @@ class User < ApplicationRecord
   validates :subscription_tier, inclusion: { in: SUBSCRIPTION_TIERS }
   validate :notification_preferences_shape
 
+  # SUPER_ADMIN_EMAILS is a comma-separated list — env-controlled, no DB flag.
+  def self.super_admin_emails
+    ENV["SUPER_ADMIN_EMAILS"].to_s.split(",").map { |e| e.strip.downcase }.reject(&:empty?)
+  end
+
+  def self.super_admin_email?(email)
+    email.present? && super_admin_emails.include?(email.to_s.strip.downcase)
+  end
+
   def oauth_user?
     provider.present?
   end

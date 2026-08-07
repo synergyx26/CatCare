@@ -75,11 +75,6 @@ module Api
         @household = current_household
       end
 
-      def super_admin?
-        email = ENV["SUPER_ADMIN_EMAIL"].to_s.strip
-        email.present? && current_user.email == email
-      end
-
       def schedule_changed?(attrs)
         (attrs.keys & %w[schedule_type schedule_value]).any?
       end
