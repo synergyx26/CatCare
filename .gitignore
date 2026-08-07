@@ -24,3 +24,7 @@ web/.env.production
 # Personal credentials/migration scratch notes — never commit, contains live
 # plaintext DB passwords, JWT secrets, and API keys
 CatCare Migration.txt
+
+# Local-only ops script — references real Proxmox LXC IP/SSH user/key path/
+# container names; repo is public, keep this off GitHub
+db-pull.sh
