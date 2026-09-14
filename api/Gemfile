@@ -8,6 +8,12 @@ gem "puma", "~> 7.0"
 gem "base64"
 gem "ostruct"
 
+# Pinned >= 2.21.2 to clear CVE-2026-71847 (bundler-audit). Capped below 3.0:
+# json 3.x broke User#notification_preferences_shape (ArgumentError from the
+# JSONB attribute reader) — a real behavioral break, not just a version bump,
+# so stay on the 2.x line until that's investigated separately.
+gem "json", ">= 2.21.2", "< 3"
+
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
