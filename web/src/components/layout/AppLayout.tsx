@@ -384,7 +384,7 @@ export function AppLayout() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{user?.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+                      {user?.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
                     </div>
                   </div>
                   <Button
@@ -607,7 +607,7 @@ export function AppLayout() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  {user?.email && <p className="text-xs text-muted-foreground">{user.email}</p>}
                 </div>
                 <DropdownMenuSeparator />
                 {user?.is_super_admin && (

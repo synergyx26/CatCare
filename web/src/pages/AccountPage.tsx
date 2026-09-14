@@ -220,7 +220,7 @@ export function AccountPage() {
           </div>
           <div className="min-w-0">
             <p className="font-semibold text-sm truncate">{user?.name}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            {user?.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
           </div>
           {isOAuth && (
             <span className="ml-auto shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">

@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { AxiosError } from 'axios'
 import { api } from '@/api/client'
 import { usePageTitle } from '@/hooks/usePageTitle'
-import type { AdminUser, AdminStats, SubscriptionTier } from '@/types/api'
+import type { AdminUser, AdminHousehold, AdminStats, SubscriptionTier, MemberRole, ApiError } from '@/types/api'
 import { useNavigate } from 'react-router-dom'
 import {
   Users, Home, Cat as CatIcon, ClipboardList,
-  Search, ChevronLeft, ChevronRight, Shield, ArrowLeft, Copy, KeyRound,
+  Search, ChevronLeft, ChevronRight, Shield, ArrowLeft, Copy, KeyRound, Trash2, UserPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -15,6 +16,16 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 // base58 alphabet (no 0/O/1/l/I) — avoids visually ambiguous characters when
 // an admin relays a generated password to someone else by hand.
@@ -26,6 +37,12 @@ function generatePassword(length = 16): string {
   return Array.from(bytes, (b) => PASSWORD_CHARS[b % PASSWORD_CHARS.length]).join('')
 }
 
+// Same flag LoginPage/RegisterPage use — true only on a deployment that has
+// opted into name+password accounts (see api's User.local_accounts_enabled?).
+// Drives whether email is optional here too, so this form behaves
+// identically to self-service registration on every deployment.
+const isLocalAccounts = import.meta.env.VITE_LOCAL_ACCOUNTS_ENABLED === 'true'
+
 // ── Tier config ───────────────────────────────────────────────────────────────
 
 const TIER_COLORS: Record<SubscriptionTier, string> = {
@@ -35,6 +52,7 @@ const TIER_COLORS: Record<SubscriptionTier, string> = {
 }
 
 const TIER_OPTIONS: SubscriptionTier[] = ['free', 'pro', 'premium']
+const ROLE_OPTIONS: MemberRole[] = ['member', 'admin', 'sitter']
 
 // ── Small components ──────────────────────────────────────────────────────────
 
@@ -92,6 +110,20 @@ export function AdminPage() {
   const [resetInput, setResetInput]   = useState('')
   const [resetResult, setResetResult] = useState<string | null>(null)
 
+  // Delete user dialog
+  const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null)
+
+  // Currently selected household (for "create user" below)
+  const [selectedHouseholdId, setSelectedHouseholdId] = useState<number | null>(null)
+
+  // Create user dialog
+  const [createOpen, setCreateOpen]         = useState(false)
+  const [createName, setCreateName]         = useState('')
+  const [createEmail, setCreateEmail]       = useState('')
+  const [createRole, setCreateRole]         = useState<MemberRole>('member')
+  const [createPassword, setCreatePassword] = useState('')
+  const [createResult, setCreateResult]     = useState<{ name: string; password: string } | null>(null)
+
   // Queries
   const { data: statsData } = useQuery({
     queryKey: ['admin_stats'],
@@ -107,6 +139,21 @@ export function AdminPage() {
   })
   const users: AdminUser[]  = usersData?.data?.data ?? []
   const meta                = usersData?.data?.meta ?? { total: 0, pages: 1 }
+
+  const { data: householdsData } = useQuery({
+    queryKey: ['admin_households'],
+    queryFn:  () => api.adminHouseholds(),
+    staleTime: 5 * 60_000,
+  })
+  const households: AdminHousehold[] = householdsData?.data?.data ?? []
+
+  // Default the household picker to the first household once loaded — the
+  // "currently selected household" create-user attaches to.
+  useEffect(() => {
+    if (selectedHouseholdId === null && households.length > 0) {
+      setSelectedHouseholdId(households[0].id)
+    }
+  }, [households, selectedHouseholdId])
 
   // Tier update mutation
   const updateTier = useMutation({
@@ -148,11 +195,68 @@ export function AdminPage() {
     setResetResult(null)
   }
 
+  // Delete user mutation
+  const deleteUser = useMutation({
+    mutationFn: (userId: number) => api.adminDeleteUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin_users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin_stats'] })
+      setDeletingUser(null)
+      toast.success('User deleted')
+    },
+    onError: (err) => {
+      const message = (err as AxiosError<ApiError>).response?.data?.message
+        ?? 'Failed to delete user.'
+      toast.error(message)
+    },
+  })
+
   function copyResetResult() {
     if (!resetResult) return
     navigator.clipboard.writeText(resetResult)
     toast.success('Copied to clipboard')
   }
+
+  // Create user mutation
+  const createUser = useMutation({
+    mutationFn: (data: { name: string; email?: string; password?: string; role: string; household_id: number }) =>
+      api.adminCreateUser(data),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['admin_users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin_stats'] })
+      setCreateResult({ name: res.data.data.name, password: res.data.data.password })
+    },
+    onError: (err) => {
+      const message = (err as AxiosError<ApiError>).response?.data?.message
+        ?? 'Failed to create user.'
+      toast.error(message)
+    },
+  })
+
+  function openCreate() {
+    setCreateName('')
+    setCreateEmail('')
+    setCreateRole('member')
+    setCreatePassword('')
+    setCreateResult(null)
+    setCreateOpen(true)
+  }
+
+  function closeCreate() {
+    setCreateOpen(false)
+  }
+
+  function copyCreateResult() {
+    if (!createResult) return
+    navigator.clipboard.writeText(createResult.password)
+    toast.success('Copied to clipboard')
+  }
+
+  const selectedHousehold = households.find((h) => h.id === selectedHouseholdId) ?? null
+  const canSubmitCreate =
+    createName.trim().length > 0 &&
+    (isLocalAccounts || createEmail.trim().length > 0) &&
+    selectedHouseholdId !== null
 
   function handleSearchChange(val: string) {
     setSearch(val)
@@ -201,6 +305,31 @@ export function AdminPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+        {/* ── Household picker + create user ── */}
+        <div className="rounded-2xl border bg-card p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Home className="size-4 text-muted-foreground shrink-0" />
+            <select
+              value={selectedHouseholdId ?? ''}
+              onChange={(e) => setSelectedHouseholdId(e.target.value ? Number(e.target.value) : null)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-sm flex-1 min-w-0"
+            >
+              {households.length === 0 && <option value="">No households yet</option>}
+              {households.map((h) => (
+                <option key={h.id} value={h.id}>{h.name}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={openCreate}
+            disabled={households.length === 0}
+            className="flex items-center justify-center gap-1.5 h-8 px-3 rounded-md bg-violet-500 text-white text-xs font-medium hover:bg-violet-600 disabled:opacity-50 transition-colors shrink-0"
+          >
+            <UserPlus className="size-3.5" />
+            Create user
+          </button>
+        </div>
 
         {/* ── Summary stats ── */}
         {stats && (
@@ -327,6 +456,12 @@ export function AdminPage() {
                         >
                           Change tier
                         </button>
+                        <button
+                          onClick={() => setDeletingUser(user)}
+                          className="text-xs text-destructive hover:text-destructive/80 font-medium"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                     {editingId === user.id && (
@@ -442,6 +577,12 @@ export function AdminPage() {
                                 Edit tier
                               </button>
                             )}
+                            <button
+                              onClick={() => setDeletingUser(user)}
+                              className="text-xs text-destructive hover:text-destructive/80 font-medium transition-colors"
+                            >
+                              Remove
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -551,6 +692,161 @@ export function AdminPage() {
                   className="h-9 px-4 rounded-md bg-violet-500 text-white text-sm font-medium hover:bg-violet-600 disabled:opacity-50 transition-colors"
                 >
                   {resetPassword.isPending ? 'Resetting…' : 'Reset password'}
+                </button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete user confirmation ── */}
+      <AlertDialog
+        open={!!deletingUser}
+        onOpenChange={(open) => { if (!open) setDeletingUser(null) }}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="size-4 text-destructive" />
+              Delete {deletingUser?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes their account. Households where they're the only
+              active member are deleted entirely (cats, care history, everything); in
+              shared households, their events and notes are kept but anonymised. This
+              can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingUser && deleteUser.mutate(deletingUser.id)}
+              disabled={deleteUser.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteUser.isPending ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Create user dialog ── */}
+      <Dialog open={createOpen} onOpenChange={(open) => { if (!open) closeCreate() }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="size-4 text-violet-500" />
+              Create user
+            </DialogTitle>
+            <DialogDescription>
+              {createResult
+                ? `${createResult.name} was added to ${selectedHousehold?.name ?? 'the household'}.`
+                : `Adds a new account directly to ${selectedHousehold?.name ?? 'the selected household'} — no invite email required.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {createResult ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Password — copy it now, it won't be shown again:
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 min-w-0 rounded-md border bg-muted px-3 py-2 text-sm font-mono break-all">
+                  {createResult.password}
+                </code>
+                <button
+                  onClick={copyCreateResult}
+                  className="shrink-0 flex size-9 items-center justify-center rounded-md border hover:bg-muted transition-colors"
+                  aria-label="Copy password"
+                >
+                  <Copy className="size-4" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Name</label>
+                <input
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  placeholder="Full name"
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Email{!isLocalAccounts && ' (required)'}
+                </label>
+                <input
+                  value={createEmail}
+                  onChange={(e) => setCreateEmail(e.target.value)}
+                  type="email"
+                  placeholder={isLocalAccounts ? 'Optional — leave blank for a no-email local account' : 'you@example.com'}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Role</label>
+                  <select
+                    value={createRole}
+                    onChange={(e) => setCreateRole(e.target.value as MemberRole)}
+                    className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm capitalize"
+                  >
+                    {ROLE_OPTIONS.map((r) => <option key={r} value={r} className="capitalize">{r}</option>)}
+                  </select>
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Password</label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      value={createPassword}
+                      onChange={(e) => setCreatePassword(e.target.value)}
+                      placeholder="Auto-generate"
+                      className="flex-1 min-w-0 h-9 rounded-md border border-input bg-background px-3 text-sm font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCreatePassword(generatePassword())}
+                      className="shrink-0 h-9 px-2.5 rounded-md border text-xs font-medium hover:bg-muted transition-colors"
+                    >
+                      Generate
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {createResult ? (
+              <button
+                onClick={closeCreate}
+                className="h-9 px-4 rounded-md bg-sky-500 text-white text-sm font-medium hover:bg-sky-600 transition-colors"
+              >
+                Done
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={closeCreate}
+                  className="h-9 px-4 rounded-md border text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => selectedHouseholdId && createUser.mutate({
+                    name: createName.trim(),
+                    email: createEmail.trim() || undefined,
+                    password: createPassword || undefined,
+                    role: createRole,
+                    household_id: selectedHouseholdId,
+                  })}
+                  disabled={!canSubmitCreate || createUser.isPending}
+                  className="h-9 px-4 rounded-md bg-violet-500 text-white text-sm font-medium hover:bg-violet-600 disabled:opacity-50 transition-colors"
+                >
+                  {createUser.isPending ? 'Creating…' : 'Create user'}
                 </button>
               </>
             )}

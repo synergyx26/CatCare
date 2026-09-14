@@ -298,6 +298,15 @@ SUPER_ADMIN_EMAIL=mjshaw90@gmail.com
 
 # Disable Sentry on self-hosted (optional)
 SENTRY_DSN=
+
+# Opt this deployment into name+password login with no email required
+# (Rails.env is "production" here same as Render, so this can't be a
+# Rails.env check — it has to be its own explicit flag). Must be paired
+# with VITE_LOCAL_ACCOUNTS_ENABLED=true on the frontend build (Phase 6) —
+# the two are independent flags read by different processes, so setting
+# only one leaves the login form and the API disagreeing about which mode
+# they're in. Leave both unset on Render.
+LOCAL_ACCOUNTS_ENABLED=true
 ```
 
 ### 4.3 Run database migrations
@@ -366,6 +375,9 @@ cat > .env.production << 'EOF'
 VITE_API_URL=http://192.168.1.100:3000
 VITE_GOOGLE_CLIENT_ID=<your-google-client-id>
 VITE_SENTRY_DSN=
+# Only if LOCAL_ACCOUNTS_ENABLED=true is also set in .env.api (Phase 4.2) —
+# leave unset/false otherwise:
+VITE_LOCAL_ACCOUNTS_ENABLED=true
 EOF
 
 npm run build
@@ -487,6 +499,7 @@ docker compose up -d --force-recreate api sidekiq   # restart after image update
 | `MAILER_SENDER` | Copy from Render |
 | `GOOGLE_CLIENT_ID` | Copy from Render (unchanged) |
 | `SUPER_ADMIN_EMAIL` | `mjshaw90@gmail.com` (comma-separated for multiple) |
+| `LOCAL_ACCOUNTS_ENABLED` | `true` to allow name+password login with no email (self-hosted only — never set on Render); pair with `VITE_LOCAL_ACCOUNTS_ENABLED` below |
 
 ### Frontend (`.env.production` — baked into build)
 
@@ -495,6 +508,7 @@ docker compose up -d --force-recreate api sidekiq   # restart after image update
 | `VITE_API_URL` | `http://192.168.1.100:3000` |
 | `VITE_GOOGLE_CLIENT_ID` | Same as before |
 | `VITE_SENTRY_DSN` | Leave empty |
+| `VITE_LOCAL_ACCOUNTS_ENABLED` | `true` only if `LOCAL_ACCOUNTS_ENABLED=true` is also set in `.env.api` above |
 
 ---
 

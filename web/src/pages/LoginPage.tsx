@@ -5,15 +5,24 @@ import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { notify } from '@/lib/notify'
-import { Cat, Mail, Lock } from 'lucide-react'
+import { Cat, Mail, Lock, User as UserIcon } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { Input } from '@/components/ui/input'
 import { GoogleOAuthButton } from '@/components/GoogleOAuthButton'
 import type { User } from '@/types/api'
 
+// Local accounts (created without an email — see RegisterPage) log in by
+// name instead. Baked in at build time by VITE_LOCAL_ACCOUNTS_ENABLED — set
+// only for deployments that opted in (matching the API's
+// LOCAL_ACCOUNTS_ENABLED, see User.local_accounts_enabled?); the shared
+// Render cloud build always keeps the email-based form.
+const isLocalAccounts = import.meta.env.VITE_LOCAL_ACCOUNTS_ENABLED === 'true'
+
 const schema = z.object({
-  email: z.string().email('Invalid email'),
+  identifier: isLocalAccounts
+    ? z.string().min(1, 'Name is required')
+    : z.string().email('Invalid email'),
   password: z.string().min(1, 'Password is required'),
 })
 
@@ -43,7 +52,7 @@ export function LoginPage() {
       navigate(redirectTo, { replace: true })
     },
     onError: () => {
-      notify.error('Invalid email or password.')
+      notify.error(isLocalAccounts ? 'Invalid name or password.' : 'Invalid email or password.')
     },
   })
 
@@ -75,32 +84,38 @@ export function LoginPage() {
               <span className="w-full border-t border-border/60" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-card px-3 text-muted-foreground/60">or sign in with email</span>
+              <span className="bg-card px-3 text-muted-foreground/60">
+                {isLocalAccounts ? 'or sign in with name' : 'or sign in with email'}
+              </span>
             </div>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">Email</label>
+              <label className="text-sm font-medium text-muted-foreground">{isLocalAccounts ? 'Name' : 'Email'}</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+                {isLocalAccounts
+                  ? <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+                  : <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />}
                 <Input
-                  {...register('email')}
-                  type="email"
-                  placeholder="you@example.com"
+                  {...register('identifier')}
+                  type={isLocalAccounts ? 'text' : 'email'}
+                  placeholder={isLocalAccounts ? 'Your name' : 'you@example.com'}
                   className="pl-10 h-11 rounded-xl bg-muted/50 border-border/60 focus:bg-card"
                 />
               </div>
-              {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
+              {errors.identifier && <p className="text-destructive text-xs">{errors.identifier.message}</p>}
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-muted-foreground">Password</label>
-                <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-                  Forgot password?
-                </Link>
+                {!isLocalAccounts && (
+                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                    Forgot password?
+                  </Link>
+                )}
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />

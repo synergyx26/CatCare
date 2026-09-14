@@ -3,6 +3,51 @@ module Api
     module Admin
       class UsersController < BaseController
         VALID_TIERS = User::SUBSCRIPTION_TIERS
+        VALID_ROLES = HouseholdMembership.roles.keys
+
+        # POST /api/v1/admin/users
+        #
+        # Creates a User and, in the same transaction, a HouseholdMembership
+        # attaching them to the given household — the admin console's answer
+        # to "add someone without a working invite email" (previously a
+        # manual `rails console` workaround, see the Proxmox homelab
+        # README's "Adding local users" section). Works the same on every
+        # deployment: email is required unless this instance has opted into
+        # LOCAL_ACCOUNTS_ENABLED (see User.local_accounts_enabled?) — the
+        # same rule registration already follows. No tier limits enforced
+        # here, matching the existing CSV import path
+        # (Admin::ImportsController): admin actions bypass the tier gates
+        # that exist to guide self-serve users, not to constrain the admin.
+        def create
+          household = Household.find(params[:household_id])
+          role = params[:role].presence || "member"
+
+          unless VALID_ROLES.include?(role)
+            return render json: { error: "INVALID_ROLE", message: "Invalid role" },
+                          status: :unprocessable_entity
+          end
+
+          password = params[:password].presence || SecureRandom.base58(16)
+
+          user = User.new(
+            name: params[:name],
+            email: params[:email].presence,
+            password: password,
+            password_confirmation: password
+          )
+
+          ActiveRecord::Base.transaction do
+            user.save!
+            HouseholdMembership.create!(household: household, user: user, role: role, status: :active)
+          end
+
+          render json: { data: serialize_user(user).merge(password: password) }, status: :created
+        rescue ActiveRecord::RecordNotFound
+          render json: { error: "NOT_FOUND", message: "Household not found" }, status: :not_found
+        rescue ActiveRecord::RecordInvalid => e
+          render json: { error: "CREATE_FAILED", message: e.record.errors.full_messages.join(", ") },
+                        status: :unprocessable_entity
+        end
 
         # GET /api/v1/admin/users?page=1&per=25&search=foo&tier=free
         def index
@@ -48,6 +93,26 @@ module Api
 
           user.update!(subscription_tier: tier)
           render json: { data: serialize_user(user) }
+        end
+
+        # DELETE /api/v1/admin/users/:id
+        #
+        # Same erasure rules as the self-service GDPR flow — see
+        # User#erase!. No password check here: authority comes from
+        # super_admin? (enforced by Admin::BaseController), not the user's
+        # own credentials.
+        def destroy
+          user = User.find(params[:id])
+
+          if user.id == current_user.id
+            return render json: {
+              error: "CANNOT_DELETE_SELF",
+              message: "Use your account settings to delete your own account."
+            }, status: :unprocessable_entity
+          end
+
+          user.erase!
+          head :no_content
         end
 
         # POST /api/v1/admin/users/:id/reset_password

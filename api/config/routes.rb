@@ -57,8 +57,11 @@ Rails.application.routes.draw do
       # Super-admin endpoints
       namespace :admin do
         get  'stats',      to: 'stats#show'
+        get  'households', to: 'households#index'
         get  'users',      to: 'users#index'
+        post 'users',      to: 'users#create'
         patch 'users/:id', to: 'users#update'
+        delete 'users/:id', to: 'users#destroy'
         post 'users/:id/reset_password', to: 'users#reset_password'
         post 'imports/care_events', to: 'imports#care_events'
       end

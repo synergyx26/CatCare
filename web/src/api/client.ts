@@ -81,10 +81,14 @@ apiClient.interceptors.response.use(
 // ─── Typed helpers ────────────────────────────────────────────────────────────
 export const api = {
   // Auth
-  register: (data: { user: { name: string; email: string; password: string; password_confirmation: string } }) =>
+  // email is omitted entirely by the local dev (name+password) flow — the
+  // API generates a placeholder internally. See api's User#local_account?.
+  register: (data: { user: { name: string; email?: string; password: string; password_confirmation: string } }) =>
     apiClient.post('/registrations', data),
 
-  login: (data: { user: { email: string; password: string } }) =>
+  // identifier is an email in production; in local dev it may be the
+  // account's name instead — see api's SessionsController#find_user.
+  login: (data: { user: { identifier: string; password: string } }) =>
     apiClient.post('/sessions', data),
 
   googleOAuth: (credential: string) =>
@@ -385,14 +389,23 @@ export const api = {
   adminStats: () =>
     apiClient.get('/admin/stats'),
 
+  adminHouseholds: () =>
+    apiClient.get('/admin/households'),
+
   adminUsers: (params?: { page?: number; per?: number; search?: string; tier?: string }) =>
     apiClient.get('/admin/users', { params }),
+
+  adminCreateUser: (data: { name: string; email?: string; password?: string; role: string; household_id: number }) =>
+    apiClient.post('/admin/users', data),
 
   adminUpdateUserTier: (userId: number, tier: string) =>
     apiClient.patch(`/admin/users/${userId}`, { subscription_tier: tier }),
 
   adminResetUserPassword: (userId: number, password?: string) =>
     apiClient.post(`/admin/users/${userId}/reset_password`, password ? { password } : {}),
+
+  adminDeleteUser: (userId: number) =>
+    apiClient.delete(`/admin/users/${userId}`),
 
   adminImportCareEvents: (events: ImportCareEventRow[]) =>
     apiClient.post('/admin/imports/care_events', { events }, { timeout: 120_000 }),

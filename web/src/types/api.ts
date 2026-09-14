@@ -60,7 +60,8 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
 
 export interface User {
   id: number
-  email: string
+  // null for local dev (name+password) accounts — see api's User#local_account?
+  email: string | null
   name: string
   subscription_tier: SubscriptionTier
   is_super_admin?: boolean
@@ -328,6 +329,11 @@ export interface AdminUser {
   provider: string | null
   household_count: number
   created_at: string
+}
+
+export interface AdminHousehold {
+  id: number
+  name: string
 }
 
 export interface AdminStats {

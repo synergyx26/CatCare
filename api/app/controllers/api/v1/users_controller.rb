@@ -6,7 +6,7 @@ module Api
         render json: {
           data: {
             id:                       current_user.id,
-            email:                    current_user.email,
+            email:                    current_user.public_email,
             name:                     current_user.name,
             subscription_tier:        current_user.subscription_tier,
             is_super_admin:           super_admin?,

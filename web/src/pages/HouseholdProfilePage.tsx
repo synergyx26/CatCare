@@ -127,7 +127,7 @@ export function HouseholdProfilePage() {
       {/* Identity strip */}
       <div className="rounded-2xl bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-sky-950/20 dark:to-cyan-950/20 ring-1 ring-border/40 p-4 space-y-2">
         <p className="font-semibold text-base">{user?.name}</p>
-        <p className="text-xs text-muted-foreground">{user?.email}</p>
+        {user?.email && <p className="text-xs text-muted-foreground">{user.email}</p>}
         {profile && (
           <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLOR[profile.role] ?? 'bg-muted'}`}>
             {ROLE_LABEL[profile.role] ?? profile.role}

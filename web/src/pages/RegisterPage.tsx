@@ -13,14 +13,24 @@ import { Input } from '@/components/ui/input'
 import { GoogleOAuthButton } from '@/components/GoogleOAuthButton'
 import type { User, ApiError } from '@/types/api'
 
+// Local accounts skip email entirely and log in by name — see LoginPage.
+// Baked in at build time by VITE_LOCAL_ACCOUNTS_ENABLED — set only for
+// deployments that opted in (matching the API's LOCAL_ACCOUNTS_ENABLED, see
+// User.local_accounts_enabled?); the shared Render cloud build always
+// collects and requires a real email.
+const isLocalAccounts = import.meta.env.VITE_LOCAL_ACCOUNTS_ENABLED === 'true'
+
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email'),
+  email: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   password_confirmation: z.string(),
 }).refine((d) => d.password === d.password_confirmation, {
   message: "Passwords don't match",
   path: ['password_confirmation'],
+}).refine((d) => isLocalAccounts || z.string().email().safeParse(d.email).success, {
+  message: 'Invalid email',
+  path: ['email'],
 })
 
 type FormData = z.infer<typeof schema>
@@ -80,7 +90,9 @@ export function RegisterPage() {
               <span className="w-full border-t border-border/60" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-card px-3 text-muted-foreground/60">or sign up with email</span>
+              <span className="bg-card px-3 text-muted-foreground/60">
+                {isLocalAccounts ? 'or sign up with a name' : 'or sign up with email'}
+              </span>
             </div>
           </div>
 
@@ -97,17 +109,19 @@ export function RegisterPage() {
               </div>
             </Field>
 
-            <Field label="Email" error={errors.email?.message}>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
-                <Input
-                  {...register('email')}
-                  type="email"
-                  placeholder="you@example.com"
-                  className="pl-10 h-11 rounded-xl bg-muted/50 border-border/60 focus:bg-card"
-                />
-              </div>
-            </Field>
+            {!isLocalAccounts && (
+              <Field label="Email" error={errors.email?.message}>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+                  <Input
+                    {...register('email')}
+                    type="email"
+                    placeholder="you@example.com"
+                    className="pl-10 h-11 rounded-xl bg-muted/50 border-border/60 focus:bg-card"
+                  />
+                </div>
+              </Field>
+            )}
 
             <Field label="Password" error={errors.password?.message}>
               <div className="relative">
