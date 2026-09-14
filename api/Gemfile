@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 gem "rails", "~> 8.1.2"
 gem "pg", "~> 1.1"
-gem "puma", "~> 7.0"
+gem "puma", "~> 8.0"
 
 # Ruby 4.0 requires these to be explicitly listed (no longer auto-available)
 gem "base64"
@@ -12,7 +12,7 @@ gem "ostruct"
 # json 3.x broke User#notification_preferences_shape (ArgumentError from the
 # JSONB attribute reader) — a real behavioral break, not just a version bump,
 # so stay on the 2.x line until that's investigated separately.
-gem "json", ">= 2.21.2", "< 3"
+gem "json", ">= 2.21.2", "< 4"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
@@ -27,7 +27,7 @@ gem "kamal", require: false
 gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-gem "image_processing", "~> 1.2"
+gem "image_processing", "~> 2.1"
 
 # NOTE: cloudinary gem v2.x is incompatible with Rails 8.1 + Ruby 4.0 — its Railtie
 # fails to register ActiveStorage::Service::CloudinaryService during boot. Removed
@@ -40,7 +40,7 @@ gem "rack-cors"
 gem "rack-attack"
 
 # Object storage — S3-compatible adapter for Active Storage (used with Supabase Storage)
-gem "aws-sdk-s3", "~> 1.0", require: false
+gem "aws-sdk-s3", "~> 1.232", require: false
 
 # Authentication
 gem "devise", "~> 5.0"
@@ -57,7 +57,7 @@ gem "sidekiq"
 gem "sidekiq-cron"
 
 # Redis client — required by RedisCacheStore in production.rb
-gem "redis", "~> 5.0"
+gem "redis", "~> 6.0"
 
 # Database-backed cache (Rails 8 default, no Redis required for cache)
 gem "solid_cache"
