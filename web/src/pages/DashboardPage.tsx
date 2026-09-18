@@ -31,6 +31,7 @@ import { CatTaskCard } from '@/components/dashboard/CatTaskCard'
 
 import { BatchActionModal } from '@/components/dashboard/BatchActionModal'
 import type { BatchActionPayload } from '@/components/dashboard/BatchActionModal'
+import { BatchAmountPromptModal } from '@/components/dashboard/BatchAmountPromptModal'
 import type {
   HouseholdBatchAction,
   HouseholdChore,
@@ -259,6 +260,10 @@ export function DashboardPage() {
   // ── Batch logging ─────────────────────────────────────────────
   const [showBatchModal, setShowBatchModal]     = useState(false)
   const [editingAction, setEditingAction]       = useState<HouseholdBatchAction | null>(null)
+  // Quick action awaiting a one-off amount before it can fire (see
+  // amount_grams_variable in BatchActionModal — presets like "Other" food
+  // whose portion changes every time prompt here instead of firing blind).
+  const [pendingAmountAction, setPendingAmountAction] = useState<HouseholdBatchAction | null>(null)
 
   const { data: batchActionsData } = useQuery({
     queryKey: ['batch_actions', primaryHousehold?.id],
@@ -341,6 +346,39 @@ export function DashboardPage() {
     },
     onError: () => notify.error('Something went wrong. Please try again.'),
   })
+
+  function actionNeedsAmountPrompt(action: HouseholdBatchAction): boolean {
+    return action.details.amount_grams_variable === true
+  }
+
+  function fireBatchAction(action: HouseholdBatchAction) {
+    if (actionNeedsAmountPrompt(action)) {
+      setPendingAmountAction(action)
+      return
+    }
+    batchMutation.mutate(action)
+  }
+
+  function confirmPendingAmountAction(amountGrams: number, instanceNotes?: string) {
+    if (!pendingAmountAction) return
+    const details = { ...pendingAmountAction.details }
+    delete details.amount_grams_variable
+    details.amount_grams = amountGrams
+    // The preset's auto-note (if any) still applies every time; the note
+    // typed into the amount prompt is one-off context for this instance —
+    // combine both rather than letting one silently drop the other.
+    const notes = [pendingAmountAction.default_notes, instanceNotes]
+      .map((n) => n?.trim())
+      .filter((n): n is string => !!n)
+      .join(' — ') || null
+    batchMutation.mutate({
+      label:         pendingAmountAction.label,
+      event_type:    pendingAmountAction.event_type,
+      details,
+      default_notes: notes,
+    })
+    setPendingAmountAction(null)
+  }
 
   // ── Modal helpers ────────────────────────────────────────────
   function openNewLog(cat: Cat, type?: EventType, opts?: { medicationName?: string; medicationDosage?: string; medicationUnit?: string }) {
@@ -549,7 +587,7 @@ export function DashboardPage() {
                               notify.tierLimit('Upgrade to Pro or Premium to use this quick action.')
                               return
                             }
-                            batchMutation.mutate(action)
+                            fireBatchAction(action)
                           }}
                           disabled={batchMutation.isPending}
                           title={!actionAllowed ? 'Requires Pro or Premium' : undefined}
@@ -815,6 +853,16 @@ export function DashboardPage() {
           initialAction={editingAction ?? undefined}
           onSave={handleBatchActionSave}
           onClose={() => { setShowBatchModal(false); setEditingAction(null) }}
+        />
+      )}
+
+      {/* Amount prompt for variable-portion "Log for all" quick actions */}
+      {pendingAmountAction && (
+        <BatchAmountPromptModal
+          action={pendingAmountAction}
+          catNames={cats.map((c) => c.name)}
+          onConfirm={confirmPendingAmountAction}
+          onClose={() => setPendingAmountAction(null)}
         />
       )}
     </>

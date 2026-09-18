@@ -1,5 +1,22 @@
 # CatCare: Self-Hosting Migration Guide
 
+> **Status: Active — this is the current, daily-use deployment.** The
+> Render/Vercel/Supabase-Cloud stack this guide migrates away from
+> (`DEPLOY.md`) is dormant/paused, not decommissioned — see `CLAUDE.md`'s
+> `## Deployment Status` for how the two coexist in the same codebase, and
+> `## Non-Negotiable Rules` / Common Mistake #18 for why online-specific
+> code/config must not be removed just because it's unused day to day.
+>
+> **Open item — git remotes are backwards from this guide's intent:**
+> `origin` (`synergyx26/CatCare`) is what `DEPLOY.md` treats as the
+> online-stack repo, and `selfhosted` (`synergyx26/CatCare-selfhosted`) is
+> meant to be where local/Proxmox-specific work lives — but in practice the
+> recent self-hosted-specific commits (name+password login, blob-service
+> photo URL fix, self-hosted CSP host) landed on `origin/master`, and
+> `selfhosted/master` is stale. Local `master` still tracks `origin`. Not
+> yet fixed; do the remote/tracking cleanup deliberately before relying on
+> either remote being "the self-hosted one."
+
 This guide covers migrating CatCare from its current cloud stack to a fully self-hosted setup on your home network, including a live database migration from Supabase Cloud to self-hosted Supabase.
 
 > **Deploying to the Proxmox homelab box (`192.168.20.50`)?** Use the

@@ -1,5 +1,13 @@
 # CatCare — Deployment Guide
 
+> **Status: Dormant / paused, not decommissioned.** The active day-to-day
+> deployment is now local self-hosted on Proxmox — see `SELF_HOSTING.md`.
+> This online stack (Render/Vercel/Supabase Cloud/Upstash) is intentionally
+> being kept up to date and revivable rather than torn down, so keep this
+> guide accurate through any future changes rather than letting it drift.
+> See `CLAUDE.md`'s `## Deployment Status` for how the two coexist in one
+> codebase.
+
 Production deployment for 2-person household beta testing. All services are free tier.
 
 **Last verified working:** March 2026

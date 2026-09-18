@@ -58,6 +58,7 @@ function detailsToState(d: Record<string, unknown>) {
   return {
     foodType:        (d.food_type       as FoodType)        ?? 'wet',
     amountGrams:     d.amount_grams != null ? String(d.amount_grams) : '',
+    amountVariable:  d.amount_grams_variable === true,
     medName:         (d.medication_name as string)          ?? '',
     medDosage:       (d.dosage          as string)          ?? '',
     medUnit:         (PRESET_MED_UNITS_BATCH as readonly string[]).includes(d.unit as string) ? (d.unit as MedUnit) : (d.unit ? 'other' : 'mg'),
@@ -78,6 +79,7 @@ export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
   const [eventType,       setEventType]       = useState<EventType>(initialAction?.event_type ?? 'feeding')
   const [foodType,        setFoodType]        = useState<FoodType>(prefill?.foodType ?? 'wet')
   const [amountGrams,     setAmountGrams]     = useState(prefill?.amountGrams ?? '')
+  const [amountVariable,  setAmountVariable]  = useState(prefill?.amountVariable ?? false)
   const [medName,         setMedName]         = useState(prefill?.medName ?? '')
   const [medDosage,       setMedDosage]       = useState(prefill?.medDosage ?? '')
   const [medUnit,         setMedUnit]         = useState<MedUnit>(prefill?.medUnit ?? 'mg')
@@ -89,6 +91,11 @@ export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
 
   function buildDetails(): Record<string, unknown> {
     if (eventType === 'feeding') {
+      if (foodType !== 'treats' && amountVariable) {
+        // Amount isn't baked into the preset — DashboardPage prompts for it
+        // each time this quick action is used ("Log for all").
+        return { food_type: foodType, amount_grams_variable: true }
+      }
       const amt = parseFloat(amountGrams)
       return {
         food_type: foodType,
@@ -190,21 +197,38 @@ export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
               </div>
             </div>
             {foodType !== 'treats' && (
-              <div className="space-y-1">
-                <label className="text-sm font-medium">
-                  Amount <span className="text-muted-foreground font-normal">(optional)</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="1"
-                    placeholder="e.g. 80"
-                    value={amountGrams}
-                    onChange={(e) => setAmountGrams(e.target.value)}
-                    className="w-28"
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={amountVariable}
+                    onChange={(e) => setAmountVariable(e.target.checked)}
+                    className="size-4 rounded border-border accent-primary"
                   />
-                  <span className="text-sm text-muted-foreground">grams</span>
-                </div>
+                  Amount varies each time — ask when logging
+                </label>
+                {amountVariable ? (
+                  <p className="text-xs text-muted-foreground">
+                    You'll be prompted to enter the amount when this button is used.
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">
+                      Amount <span className="text-muted-foreground font-normal">(optional)</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        placeholder="e.g. 80"
+                        value={amountGrams}
+                        onChange={(e) => setAmountGrams(e.target.value)}
+                        className="w-28"
+                      />
+                      <span className="text-sm text-muted-foreground">grams</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </>

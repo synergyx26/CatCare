@@ -2,6 +2,13 @@
 
 **Current status:** MVP deployed and functional. Beta testing with 2-person household.
 
+> **Note:** This log predates the move to local self-hosted (Proxmox) as the
+> active deployment (see `SELF_HOSTING.md`, `CLAUDE.md`'s
+> `## Deployment Status`). Items below that reference Render/Vercel/Supabase
+> Cloud/Resend's shared domain describe the *online* stack, which is now
+> dormant/paused rather than decommissioned — they're kept for when/if that
+> stack resumes, not because they're still open work for the local instance.
+
 ---
 
 ## Recently Completed

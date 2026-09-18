@@ -93,6 +93,38 @@ CatCare/
 
 ---
 
+## Deployment Status
+
+Two deployments of this same codebase exist. Never conflate their config, and
+never remove or "clean up" code/config belonging to the inactive one on the
+assumption it's dead — it's paused, not decommissioned.
+
+| | Local self-hosted (Proxmox) | Online (Render/Vercel) |
+|---|---|---|
+| **Status** | **Active — daily use** | **Dormant/paused** — not deleted, may resume later |
+| Guide | `SELF_HOSTING.md` | `DEPLOY.md` |
+| Stack | Docker on Proxmox LXC, plain PostgreSQL + Redis containers | Render (API) + Vercel (web) + Supabase Cloud + Upstash |
+| Hosts | `192.168.20.20:3000` (API), `192.168.20.19.nip.io:8085` (web) | `catcare-v52y.onrender.com` (API) + Vercel URL |
+| Auth | Devise/JWT + optional `LOCAL_ACCOUNTS_ENABLED` name+password login | Devise/JWT + Google OAuth only |
+| Photo storage | Rails local-disk Active Storage service | Same disk service today (Supabase Storage never actually adopted — see `NEXT_STEPS.md`) |
+
+Both hosts stay allowlisted together in CSP (`web/index.html`, `web/public/_headers`,
+`web/vite.config.ts`) and both sets of env vars are valid inputs to the same
+codebase — the app branches on env vars/flags at runtime
+(`LOCAL_ACCOUNTS_ENABLED` / `VITE_LOCAL_ACCOUNTS_ENABLED`, `blob.service_name`
+in `cats_controller.rb#photo_url_for`), not on `Rails.env` or a build target.
+See `## Infrastructure` below for which pieces are online-only vs. universal.
+
+**Git remotes:** `origin` → `synergyx26/CatCare` (documented by `DEPLOY.md` as
+the online stack's repo); `selfhosted` → `synergyx26/CatCare-selfhosted`
+(intended home for local/Proxmox-specific work going forward). As of this
+writing local `master` still tracks `origin` and recent self-hosted-specific
+commits landed there rather than on `selfhosted` — that mismatch is a known,
+not-yet-actioned cleanup; don't assume either remote is authoritative for
+self-hosted work until it's resolved.
+
+---
+
 ## Environment (Windows)
 
 ```bash
@@ -144,21 +176,29 @@ Frontend access pattern: `response.data.data` (Axios wrapper → Rails envelope 
 ### Health Endpoint
 `GET /health` — public, no auth. Returns `{ status: "ok", db: "connected" }` or 503 if DB is down. Use this for uptime monitors and load balancer health checks.
 
-### Cold-Start Resilience (Render free tier)
-`web/src/api/client.ts` response interceptor retries 502/503/504 up to 8 times with increasing backoff (3s→15s). Shows a persistent `toast.loading('Server is starting up…')` on first failure, dismisses it on success. Covers the ~60–90s window where Render's proxy is live but Puma hasn't finished booting. Import calls use a 120s per-request timeout (override on `adminImportCareEvents`).
+### Cold-Start Resilience (online/Render only)
+`web/src/api/client.ts` response interceptor retries 502/503/504 up to 8 times with increasing backoff (3s→15s). Shows a persistent `toast.loading('Server is starting up…')` on first failure, dismisses it on success. Covers the ~60–90s window where Render's proxy is live but Puma hasn't finished booting. Import calls use a 120s per-request timeout (override on `adminImportCareEvents`). Self-hosted Puma never sleeps, so this code path is a harmless no-op locally — don't strip it, the online deployment still needs it if revived.
 
-### Email (Resend)
+### Email (Resend) — shared by both deployments
 - **Gem**: `resend` v1.0.1 — configured in `config/environments/production.rb`
 - **Delivery**: active when `RESEND_API_KEY` env var is set; falls back to `:test` (silent discard) if absent
 - **Sender**: controlled by `MAILER_SENDER` env var — defaults to `noreply@catcare.app` if unset
-- **Current production sender**: `onboarding@resend.dev` (Resend shared domain) — **emails only deliver to the Resend account owner's email**. Must verify a custom domain at resend.com/domains to send to real users.
+- **Online sender**: `onboarding@resend.dev` (Resend shared domain) — **emails only deliver to the Resend account owner's email**. Must verify a custom domain at resend.com/domains to send to real users.
 - **Dev preview**: `letter_opener_web` captures emails locally at `http://localhost:3000/letter_opener` — nothing is sent in development
-- **Required Render env vars**: `RESEND_API_KEY`, `MAILER_SENDER`, `APP_HOST` (used by Action Mailer to build URLs in email templates)
+- **Required env vars, either deployment**: `RESEND_API_KEY`, `MAILER_SENDER`, `APP_HOST` (used by Action Mailer to build URLs in email templates) — set per-deployment, never shared between Render and the Proxmox `.env.api`
 
-### Sentry
+### Sentry — optional on either deployment
 - **Rails**: `config/initializers/sentry.rb` — reads `SENTRY_DSN` env var. Only active in `production`/`staging`. Set `SENTRY_DSN` in your hosting environment's secrets.
 - **React**: initialized in `web/src/main.tsx` — reads `VITE_SENTRY_DSN`. No-ops silently if the env var is absent (safe in dev).
 - Install after adding to manifests: `ridk.cmd exec bundle install` (api), `npm install` (web).
+- Self-hosted currently runs with both DSNs unset (see `SELF_HOSTING.md` Phase 4.2/6.1) — that's a deliberate choice, not an oversight; leave unset unless you stand up a Sentry project for the local instance specifically.
+
+### Self-hosted / local (Proxmox) — active deployment specifics
+Config and behavior that exists *only* for the local deployment (never set these on Render):
+- **`LOCAL_ACCOUNTS_ENABLED`** (api) / **`VITE_LOCAL_ACCOUNTS_ENABLED`** (web build-time) — opts into name+password login with no email required. Independent flags read by different processes; both or neither, never one alone. See `User.local_accounts_enabled?`, `User#local_account?`, `SessionsController`, `RegistrationsController`.
+- **Photo URLs branch on `blob.service_name`**, not `Rails.env` — `cats_controller.rb#photo_url_for` returns a Supabase public-bucket URL for `"supabase"` blobs and a Rails redirect URL for `"local"` blobs; either can be live under `RAILS_ENV=production` depending on which deployment wrote the blob.
+- **CSP allowlists both hosts simultaneously** — `web/index.html`, `web/public/_headers`, `web/vite.config.ts` all list the Render host, the Proxmox LAN photo host (`192.168.20.19.nip.io:8085`), and the Proxmox API host (`192.168.20.20:3000`) side by side. Update all three files together if either host changes.
+- Full setup: `SELF_HOSTING.md`.
 
 ### CI/CD
 GitHub Actions workflow at `.github/workflows/ci.yml`. Runs on every push/PR to `main`/`master`:
@@ -422,3 +462,4 @@ web/src/
 15. **Medication dose history includes pre-regimen events** — `MedicationsPage` and `getActiveMedicationTasks` both scope dose history to events with `occurred_at >= startEvent.occurred_at`. If you add a new query path that builds dose history, apply the same filter or old manual logs will corrupt next-due calculations.
 16. **TanStack Query key type mismatches** — `useParams` returns strings; passing those strings directly into a query key (`queryKey: ['care_events', householdId, catId]`) and then invalidating with numbers won't match. Always use `Number()` consistently in query keys, or invalidate with a broader prefix key (`['care_events']`) so type mismatches can't silently break cache invalidation.
 17. **`getActiveMedicationTasks` respects regimen bounds** — the function skips any medication whose start date is in the future (not yet active) and any finite course whose `course_end_date` has passed. Both comparisons use local calendar-day boundaries (not raw UTC timestamps) to avoid timezone-midnight shift bugs. If you add new medication task logic, apply the same guards.
+18. **Local vs. online config are both live inputs, not "current vs. legacy"** — the online (Render/Vercel) deployment is dormant, not deleted (see `## Deployment Status`). Don't remove Render/Vercel/Supabase-Cloud-specific code, env var handling, or CSP entries because "we're local-only now" — that breaks the online deployment's ability to come back up. Add local-only behavior alongside the existing branch (env var, `blob.service_name`, etc.), the way `LOCAL_ACCOUNTS_ENABLED` and the photo URL fix did, rather than replacing the online path.
