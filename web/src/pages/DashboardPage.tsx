@@ -31,7 +31,7 @@ import { CatTaskCard } from '@/components/dashboard/CatTaskCard'
 
 import { BatchActionModal } from '@/components/dashboard/BatchActionModal'
 import type { BatchActionPayload } from '@/components/dashboard/BatchActionModal'
-import { BatchAmountPromptModal } from '@/components/dashboard/BatchAmountPromptModal'
+import { BatchLogPromptModal } from '@/components/dashboard/BatchLogPromptModal'
 import type {
   HouseholdBatchAction,
   HouseholdChore,
@@ -260,10 +260,10 @@ export function DashboardPage() {
   // ── Batch logging ─────────────────────────────────────────────
   const [showBatchModal, setShowBatchModal]     = useState(false)
   const [editingAction, setEditingAction]       = useState<HouseholdBatchAction | null>(null)
-  // Quick action awaiting a one-off amount before it can fire (see
-  // amount_grams_variable in BatchActionModal — presets like "Other" food
-  // whose portion changes every time prompt here instead of firing blind).
-  const [pendingAmountAction, setPendingAmountAction] = useState<HouseholdBatchAction | null>(null)
+  // Quick action awaiting its amount and/or note before it can fire (see
+  // amount_grams_variable / notes_variable in BatchActionModal — presets
+  // whose portion or note changes every time prompt here instead of firing blind).
+  const [pendingPromptAction, setPendingPromptAction] = useState<HouseholdBatchAction | null>(null)
 
   const { data: batchActionsData } = useQuery({
     queryKey: ['batch_actions', primaryHousehold?.id],
@@ -347,37 +347,40 @@ export function DashboardPage() {
     onError: () => notify.error('Something went wrong. Please try again.'),
   })
 
-  function actionNeedsAmountPrompt(action: HouseholdBatchAction): boolean {
-    return action.details.amount_grams_variable === true
+  function actionNeedsPrompt(action: HouseholdBatchAction): boolean {
+    return action.details.amount_grams_variable === true || action.details.notes_variable === true
   }
 
   function fireBatchAction(action: HouseholdBatchAction) {
-    if (actionNeedsAmountPrompt(action)) {
-      setPendingAmountAction(action)
+    if (actionNeedsPrompt(action)) {
+      setPendingPromptAction(action)
       return
     }
     batchMutation.mutate(action)
   }
 
-  function confirmPendingAmountAction(amountGrams: number, instanceNotes?: string) {
-    if (!pendingAmountAction) return
-    const details = { ...pendingAmountAction.details }
+  function confirmPendingPromptAction(amountGrams: number | null, instanceNotes?: string) {
+    if (!pendingPromptAction) return
+    const details = { ...pendingPromptAction.details }
     delete details.amount_grams_variable
-    details.amount_grams = amountGrams
+    delete details.notes_variable
+    if (amountGrams != null) details.amount_grams = amountGrams
     // The preset's auto-note (if any) still applies every time; the note
-    // typed into the amount prompt is one-off context for this instance —
-    // combine both rather than letting one silently drop the other.
-    const notes = [pendingAmountAction.default_notes, instanceNotes]
+    // typed into the prompt is one-off context for this instance — combine
+    // both rather than letting one silently drop the other. (A preset with
+    // "ask when logging" checked never has a default_notes to combine with —
+    // BatchActionModal keeps the two mutually exclusive.)
+    const notes = [pendingPromptAction.default_notes, instanceNotes]
       .map((n) => n?.trim())
       .filter((n): n is string => !!n)
       .join(' — ') || null
     batchMutation.mutate({
-      label:         pendingAmountAction.label,
-      event_type:    pendingAmountAction.event_type,
+      label:         pendingPromptAction.label,
+      event_type:    pendingPromptAction.event_type,
       details,
       default_notes: notes,
     })
-    setPendingAmountAction(null)
+    setPendingPromptAction(null)
   }
 
   // ── Modal helpers ────────────────────────────────────────────
@@ -856,13 +859,13 @@ export function DashboardPage() {
         />
       )}
 
-      {/* Amount prompt for variable-portion "Log for all" quick actions */}
-      {pendingAmountAction && (
-        <BatchAmountPromptModal
-          action={pendingAmountAction}
+      {/* Amount/note prompt for variable "Log for all" quick actions */}
+      {pendingPromptAction && (
+        <BatchLogPromptModal
+          action={pendingPromptAction}
           catNames={cats.map((c) => c.name)}
-          onConfirm={confirmPendingAmountAction}
-          onClose={() => setPendingAmountAction(null)}
+          onConfirm={confirmPendingPromptAction}
+          onClose={() => setPendingPromptAction(null)}
         />
       )}
     </>

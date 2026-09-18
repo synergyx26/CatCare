@@ -59,6 +59,7 @@ function detailsToState(d: Record<string, unknown>) {
     foodType:        (d.food_type       as FoodType)        ?? 'wet',
     amountGrams:     d.amount_grams != null ? String(d.amount_grams) : '',
     amountVariable:  d.amount_grams_variable === true,
+    notesVariable:   d.notes_variable === true,
     medName:         (d.medication_name as string)          ?? '',
     medDosage:       (d.dosage          as string)          ?? '',
     medUnit:         (PRESET_MED_UNITS_BATCH as readonly string[]).includes(d.unit as string) ? (d.unit as MedUnit) : (d.unit ? 'other' : 'mg'),
@@ -88,6 +89,7 @@ export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
   const [symptomType,     setSymptomType]     = useState<SymptomType>(prefill?.symptomType ?? 'vomiting')
   const [symptomSeverity, setSymptomSeverity] = useState<SymptomSeverity>(prefill?.symptomSeverity ?? 'mild')
   const [defaultNotes,    setDefaultNotes]    = useState(initialAction?.default_notes ?? '')
+  const [notesVariable,   setNotesVariable]   = useState(prefill?.notesVariable ?? false)
 
   function buildDetails(): Record<string, unknown> {
     if (eventType === 'feeding') {
@@ -117,11 +119,15 @@ export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
 
   function handleSave() {
     if (!canSave) return
+    const details = buildDetails()
+    if (notesVariable) details.notes_variable = true
     onSave({
       label: label.trim(),
       event_type: eventType,
-      details: buildDetails(),
-      default_notes: defaultNotes.trim() || null,
+      details,
+      // Ask-when-logging replaces a fixed auto-note, the same way a
+      // variable amount replaces a fixed one — never both at once.
+      default_notes: notesVariable ? null : (defaultNotes.trim() || null),
     })
     onClose()
   }
@@ -351,17 +357,34 @@ export function BatchActionModal({ initialAction, onSave, onClose }: Props) {
         )}
 
         {/* Default notes */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">
-            Auto-note <span className="text-muted-foreground font-normal">(optional)</span>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={notesVariable}
+              onChange={(e) => setNotesVariable(e.target.checked)}
+              className="size-4 rounded border-border accent-primary"
+            />
+            Note varies each time — ask when logging
           </label>
-          <Textarea
-            placeholder="Added automatically to every event logged with this button…"
-            value={defaultNotes}
-            onChange={(e) => setDefaultNotes(e.target.value)}
-            rows={2}
-            className="resize-none text-sm"
-          />
+          {notesVariable ? (
+            <p className="text-xs text-muted-foreground">
+              The note field will already be open (no extra tap) so you can clarify what this was, right below the amount.
+            </p>
+          ) : (
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Auto-note <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <Textarea
+                placeholder="Added automatically to every event logged with this button…"
+                value={defaultNotes}
+                onChange={(e) => setDefaultNotes(e.target.value)}
+                rows={2}
+                className="resize-none text-sm"
+              />
+            </div>
+          )}
         </div>
 
         <Button className="w-full" onClick={handleSave} disabled={!canSave}>
