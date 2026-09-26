@@ -196,6 +196,7 @@ Frontend access pattern: `response.data.data` (Axios wrapper → Rails envelope 
 ### Self-hosted / local (Proxmox) — active deployment specifics
 Config and behavior that exists *only* for the local deployment (never set these on Render):
 - **`LOCAL_ACCOUNTS_ENABLED`** (api) / **`VITE_LOCAL_ACCOUNTS_ENABLED`** (web build-time) — opts into name+password login with no email required. Independent flags read by different processes; both or neither, never one alone. See `User.local_accounts_enabled?`, `User#local_account?`, `SessionsController`, `RegistrationsController`.
+- **`VITE_PLAYFUL_UI_ENABLED`** (web build-time, frontend-only) — builds in the playful dashboard redesign preview (animated cats, warm palette, card motion). When on, a ✨ toggle beside the theme toggle lets each user switch classic ↔ playful per device (`uiStyle` in `themeStore`, persisted in `catcare_theme`). Gate: `PLAYFUL_UI_AVAILABLE` (`lib/featureFlags.ts`) + `usePlayfulUi()`; `useApplyTheme` adds `.ui-playful` to `<html>`. Styles live in `web/src/styles/playful.css`, all `pl-*` classes / `html.ui-playful` tokens. Scope is the owner dashboard only (`PlayfulDashboardHero`, `PlayfulCatCard`, `PeekingCat` in `components/playful/`); sitter dashboard and other pages just pick up the warm tokens. Set by proxmox-homelab `deploy-catcare.sh`; leave unset on Vercel.
 - **Photo URLs branch on `blob.service_name`**, not `Rails.env` — `cats_controller.rb#photo_url_for` returns a Supabase public-bucket URL for `"supabase"` blobs and a Rails redirect URL for `"local"` blobs; either can be live under `RAILS_ENV=production` depending on which deployment wrote the blob.
 - **CSP allowlists both hosts simultaneously** — `web/index.html`, `web/public/_headers`, `web/vite.config.ts` all list the Render host, the Proxmox LAN photo host (`192.168.20.19.nip.io:8085`), and the Proxmox API host (`192.168.20.20:3000`) side by side. Update all three files together if either host changes.
 - Full setup: `SELF_HOSTING.md`.
@@ -372,10 +373,11 @@ web/src/
   types/api.ts              — all TypeScript interfaces (User, Cat, CareEvent, CatStats…)
   store/
     authStore.ts            — Zustand, persisted as 'catcare_auth'
-    themeStore.ts           — Zustand, persisted as 'catcare_theme' (light|dark|system)
+    themeStore.ts           — Zustand, persisted as 'catcare_theme' (light|dark|system, colorAccent, uiStyle classic|playful)
   hooks/
     useApplyTheme.ts        — applies .dark to <html>, respects OS matchMedia for system
     usePageTitle.ts         — sets document.title as "{title} · CatCare"
+    usePlayfulUi.ts         — true when VITE_PLAYFUL_UI_ENABLED build + user chose uiStyle 'playful'
   components/
     EmptyState.tsx          — reusable: Lucide icon + title + description + optional CTA
     LogCareModal.tsx        — full care logging (all 8 types + edit/delete + AlertDialog confirm); reads feeding_presets from cat prop for quick-pick portion buttons; Free tier locks weight/medication/vet_visit/grooming pills; medication section: "Track as ongoing medication" checkbox + frequency selector (shown when checkbox on or `activeMedication` prop is true)
@@ -401,6 +403,8 @@ web/src/
       MedicationCard.tsx      — single regimen card; header shows name/dosage/frequency/course-remaining; next-due label computed from last DOSE only (never from start event); expanded body shows dose timeline with missed-dose markers; Stop/Reactivate/Edit/Log dose actions
       AddMedicationModal.tsx  — start or edit a medication regimen; fields: name, dosage+unit, frequency (all 8 options), start date, finite-course toggle+end date, notes; onSuccess invalidates `['care_events']` broadly
       QuickLogDoseSheet.tsx   — bottom sheet to log a dose for a specific regimen; pre-fills medication name from start event
+    dashboard/catTaskSummary.tsx — summarizeCatTasks() (pending/done + task counts), getMedicationStartDetails(), CatCareInfo, ToothIcon; shared by CatTaskCard + PlayfulCatCard so both agree on what's pending
+    playful/                — playful-UI preview only (see VITE_PLAYFUL_UI_ENABLED): AnimatedCat (SVG cat, moods happy|hungry|sleep|party, coatForCat by id), PlayfulCatCard, PlayfulDashboardHero, PeekingCat, effects.ts
     reminders/
       RemindersSection.tsx  — reminder list + inline RHF+Zod create form; sitter=read-only; "Coming soon" badge
     pdf/

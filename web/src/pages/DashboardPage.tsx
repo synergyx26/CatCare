@@ -28,6 +28,11 @@ import { SitterVisitChecklist } from '@/components/dashboard/SitterVisitChecklis
 import { HouseholdChoresSection } from '@/components/dashboard/HouseholdChoresSection'
 import { SitterDashboard } from '@/components/dashboard/SitterDashboard'
 import { CatTaskCard } from '@/components/dashboard/CatTaskCard'
+import { summarizeCatTasks } from '@/components/dashboard/catTaskSummary'
+import { usePlayfulUi } from '@/hooks/usePlayfulUi'
+import { PlayfulCatCard } from '@/components/playful/PlayfulCatCard'
+import { PlayfulDashboardHero } from '@/components/playful/PlayfulDashboardHero'
+import { PeekingCat } from '@/components/playful/PeekingCat'
 
 import { BatchActionModal } from '@/components/dashboard/BatchActionModal'
 import type { BatchActionPayload } from '@/components/dashboard/BatchActionModal'
@@ -55,6 +60,7 @@ function getTimeGreeting(name: string): string {
 export function DashboardPage() {
   const navigate = useNavigate()
   const { user, activeHouseholdId, setActiveHousehold } = useAuthStore()
+  const playful = usePlayfulUi()
 
   // Modal state
   const [logCat, setLogCat] = useState<Cat | null>(null)
@@ -515,43 +521,66 @@ export function DashboardPage() {
     )
   }
 
+  const addCatButton = primaryHousehold && currentRole !== 'sitter' ? (
+    <Button
+      variant="outline"
+      size="sm"
+      className="shrink-0"
+      onClick={() => {
+        if (atCatLimit) {
+          const hint = tier === 'pro'
+            ? 'Upgrade to Premium to add more than 3 cats.'
+            : 'Upgrade to Pro or Premium to add more cats.'
+          notify.tierLimit(`Plan limit reached. ${hint}`)
+        } else {
+          navigate(`/households/${primaryHousehold.id}/add-cat`)
+        }
+      }}
+    >
+      {atCatLimit ? <Lock className="size-4" /> : <Plus className="size-4" />}
+      Add Cat
+    </Button>
+  ) : null
+
+  // Playful hero progress — same pending rules as the playful cards themselves
+  const catSummaries = playful
+    ? cats.map((cat) => ({
+        cat,
+        summary: summarizeCatTasks(cat, windowEvents, allMedEvents, memberMap, user?.id ?? -1, catRequirements.get(cat.id)),
+      }))
+    : []
+
   return (
     <>
-      {/* Page header — warm greeting */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="space-y-0.5">
-          <h1 className="text-xl font-bold tracking-tight">
-            {getTimeGreeting(user?.name ?? 'there')} 👋
-          </h1>
-          {cats.length > 0 && catsNeedingAttention.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              {isVacationMode && vacationCtx
-                ? `All cats are cared for (last ${vacationCtx.windowDays}d)`
-                : 'All cats are cared for today'}
-            </p>
-          )}
+      {playful ? (
+        <PlayfulDashboardHero
+          greeting={getTimeGreeting(user?.name ?? 'there')}
+          doneTasks={catSummaries.reduce((sum, { summary }) => sum + summary.doneTasks, 0)}
+          totalTasks={catSummaries.reduce((sum, { summary }) => sum + summary.totalTasks, 0)}
+          catNamesNeedingCare={catSummaries.filter(({ summary }) => summary.hasPending).map(({ cat }) => cat.name)}
+          catCount={cats.length}
+          vacationWindowDays={isVacationMode && vacationCtx ? vacationCtx.windowDays : undefined}
+          loungingCatId={cats[0]?.id}
+          action={addCatButton}
+        />
+      ) : (
+        /* Page header — warm greeting */
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div className="space-y-0.5">
+            <h1 className="text-xl font-bold tracking-tight">
+              {getTimeGreeting(user?.name ?? 'there')} 👋
+            </h1>
+            {cats.length > 0 && catsNeedingAttention.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                {isVacationMode && vacationCtx
+                  ? `All cats are cared for (last ${vacationCtx.windowDays}d)`
+                  : 'All cats are cared for today'}
+              </p>
+            )}
+          </div>
+          {addCatButton}
         </div>
-        {primaryHousehold && currentRole !== 'sitter' && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            onClick={() => {
-              if (atCatLimit) {
-                const hint = tier === 'pro'
-                  ? 'Upgrade to Premium to add more than 3 cats.'
-                  : 'Upgrade to Pro or Premium to add more cats.'
-                notify.tierLimit(`Plan limit reached. ${hint}`)
-              } else {
-                navigate(`/households/${primaryHousehold.id}/add-cat`)
-              }
-            }}
-          >
-            {atCatLimit ? <Lock className="size-4" /> : <Plus className="size-4" />}
-            Add Cat
-          </Button>
-        )}
-      </div>
+      )}
 
       {/* Two-column layout on large screens */}
       <div className={`grid grid-cols-1 gap-6 lg:items-start ${cats.length === 1 ? 'lg:grid-cols-2' : 'lg:grid-cols-[3fr_2fr]'}`}>
@@ -649,8 +678,9 @@ export function DashboardPage() {
               {/* Birthday banner — shown when any active cat has a birthday today */}
               <BirthdayBanner cats={cats} onLog={openNewLog} />
 
-              {/* Needs attention banner — shown above cat cards when any cat has pending tasks */}
-              {catsNeedingAttention.length > 0 && (
+              {/* Needs attention banner — shown above cat cards when any cat has pending tasks.
+                  The playful hero + card bubbles already say who needs what, so it's skipped there. */}
+              {!playful && catsNeedingAttention.length > 0 && (
                 <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-950/10 p-4 space-y-2">
                   <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
                     {isVacationMode && vacationCtx
@@ -690,8 +720,21 @@ export function DashboardPage() {
                   onLogChore={(id) => logChoreMutation.mutate(id)}
                 />
               ) : (
-                <div className={`grid gap-3 ${cats.length > 1 ? 'md:grid-cols-2' : ''}`}>
-                  {cats.map((cat) => (
+                <div className={`grid ${playful ? 'gap-4' : 'gap-3'} ${cats.length > 1 ? 'md:grid-cols-2' : ''}`}>
+                  {cats.map((cat, index) => playful ? (
+                    <PlayfulCatCard
+                      key={cat.id}
+                      index={index}
+                      cat={cat}
+                      windowEvents={windowEvents}
+                      allMedEvents={allMedEvents}
+                      memberMap={memberMap}
+                      currentUserId={user?.id ?? -1}
+                      requirements={catRequirements.get(cat.id)}
+                      onLog={openNewLog}
+                      careNotes={allCareNotes.filter(n => n.cat_id === cat.id)}
+                    />
+                  ) : (
                     <CatTaskCard
                       key={cat.id}
                       cat={cat}
@@ -775,7 +818,7 @@ export function DashboardPage() {
         </div>
 
         {/* ── Right column: care log + household info ──────────── */}
-        <div className="space-y-4 lg:sticky lg:top-20">
+        <div className={`space-y-4 lg:sticky lg:top-20 ${playful ? 'pl-stagger' : ''}`}>
           {primaryHousehold && cats.length > 0 && (
             <UpcomingAppointmentsSection
               householdId={primaryHousehold.id}
@@ -835,6 +878,8 @@ export function DashboardPage() {
           )}
         </div>
       </div>
+
+      {playful && <PeekingCat />}
 
       {/* Log care modal */}
       {logCat && primaryHousehold && (

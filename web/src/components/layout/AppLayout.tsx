@@ -46,8 +46,10 @@ import {
   Building2,
   Stethoscope,
   LayoutGrid,
+  Sparkles,
 } from 'lucide-react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
+import { PLAYFUL_UI_AVAILABLE } from '@/lib/featureFlags'
 import type { Household, MemberRole } from '@/types/api'
 
 const THEME_CYCLE: Record<Theme, Theme> = { light: 'dark', dark: 'system', system: 'light' }
@@ -90,7 +92,7 @@ export function AppLayout() {
   const queryClient = useQueryClient()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [tierSwitching, setTierSwitching] = useState(false)
-  const { theme, setTheme } = useThemeStore()
+  const { theme, setTheme, uiStyle, setUiStyle } = useThemeStore()
 
   // Re-fetch /me on every app load so DB changes (e.g. tier updates) are picked up
   // without requiring the user to log out and back in.
@@ -145,9 +147,9 @@ export function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background dark:from-primary/[0.07] dark:to-background">
+    <div data-slot="app-shell" className="min-h-screen bg-gradient-to-b from-primary/5 to-background dark:from-primary/[0.07] dark:to-background">
       {/* ── Sticky top navbar ───────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-border bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:bg-background/90">
+      <header data-slot="app-header" className="sticky top-0 z-40 border-b border-border bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:bg-background/90">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Left: logo + household name */}
           <div className="flex items-center gap-3">
@@ -575,6 +577,25 @@ export function AppLayout() {
                   title={themeLabel}
                 >
                   <ThemeIcon className="size-4" aria-hidden="true" />
+                </Button>
+              )
+            })()}
+
+            {/* Playful redesign preview toggle — only in builds with VITE_PLAYFUL_UI_ENABLED */}
+            {PLAYFUL_UI_AVAILABLE && (() => {
+              const playful = uiStyle === 'playful'
+              const label = playful ? 'Switch back to the classic look' : 'Try the new playful look (preview)'
+              return (
+                <Button
+                  variant={playful ? 'secondary' : 'ghost'}
+                  size="icon-sm"
+                  onClick={() => setUiStyle(playful ? 'classic' : 'playful')}
+                  aria-label={label}
+                  aria-pressed={playful}
+                  title={label}
+                  className={playful ? 'text-primary' : undefined}
+                >
+                  <Sparkles className="size-4" aria-hidden="true" />
                 </Button>
               )
             })()}

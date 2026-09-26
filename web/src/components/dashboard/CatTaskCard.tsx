@@ -2,25 +2,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { UtensilsCrossed, Pill, ChevronDown, ChevronUp, Info, AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 import type { Cat, CareEvent, CareNote, EventType } from '@/types/api'
-import { getCatTodayStatus, getActiveMedicationTasks, type CatCareRequirements } from '@/lib/helpers'
-import { CARE_NOTE_CATEGORY_COLORS, CARE_NOTE_CATEGORY_LABELS } from '@/lib/careNoteCategories'
-
-function ToothIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M9 3h6a2 2 0 0 1 2 2c0 1.5-1 3-1 5 0 4-1 11-2.5 11-.8 0-1.2-1.5-1.5-1.5s-.7 1.5-1.5 1.5C9 21 8 14 8 10c0-2-1-3.5-1-5a2 2 0 0 1 2-2z" />
-    </svg>
-  )
-}
+import type { CatCareRequirements } from '@/lib/helpers'
+import {
+  summarizeCatTasks,
+  getMedicationStartDetails,
+  hasCatCareInfo,
+  CatCareInfo,
+  ToothIcon,
+} from './catTaskSummary'
 
 interface CatTaskCardProps {
   cat: Cat
@@ -46,20 +35,17 @@ export function CatTaskCard({
   const [careOpen, setCareOpen] = useState(false)
   const navigate = useNavigate()
 
-  const status = getCatTodayStatus(cat.id, windowEvents, memberMap, currentUserId, requirements, allMedEvents)
-  const allActiveMeds = getActiveMedicationTasks(cat.id, allMedEvents)
-    .filter(t => t.dosesNeededToday > 0)
-  const dueMeds = allActiveMeds.filter(t => t.dosesGivenToday < t.dosesNeededToday)
-  const doneMeds = allActiveMeds.filter(t => t.dosesGivenToday >= t.dosesNeededToday)
+  const {
+    status,
+    dueMeds,
+    doneMeds,
+    pendingFeedings,
+    toothbrushingDue,
+    hasPending,
+    hasAnyTasks,
+  } = summarizeCatTasks(cat, windowEvents, allMedEvents, memberMap, currentUserId, requirements)
 
-  const pendingFeedings = Math.max(0, status.feedingsNeeded - status.feedCount)
-  const toothbrushingDue = status.trackToothbrushing && !status.toothbrushingDoneAt
-
-  const hasPending = pendingFeedings > 0 || dueMeds.length > 0 || toothbrushingDue
-
-  const hasAnyTasks = status.feedingsNeeded > 0 || status.trackToothbrushing || allActiveMeds.length > 0
-
-  const hasCareInfo = careNotes.length > 0 || !!(cat.vet_name || cat.vet_phone)
+  const hasCareInfo = hasCatCareInfo(cat, careNotes)
 
   return (
     <div className={[
@@ -203,14 +189,7 @@ export function CatTaskCard({
 
           {/* Pending medications */}
           {dueMeds.map(med => {
-            const startEvt = allMedEvents
-              .filter(e => {
-                const d = e.details as Record<string, unknown>
-                return e.cat_id === cat.id && d.active_medication === true && d.medication_name === med.name && d.stopped !== true
-              })
-              .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())[0]
-            const medDosage = startEvt ? (startEvt.details as Record<string, unknown>).dosage as string | undefined : undefined
-            const medUnit   = startEvt ? (startEvt.details as Record<string, unknown>).unit   as string | undefined : undefined
+            const { dosage: medDosage, unit: medUnit } = getMedicationStartDetails(cat.id, med.name, allMedEvents)
             return (
               <div
                 key={med.name}
@@ -281,53 +260,7 @@ export function CatTaskCard({
             {careOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
           </button>
 
-          {careOpen && (
-            <div
-              id={`care-info-${cat.id}`}
-              className="px-4 pb-4 space-y-2"
-            >
-              {/* Care notes for this cat */}
-              {careNotes.map(note => (
-                <div
-                  key={note.id}
-                  className="rounded-xl border border-border/60 bg-card p-3 space-y-1"
-                >
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span
-                      className="inline-block size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: CARE_NOTE_CATEGORY_COLORS[note.category] }}
-                    />
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {CARE_NOTE_CATEGORY_LABELS[note.category]}
-                    </p>
-                  </div>
-                  <p className="text-sm font-medium leading-snug">{note.title}</p>
-                  <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                    {note.body}
-                  </p>
-                </div>
-              ))}
-
-              {/* Vet contact */}
-              {(cat.vet_name || cat.vet_phone) && (
-                <div className="rounded-xl bg-muted/50 px-3 py-2.5 space-y-0.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {cat.name}'s Vet
-                  </p>
-                  {cat.vet_clinic && <p className="text-sm">{cat.vet_clinic}</p>}
-                  {cat.vet_name && <p className="text-xs text-muted-foreground">{cat.vet_name}</p>}
-                  {cat.vet_phone && (
-                    <a
-                      href={`tel:${cat.vet_phone}`}
-                      className="flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors min-h-[44px] py-1"
-                    >
-                      {cat.vet_phone}
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          {careOpen && <CatCareInfo cat={cat} careNotes={careNotes} />}
         </div>
       )}
     </div>

@@ -4,6 +4,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource/varela-round";
 @import "@fontsource-variable/nunito-sans";
+@import "./styles/playful.css";
 
 @custom-variant dark (&:is(.dark *));
 

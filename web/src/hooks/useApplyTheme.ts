@@ -1,11 +1,13 @@
 import { useEffect } from 'react'
 import { useThemeStore, type ColorAccent } from '@/store/themeStore'
+import { usePlayfulUi } from '@/hooks/usePlayfulUi'
 
 const ALL_ACCENTS: ColorAccent[] = ['blue', 'rose', 'scarlet', 'orange', 'green', 'purple']
 
 export function useApplyTheme() {
   const theme = useThemeStore((s) => s.theme)
   const colorAccent = useThemeStore((s) => s.colorAccent)
+  const playful = usePlayfulUi()
 
   useEffect(() => {
     const root = document.documentElement
@@ -40,4 +42,8 @@ export function useApplyTheme() {
       root.classList.add(`accent-${colorAccent}`)
     }
   }, [colorAccent])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('ui-playful', playful)
+  }, [playful])
 }

@@ -1,0 +1,251 @@
+/* ── Playful UI preview ──────────────────────────────────────────────────────
+   Active only while <html> has .ui-playful — set by useApplyTheme when
+   VITE_PLAYFUL_UI_ENABLED is on and the user picked the playful look.
+   Selectors use `html.ui-playful` so they outrank the :root / .dark token
+   blocks in index.css regardless of import order. Every class below is
+   namespaced pl-* and unused by the classic UI, so switching back is exact.
+   ──────────────────────────────────────────────────────────────────────── */
+
+html.ui-playful {
+  --background: oklch(0.978 0.012 75);
+  --card: oklch(1 0 0);
+  --popover: oklch(1 0 0);
+  --secondary: oklch(0.955 0.02 70);
+  --muted: oklch(0.955 0.02 70);
+  --muted-foreground: oklch(0.55 0.03 60);
+  --accent: oklch(0.95 0.03 60);
+  --border: oklch(0.92 0.02 70);
+  --input: oklch(0.92 0.02 70);
+  --radius: 1rem;
+  --pl-dots: oklch(0.3 0.03 60 / 0.06);
+}
+html.ui-playful.dark {
+  --background: oklch(0.19 0.012 65);
+  --card: oklch(0.235 0.014 65);
+  --popover: oklch(0.235 0.014 65);
+  --secondary: oklch(0.28 0.016 65);
+  --muted: oklch(0.28 0.016 65);
+  --muted-foreground: oklch(0.74 0.03 70);
+  --accent: oklch(0.3 0.02 65);
+  --border: oklch(0.32 0.016 65);
+  --input: oklch(0.34 0.016 65);
+  --pl-dots: oklch(1 0 0 / 0.05);
+}
+
+/* Warm coral primary — only when the user hasn't picked a colour accent in
+   settings, so an explicit accent choice still wins. */
+html.ui-playful:not([class*="accent-"]) {
+  --primary: oklch(0.68 0.16 40);
+  --primary-foreground: oklch(0.99 0 0);
+  --ring: oklch(0.68 0.16 40);
+}
+html.ui-playful.dark:not([class*="accent-"]) {
+  --primary: oklch(0.76 0.14 45);
+  --primary-foreground: oklch(0.18 0.02 45);
+  --ring: oklch(0.76 0.14 45);
+}
+
+html.ui-playful body {
+  background-color: var(--background);
+  background-image: radial-gradient(circle at 1px 1px, var(--pl-dots) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+html.ui-playful [data-slot="app-shell"] {
+  background: transparent;
+}
+html.ui-playful [data-slot="app-header"] {
+  background-color: color-mix(in oklab, var(--background) 82%, transparent);
+}
+
+/* ── Dashboard hero ───────────────────────────────────────────────────────── */
+.pl-hero {
+  background: linear-gradient(135deg, #ffd9b8 0%, #ffc7a8 45%, #f9b7c4 100%);
+  color: #3a2418;
+  box-shadow: 0 2px 4px rgb(80 50 20 / 6%), 0 22px 40px -14px rgb(80 50 20 / 28%);
+}
+.dark .pl-hero {
+  background: linear-gradient(135deg, #4a2f22, #4a2a2f);
+  color: #fbe8dc;
+  box-shadow: 0 22px 40px -14px rgb(0 0 0 / 60%);
+}
+.pl-ground {
+  background: rgb(255 255 255 / 35%);
+  border-top: 2px dashed rgb(255 255 255 / 60%);
+}
+.dark .pl-ground {
+  background: rgb(255 255 255 / 8%);
+  border-top-color: rgb(255 255 255 / 20%);
+}
+.pl-hero-action > button {
+  background: rgb(255 255 255 / 60%);
+  border-color: transparent;
+  color: inherit;
+}
+.pl-hero-action > button:hover { background: rgb(255 255 255 / 85%); }
+.dark .pl-hero-action > button { background: rgb(255 255 255 / 12%); }
+.dark .pl-hero-action > button:hover { background: rgb(255 255 255 / 20%); }
+.pl-ring { transition: stroke-dashoffset 1s cubic-bezier(.2, .8, .2, 1); }
+.pl-walker { left: -120px; z-index: 1; animation: pl-walk 22s linear infinite, pl-bob .5s ease-in-out infinite alternate; }
+.pl-walker .pl-leg { transform-box: fill-box; transform-origin: 50% 0; animation: pl-step .5s ease-in-out infinite alternate; }
+.pl-walker .pl-leg-b { animation-direction: alternate-reverse; }
+.pl-walker .pl-walk-tail { transform-box: fill-box; transform-origin: 100% 100%; animation: pl-swish 1.2s ease-in-out infinite; }
+.pl-yarn { left: -60px; animation: pl-yarn-roll 22s linear infinite; animation-delay: -0.6s; }
+.pl-zzz {
+  position: absolute; left: 30%; top: -34px;
+  font-family: var(--font-display); font-weight: 700; color: #fff;
+  pointer-events: none;
+}
+.pl-zzz span { position: absolute; opacity: 0; animation: pl-zzz 3s ease-in infinite; }
+.pl-zzz span:nth-child(2) { animation-delay: 1s; font-size: 1.2em; }
+.pl-zzz span:nth-child(3) { animation-delay: 2s; font-size: 1.4em; }
+
+/* ── Cat card ─────────────────────────────────────────────────────────────── */
+.pl-card {
+  box-shadow: 0 1px 2px rgb(80 50 20 / 6%), 0 8px 24px -8px rgb(80 50 20 / 14%);
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s;
+}
+.pl-card:hover { box-shadow: 0 2px 4px rgb(80 50 20 / 6%), 0 22px 40px -14px rgb(80 50 20 / 28%); }
+.dark .pl-card { box-shadow: 0 8px 24px -8px rgb(0 0 0 / 50%); }
+.pl-card-bday {
+  border-color: #f9a8c9;
+  box-shadow: 0 0 0 3px color-mix(in oklab, #ec4899 25%, transparent), 0 8px 24px -8px rgb(80 50 20 / 14%);
+}
+/* `backwards` (not `both`) so the inline tilt transform applies after entry */
+.pl-card-in {
+  animation: pl-card-in .7s cubic-bezier(.2, .9, .25, 1.15) backwards;
+  animation-delay: calc(var(--pl-i, 0) * 110ms + 150ms);
+}
+.pl-card-top {
+  background:
+    radial-gradient(circle at 20% 30%, rgb(255 255 255 / 55%) 0 18px, transparent 19px),
+    radial-gradient(circle at 85% 25%, rgb(255 255 255 / 35%) 0 12px, transparent 13px),
+    linear-gradient(160deg, var(--pl-tint-a), var(--pl-tint-b));
+}
+.dark .pl-card-top {
+  background:
+    radial-gradient(circle at 20% 30%, rgb(255 255 255 / 10%) 0 18px, transparent 19px),
+    linear-gradient(160deg, color-mix(in oklab, var(--pl-tint-a) 34%, var(--card)), color-mix(in oklab, var(--pl-tint-b) 22%, var(--card)));
+}
+.pl-card-top::after {
+  content: ""; position: absolute; bottom: 8px; left: 50%;
+  width: 130px; height: 22px; transform: translateX(-50%);
+  border-radius: 50%; background: rgb(255 255 255 / 55%);
+}
+.dark .pl-card-top::after { background: rgb(0 0 0 / 25%); }
+.pl-cat-stage { cursor: pointer; border-radius: 1rem; }
+.pl-cat-stage .pl-cat { transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
+.pl-card:hover .pl-cat-stage .pl-cat { transform: translateY(-4px) rotate(-3deg); }
+.pl-bubble {
+  background: var(--card); color: var(--foreground);
+  padding: 5px 11px; border-radius: 16px 16px 16px 4px;
+  font-weight: 800; font-size: 12px;
+  box-shadow: 0 6px 16px -6px rgb(0 0 0 / 25%);
+  animation: pl-bubble 2.6s ease-in-out infinite;
+}
+
+.pl-bowl {
+  display: grid; place-items: center;
+  width: 26px; height: 26px; border-radius: 50%; font-size: 13px;
+  border: 2px dashed color-mix(in oklab, var(--pl-c) 55%, transparent);
+}
+.pl-bowl-full {
+  background: color-mix(in oklab, var(--pl-c) 22%, transparent);
+  border: 2px solid var(--pl-c);
+  animation: pl-pop .45s cubic-bezier(.2, .9, .3, 1.5);
+}
+.pl-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 800;
+  background: var(--muted); color: var(--muted-foreground);
+}
+.pl-chip-done { background: color-mix(in oklab, var(--pl-c) 16%, transparent); color: var(--pl-c); }
+.pl-chip-due {
+  background: var(--pl-c); color: #fff; cursor: pointer;
+  animation: pl-pulse 1.8s ease-in-out infinite;
+  transition: transform .15s;
+}
+.pl-chip-due:hover { transform: scale(1.05); }
+.pl-chip-due:active { transform: scale(.94); }
+
+.pl-act {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 4px; border-radius: 14px;
+  font-size: 12px; font-weight: 800;
+  background: color-mix(in oklab, var(--pl-c) 13%, transparent);
+  color: color-mix(in oklab, var(--pl-c) 78%, var(--foreground));
+  transition: transform .15s, background-color .2s;
+}
+.pl-act:hover { background: color-mix(in oklab, var(--pl-c) 23%, transparent); }
+.pl-act:active { transform: scale(.9); }
+.pl-act-emoji { font-size: 18px; line-height: 1; transition: transform .25s cubic-bezier(.2, .9, .3, 1.6); }
+.pl-act:hover .pl-act-emoji { transform: translateY(-2px) scale(1.18) rotate(-8deg); }
+
+.pl-jump { animation: pl-jump .6s cubic-bezier(.2, .9, .3, 1.4); }
+.pl-float {
+  position: absolute; top: 45%; z-index: 20;
+  font-size: 18px; pointer-events: none;
+  animation: pl-float-up 1.6s ease-out backwards;
+}
+
+/* Staggered entrance for the dashboard's side sections */
+.pl-rise { animation: pl-rise .6s cubic-bezier(.2, .8, .2, 1) backwards; }
+.pl-stagger > * { animation: pl-rise .6s cubic-bezier(.2, .8, .2, 1) backwards; }
+.pl-stagger > *:nth-child(1) { animation-delay: .15s; }
+.pl-stagger > *:nth-child(2) { animation-delay: .25s; }
+.pl-stagger > *:nth-child(3) { animation-delay: .35s; }
+.pl-stagger > *:nth-child(4) { animation-delay: .45s; }
+.pl-stagger > *:nth-child(n+5) { animation-delay: .55s; }
+
+/* ── Peeking cat ──────────────────────────────────────────────────────────── */
+.pl-peek-inner { transform: translateY(100%); animation: pl-peek 16s ease-in-out 4s infinite; }
+.pl-peek-say { opacity: 0; transform: scale(.6); transform-origin: bottom right; transition: opacity .25s, transform .25s cubic-bezier(.2, .9, .3, 1.5); pointer-events: none; }
+.pl-peek-say-show { opacity: 1; transform: scale(1); }
+
+/* ── Cat SVG parts (AnimatedCat) ──────────────────────────────────────────── */
+.pl-cat .pl-cat-tail { transform-box: view-box; transform-origin: 86px 84px; animation: pl-swish 2.6s ease-in-out infinite; }
+.pl-cat .pl-cat-eyes { transform-box: view-box; transform-origin: 60px 40px; animation: pl-blink 5s infinite; }
+.pl-cat .pl-cat-ear { transform-box: view-box; transform-origin: 46px 24px; animation: pl-ear 7s infinite; }
+.pl-cat .pl-cat-body { transform-box: view-box; transform-origin: 60px 98px; }
+.pl-cat-hungry .pl-cat-body { animation: pl-hop 1.4s ease-in-out infinite; }
+.pl-cat-sleep .pl-cat-body { animation: pl-breathe 3s ease-in-out infinite; }
+.pl-cat-sleep .pl-cat-tail { animation-duration: 6s; }
+.pl-cat-happy .pl-cat-tail { animation-duration: 1.8s; }
+.pl-cat-party .pl-cat-hat { transform-box: view-box; transform-origin: 60px 20px; animation: pl-wiggle 1.6s ease-in-out infinite; }
+
+/* ── Keyframes ────────────────────────────────────────────────────────────── */
+@keyframes pl-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes pl-card-in { from { opacity: 0; transform: translateY(30px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes pl-swish { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
+@keyframes pl-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+@keyframes pl-ear { 0%, 88%, 100% { transform: rotate(0); } 90% { transform: rotate(-14deg); } 93% { transform: rotate(4deg); } }
+@keyframes pl-hop { 0%, 60%, 100% { transform: translateY(0) scaleY(1); } 70% { transform: scaleY(.94); } 80% { transform: translateY(-8px) scaleY(1.03); } }
+@keyframes pl-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.02, .97); } }
+@keyframes pl-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(10deg); } }
+@keyframes pl-bubble { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
+@keyframes pl-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--pl-c) 50%, transparent); } 50% { box-shadow: 0 0 0 5px transparent; } }
+@keyframes pl-pop { 0% { transform: scale(.6); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+@keyframes pl-jump { 0% { transform: none; } 30% { transform: translateY(-22px) rotate(-6deg); } 55% { transform: scale(1.06, .92); } 75% { transform: translateY(-6px); } 100% { transform: none; } }
+@keyframes pl-float-up { 0% { transform: translate(0, 0) scale(.5); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(var(--pl-dx, 0), -90px) scale(1.2); opacity: 0; } }
+@keyframes pl-walk { from { left: -120px; } to { left: calc(100% + 40px); } }
+@keyframes pl-bob { from { translate: 0 0; } to { translate: 0 -3px; } }
+@keyframes pl-step { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+@keyframes pl-yarn-roll { from { left: -60px; transform: rotate(0); } to { left: calc(100% + 100px); transform: rotate(1440deg); } }
+@keyframes pl-zzz { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(26px, -40px); } }
+@keyframes pl-peek { 0%, 8% { transform: translateY(100%); } 12%, 24% { transform: translateY(18%); } 27% { transform: translateY(24%); } 30%, 100% { transform: translateY(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-walker, .pl-yarn, .pl-peek, .pl-zzz { display: none !important; }
+  .pl-cat *, .pl-card-in, .pl-rise, .pl-stagger > *, .pl-bubble, .pl-chip-due,
+  .pl-bowl-full, .pl-jump, .pl-float { animation: none !important; }
+  .pl-card, .pl-cat-stage .pl-cat, .pl-act, .pl-act-emoji, .pl-hero-action > button {
+  background: rgb(255 255 255 / 60%);
+  border-color: transparent;
+  color: inherit;
+}
+.pl-hero-action > button:hover { background: rgb(255 255 255 / 85%); }
+.dark .pl-hero-action > button { background: rgb(255 255 255 / 12%); }
+.dark .pl-hero-action > button:hover { background: rgb(255 255 255 / 20%); }
+.pl-ring { transition: none !important; }
+}
