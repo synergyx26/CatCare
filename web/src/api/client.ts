@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
-import type { NotificationPreferences, ImportCareEventRow, ExpenseRange, PetExpense } from '@/types/api'
+import type { NotificationPreferences, ImportCareEventRow, ExpenseRange, PetExpense, CatAppearance } from '@/types/api'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
@@ -166,6 +166,13 @@ export const api = {
 
   getCat: (householdId: number, catId: number) =>
     apiClient.get(`/households/${householdId}/cats/${catId}`),
+
+  // Cartoon look (playful UI) — suggestion reads colours from the saved photo; nothing is stored until updateCatAppearance
+  getCatAppearanceSuggestion: (householdId: number, catId: number) =>
+    apiClient.get(`/households/${householdId}/cats/${catId}/appearance_suggestion`),
+
+  updateCatAppearance: (householdId: number, catId: number, appearance: CatAppearance | null) =>
+    apiClient.patch(`/households/${householdId}/cats/${catId}`, { cat: { appearance } }),
 
   getCatStats: (householdId: number, catId: number, range: '7d' | '30d' | '90d' = '30d', offset = 0) =>
     apiClient.get(`/households/${householdId}/cats/${catId}/stats`, { params: { range, offset } }),

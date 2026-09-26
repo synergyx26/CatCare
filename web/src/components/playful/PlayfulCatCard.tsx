@@ -57,7 +57,7 @@ export function PlayfulCatCard({
     hasAnyTasks,
   } = summarizeCatTasks(cat, windowEvents, allMedEvents, memberMap, currentUserId, requirements)
 
-  const coat = coatForCat(cat.id)
+  const coat = coatForCat(cat)
   const isBirthday = isCatBirthday(cat.birthday)
   const age = getCatAge(cat.birthday)
   const mood: CatMood = isBirthday

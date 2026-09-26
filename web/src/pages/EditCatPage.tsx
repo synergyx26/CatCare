@@ -15,6 +15,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { PLAYFUL_UI_AVAILABLE } from '@/lib/featureFlags'
+import { CatLookEditor } from '@/components/playful/CatLookEditor'
 import type { ApiError, Cat, Household } from '@/types/api'
 
 const schema = z.object({
@@ -407,6 +409,9 @@ export function EditCatPage() {
           {mutation.isPending ? 'Saving...' : 'Save changes'}
         </Button>
       </form>
+
+      {/* Playful UI preview only — saves separately from the form above */}
+      {PLAYFUL_UI_AVAILABLE && <CatLookEditor cat={cat} householdId={Number(householdId)} />}
     </div>
   )
 }

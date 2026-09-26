@@ -1,7 +1,7 @@
 module Api
   module V1
     class CatsController < BaseController
-      before_action :set_cat, only: [:show, :update, :stats]
+      before_action :set_cat, only: [:show, :update, :stats, :appearance_suggestion]
 
       # GET /api/v1/households/:household_id/cats
       # ?include_inactive=true returns archived/deceased cats (non-sitters only)
@@ -74,6 +74,27 @@ module Api
             message: @cat.errors.full_messages.join(", ")
           }, status: :unprocessable_entity
         end
+      end
+
+      # GET /api/v1/households/:household_id/cats/:id/appearance_suggestion
+      # Suggests a cartoon look (pattern + colours) from the cat's photo for the
+      # playful UI's editor. Nothing is saved — the client PATCHes the result.
+      def appearance_suggestion
+        authorize @cat
+
+        unless @cat.photo.attached?
+          return render_error("NO_PHOTO", "Upload a photo of #{@cat.name} first.", status: :unprocessable_content)
+        end
+
+        samples = CatAppearance::PhotoSampler.from_blob(@cat.photo.blob)
+        suggestion = CatAppearance::Suggester.new(center_pixels: samples[:center], border_pixels: samples[:border]).call
+        if suggestion.nil?
+          return render_error("PHOTO_UNREADABLE", "Couldn't find any colours in that photo.", status: :unprocessable_content)
+        end
+
+        render_success(suggestion)
+      rescue CatAppearance::PhotoSampler::UnreadableImage
+        render_error("PHOTO_UNREADABLE", "Couldn't read #{@cat.name}'s photo. Try uploading it again.", status: :unprocessable_content)
       end
 
       # GET /api/v1/households/:household_id/cats/:id/stats
@@ -169,6 +190,16 @@ module Api
           :feedings_per_day, :track_toothbrushing,
           feeding_presets: { wet: [], dry: [], treats: [], other: [] }
         )
+        # appearance: object to set, null to clear (permit drops a bare nil)
+        if params[:cat].key?(:appearance)
+          raw = params[:cat][:appearance]
+          permitted[:appearance] =
+            case raw
+            when ActionController::Parameters then raw.permit(*Cat::APPEARANCE_KEYS).to_h
+            when nil then nil
+            else raw.to_s # not an object — Cat#appearance_shape rejects it with a 422
+            end
+        end
         if params[:cat].key?(:health_conditions)
           raw = Array(params[:cat][:health_conditions]).map(&:to_s).reject(&:blank?).uniq
           permitted[:health_conditions] = raw
@@ -201,6 +232,7 @@ module Api
           feedings_per_day:     cat.feedings_per_day,
           track_toothbrushing:  cat.track_toothbrushing,
           feeding_presets:     cat.feeding_presets,
+          appearance:          cat.appearance,
           created_at:          cat.created_at,
           updated_at:          cat.updated_at,
         }

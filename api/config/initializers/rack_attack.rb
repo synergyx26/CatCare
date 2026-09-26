@@ -18,6 +18,11 @@ class Rack::Attack
       req.ip if req.path == "/api/v1/registrations" && req.post?
     end
 
+    # Photo colour analysis decodes an image per call: 10 per minute per IP
+    throttle("appearance_suggestion/ip", limit: 10, period: 1.minute) do |req|
+      req.ip if req.path.end_with?("/appearance_suggestion") && req.get?
+    end
+
     # General API throttle: 300 requests per 5 minutes per IP
     throttle("api/ip", limit: 300, period: 5.minutes) do |req|
       req.ip if req.path.start_with?("/api/")

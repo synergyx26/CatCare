@@ -179,8 +179,23 @@ export interface Cat {
   care_instructions: string | null
   feedings_per_day: number
   feeding_presets: { wet: number[]; dry: number[]; treats: number[]; other: number[] }
+  /** Cartoon look for the playful UI; null = not set (falls back to a coat picked by id) */
+  appearance: CatAppearance | null
   created_at: string
   updated_at: string
+}
+
+export type CatPattern = 'solid' | 'tabby' | 'tuxedo' | 'bicolor' | 'calico' | 'tortoiseshell' | 'colorpoint'
+
+/** Mirrors Cat::APPEARANCE_KEYS in the API. Colours are #rrggbb. */
+export interface CatAppearance {
+  pattern: CatPattern
+  fur: string
+  /** Stripes (tabby), white (tuxedo/bicolor), orange (calico/tortie) or points (colorpoint) */
+  fur2?: string | null
+  /** Calico's black patches */
+  fur3?: string | null
+  eyes: string
 }
 
 // ─── Household Chores ─────────────────────────────────────────────────────────

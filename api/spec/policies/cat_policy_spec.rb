@@ -30,6 +30,10 @@ RSpec.describe CatPolicy, type: :policy do
     it "permits update" do
       expect(policy_for(send(user_let), cat)).to permit_action(:update)
     end
+
+    it "permits appearance_suggestion" do
+      expect(policy_for(send(user_let), cat)).to permit_action(:appearance_suggestion)
+    end
   end
 
   shared_examples "cannot write cats" do |user_let|
@@ -39,6 +43,10 @@ RSpec.describe CatPolicy, type: :policy do
 
     it "denies update" do
       expect(policy_for(send(user_let), cat)).not_to permit_action(:update)
+    end
+
+    it "denies appearance_suggestion" do
+      expect(policy_for(send(user_let), cat)).not_to permit_action(:appearance_suggestion)
     end
   end
 

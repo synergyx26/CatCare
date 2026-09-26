@@ -305,7 +305,8 @@ HouseholdInvite — token (unique), expires_at, status [pending|accepted|expired
 Cat             — household_id, name, species, active (soft delete),
                   vet_name, vet_clinic, vet_phone, vet_address, care_instructions,
                   feedings_per_day (int, default 1), track_water (bool), track_litter (bool),
-                  feeding_presets (jsonb), photo (Active Storage)
+                  feeding_presets (jsonb), photo (Active Storage),
+                  appearance (jsonb, nullable — cartoon look for the playful UI; see below)
 CareEvent       — cat_id, household_id (denorm), logged_by_id, event_type (enum),
                   occurred_at (indexed), notes, details (jsonb)
 Reminder        — cat_id, next_trigger_at (indexed)
@@ -321,6 +322,7 @@ PetExpense      — household_id, cat_id (nullable), amount_cents, currency, cat
 - feeding: `{ food_type, amount_grams, unit }` — unit is free-text (grams, packs, etc.)
 - weight: `{ weight_value, weight_unit }`
 - medication: `{ medication_name, dosage?, unit?, active_medication?: bool, stopped?: bool, frequency?: MedicationFrequency, course_end_date?: string }` — unit is `mg` | `ml` | `tablet`; `active_medication: true` marks a regimen start event; `frequency` values: `once_daily | twice_daily | every_8h | every_12h | every_other_day | every_3_days | every_week | as_needed`
+- cat appearance: `{ pattern, fur, fur2?, fur3?, eyes }` — pattern ∈ `solid|tabby|tuxedo|bicolor|calico|tortoiseshell|colorpoint`, colours `#rrggbb`; fur2/fur3 meaning depends on pattern (stripes / white / orange+dark patches / points). Validated + normalised in `Cat#appearance_shape`; PATCH `{ cat: { appearance: null } }` clears it.
 
 ---
 
@@ -332,7 +334,7 @@ api/app/controllers/
 
 api/app/controllers/api/v1/
   base_controller.rb        — current_household, render_success/error helpers
-  cats_controller.rb        — CRUD + stats action + Pundit; ?include_inactive for archived cats; tier enforcement on create (cat limit) and stats (range + offset limits)
+  cats_controller.rb        — CRUD + stats + appearance_suggestion (reads colours from the saved photo, saves nothing; editors only, throttled 10/min) + Pundit; ?include_inactive for archived cats; tier enforcement on create (cat limit) and stats (range + offset limits)
   care_events_controller.rb — index/create/update/destroy + Pundit; tier enforcement on create (event type whitelist)
   households_controller.rb
   household_invites_controller.rb — role param + accept flow + Pundit; tier enforcement on create (member limit)
@@ -345,6 +347,10 @@ api/app/controllers/api/v1/admin/
   stats_controller.rb       — GET /api/v1/admin/stats
   users_controller.rb       — GET/PATCH /api/v1/admin/users
   imports_controller.rb     — POST /api/v1/admin/imports/care_events; batched bulk insert; overrides current_household to use super-admin's first household; no tier checks; accepts { events: [...] }
+
+api/app/services/cat_appearance/
+  photo_sampler.rb          — libvips thumbnail → centre + border pixel samples; raises UnreadableImage
+  suggester.rb              — pure Ruby: k-means centre colours, drop border-dominant (background) clusters, name colours, pick pattern
 
 api/app/policies/
   cat_policy.rb                    — sitter: read-only; admin/member: full CRUD
@@ -404,7 +410,7 @@ web/src/
       AddMedicationModal.tsx  — start or edit a medication regimen; fields: name, dosage+unit, frequency (all 8 options), start date, finite-course toggle+end date, notes; onSuccess invalidates `['care_events']` broadly
       QuickLogDoseSheet.tsx   — bottom sheet to log a dose for a specific regimen; pre-fills medication name from start event
     dashboard/catTaskSummary.tsx — summarizeCatTasks() (pending/done + task counts), getMedicationStartDetails(), CatCareInfo, ToothIcon; shared by CatTaskCard + PlayfulCatCard so both agree on what's pending
-    playful/                — playful-UI preview only (see VITE_PLAYFUL_UI_ENABLED): AnimatedCat (SVG cat, moods happy|hungry|sleep|party, coatForCat by id), PlayfulCatCard, PlayfulDashboardHero, PeekingCat, effects.ts
+    playful/                — playful-UI preview only (see VITE_PLAYFUL_UI_ENABLED): AnimatedCat (SVG cat, moods happy|hungry|sleep|party, coatForCat by id), PlayfulCatCard, PlayfulDashboardHero, PeekingCat, effects.ts, CatLookEditor (Edit Cat page "Cartoon look": Match from photo, pattern/colour pickers, saves appearance separately from the main form)
     reminders/
       RemindersSection.tsx  — reminder list + inline RHF+Zod create form; sitter=read-only; "Coming soon" badge
     pdf/

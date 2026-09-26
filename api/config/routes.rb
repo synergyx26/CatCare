@@ -30,6 +30,7 @@ Rails.application.routes.draw do
         delete 'memberships/:id', to: 'memberships#manage_destroy'
         resources :cats, only: [:index, :create, :show, :update] do
           get :stats, on: :member
+          get :appearance_suggestion, on: :member
         end
         resources :care_events, only: [:index, :create, :update, :destroy]
         resources :care_notes,  only: [:index, :create, :update, :destroy]

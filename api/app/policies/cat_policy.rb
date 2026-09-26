@@ -8,6 +8,8 @@ class CatPolicy < ApplicationPolicy
   def create?  = non_sitter_member?
   def update?  = non_sitter_member?
   def archive? = non_sitter_member?
+  # Only feeds the appearance editor, which only editors can save
+  def appearance_suggestion? = non_sitter_member?
 
   private
 

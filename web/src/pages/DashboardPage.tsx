@@ -560,7 +560,7 @@ export function DashboardPage() {
           catNamesNeedingCare={catSummaries.filter(({ summary }) => summary.hasPending).map(({ cat }) => cat.name)}
           catCount={cats.length}
           vacationWindowDays={isVacationMode && vacationCtx ? vacationCtx.windowDays : undefined}
-          loungingCatId={cats[0]?.id}
+          loungingCat={cats[0]}
           action={addCatButton}
         />
       ) : (

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { Cat } from '@/types/api'
 import { AnimatedCat, WalkingCat, coatForCat } from './AnimatedCat'
 
 // Playful-preview replacement for the dashboard's greeting header. Pure
@@ -14,8 +15,8 @@ interface PlayfulDashboardHeroProps {
   catCount: number
   /** Set during vacation mode — status is over the last N days, not today. */
   vacationWindowDays?: number
-  /** Id of a real cat, so the lounging cat matches one of the cards' coats. */
-  loungingCatId?: number
+  /** A real cat, so the lounging cat matches one of the cards. */
+  loungingCat?: Cat
   action?: ReactNode
 }
 
@@ -28,7 +29,7 @@ export function PlayfulDashboardHero({
   catNamesNeedingCare,
   catCount,
   vacationWindowDays,
-  loungingCatId,
+  loungingCat,
   action,
 }: PlayfulDashboardHeroProps) {
   const allDone = catCount > 0 && catNamesNeedingCare.length === 0
@@ -91,7 +92,7 @@ export function PlayfulDashboardHero({
         {allDone && (
           <div className="pl-zzz" aria-hidden="true"><span>z</span><span>z</span><span>Z</span></div>
         )}
-        <AnimatedCat coat={coatForCat(loungingCatId ?? 1)} mood={allDone ? 'sleep' : 'happy'} className="w-full" />
+        <AnimatedCat coat={coatForCat(loungingCat ?? { id: 1 })} mood={allDone ? 'sleep' : 'happy'} className="w-full" />
       </div>
     </section>
   )
