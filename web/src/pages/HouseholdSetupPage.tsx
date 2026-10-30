@@ -38,7 +38,7 @@ export function HouseholdSetupPage() {
       const householdId: number = res.data.data.id
       setActiveHousehold(householdId)
       notify.success('Household created!')
-      navigate(`/households/${householdId}/add-cat`, { replace: true })
+      navigate(`/households/${householdId}/add-cat`, { replace: true, state: { onboarding: true } })
     },
     onError: (err) => {
       const message = (err as AxiosError<ApiError>).response?.data?.message

@@ -241,7 +241,8 @@ New policy specs must be added whenever a new policy is created. Pundit policy b
 
 ### Frontend enforcement (UX layer — always pair with backend)
 - **`CatHistoryPage.tsx`** — range selector locks unavailable ranges; defaults to widest allowed range on mount; clamps on tier change
-- **`DashboardPage.tsx`** — "Add Cat" button shows Lock icon + toast at cat limit; custom batch action buttons show Lock + toast for restricted event types
+- **`HouseholdSettingsPage.tsx`** — "Add cat" button (Care Settings, admin only; the dashboard no longer has one, only an empty-state CTA) shows Lock icon + toast at cat limit; limits live in `lib/tiers.ts`
+- **`DashboardPage.tsx`** — custom batch action buttons show Lock + toast for restricted event types
 - **`MembersSection.tsx`** — "Invite someone" shows Lock + toast at member limit; receives `tier` prop from `DashboardPage`
 - **`LogCareModal.tsx`** — reads tier from `useAuthStore`; restricted type pills are greyed/locked; falls back to `feeding` if opened with a restricted `initialType`; accepts `initialDate?: string` ("YYYY-MM-DD") to pre-fill occurred_at to noon on that date (used by HouseholdCalendarPage)
 - **`HouseholdCalendarPage.tsx`** — Pro/Premium only; free users see an upgrade wall; month navigation clamped by tier (Pro: 6 months back, Premium: unlimited); all filters applied client-side; mobile day panel uses `max-h-[60dvh]` bottom sheet with `overflow-hidden` + `flex-1 min-h-0` on DayPanel so the event list scrolls correctly
@@ -437,7 +438,7 @@ web/src/
     HouseholdProfilePage.tsx — membership profile (phone, emergency contact, notes)
     HouseholdSettingsPage.tsx — admin-only; per-cat care requirements (feedings/day, water, litter) + feeding portion preset editor
     LandingPage.tsx         — public landing page at /
-    AddCatPage.tsx, HouseholdSetupPage.tsx, LoginPage.tsx, RegisterPage.tsx, InvitePage.tsx
+    AddCatPage.tsx (responsive; stepper + Skip only when reached via onboarding `state.onboarding`), HouseholdSetupPage.tsx, LoginPage.tsx, RegisterPage.tsx, InvitePage.tsx
     AdminPage.tsx           — super-admin dashboard: platform stats, user management, tier switching
     AdminImportPage.tsx     — super-admin only; 4-step Excel import wizard (Upload → Map → Preview → Import);
                               SheetJS parses client-side; batches 500 rows/request with progress bar;

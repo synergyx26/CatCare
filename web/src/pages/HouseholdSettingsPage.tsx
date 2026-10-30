@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { notify } from '@/lib/notify'
-import { Plus, X, Pencil, Check } from 'lucide-react'
+import { Plus, X, Pencil, Check, Lock, PawPrint } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
 import { Button } from '@/components/ui/button'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { useEffectiveTier } from '@/hooks/useEffectiveTier'
+import { catLimitForTier, catLimitUpgradeHint } from '@/lib/tiers'
 import { CURRENCIES } from '@/lib/currency'
 import type { Cat, Household, HouseholdChoreDefinition } from '@/types/api'
 
@@ -109,6 +111,18 @@ export function HouseholdSettingsPage() {
     enabled:  !!hid,
   })
   const cats: Cat[] = (catsData?.data?.data ?? []).filter((c: Cat) => c.active)
+
+  const tier = useEffectiveTier()
+  const catLimit = catLimitForTier(tier)
+  const atCatLimit = cats.length >= catLimit
+
+  function handleAddCat() {
+    if (atCatLimit) {
+      notify.tierLimit(`Plan limit reached. ${catLimitUpgradeHint(tier)}`)
+    } else {
+      navigate(`/households/${hid}/add-cat`)
+    }
+  }
 
   // ── Locale state (currency + country) ───────────────────────────────────────
 
@@ -287,6 +301,25 @@ export function HouseholdSettingsPage() {
         subtitle="Configure daily care requirements and feeding portions for each cat"
         backTo={{ label: 'Back to dashboard', onClick: () => navigate('/dashboard') }}
       />
+
+      {/* ── Cats ── */}
+      <div className="rounded-2xl bg-card ring-1 ring-border/60 px-4 py-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <PawPrint className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Cats</p>
+            <p className="text-xs text-muted-foreground">
+              {cats.length} active{Number.isFinite(catLimit) ? ` of ${catLimit} on your plan` : ''}
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" className="shrink-0" onClick={handleAddCat}>
+          {atCatLimit ? <Lock className="size-4" /> : <Plus className="size-4" />}
+          Add cat
+        </Button>
+      </div>
 
       {/* ── Locale settings ── */}
       <div className="rounded-2xl bg-card ring-1 ring-border/60 overflow-hidden">

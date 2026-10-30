@@ -3,8 +3,8 @@ import type { Cat } from '@/types/api'
 import { AnimatedCat, WalkingCat, coatForCat } from './AnimatedCat'
 
 // Playful-preview replacement for the dashboard's greeting header. Pure
-// presentation: DashboardPage computes the counts and passes the Add Cat
-// button in as `action`, so tier gating stays in one place.
+// presentation: DashboardPage computes the counts and may pass a call-to-action
+// in as `action`.
 
 interface PlayfulDashboardHeroProps {
   greeting: string

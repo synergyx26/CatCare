@@ -22,7 +22,7 @@ import { isToday, isSameLocalDay, getCatTodayStatus, isWithinLastNDays, type Vac
 import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 import { Link } from 'react-router-dom'
 import { notify } from '@/lib/notify'
-import { Home, PawPrint, Plus, Settings2, X, Lock, WifiOff, RefreshCw, Pencil, TableProperties } from 'lucide-react'
+import { Home, PawPrint, Settings2, X, Lock, WifiOff, RefreshCw, Pencil, TableProperties } from 'lucide-react'
 import { VacationBanner } from '@/components/dashboard/VacationBanner'
 import { SitterVisitChecklist } from '@/components/dashboard/SitterVisitChecklist'
 import { HouseholdChoresSection } from '@/components/dashboard/HouseholdChoresSection'
@@ -187,8 +187,6 @@ export function DashboardPage() {
     primaryHousehold?.members.find((m) => m.id === user?.id)?.role ?? null
 
   const tier = useEffectiveTier()
-  const catLimit = tier === 'premium' ? Infinity : tier === 'pro' ? 3 : 1
-  const atCatLimit = cats.length >= catLimit
 
   // Per-cat care requirements map — passed to SitterVisitChecklist
   const catRequirements = new Map<number, CatCareRequirements>(
@@ -521,27 +519,6 @@ export function DashboardPage() {
     )
   }
 
-  const addCatButton = primaryHousehold && currentRole !== 'sitter' ? (
-    <Button
-      variant="outline"
-      size="sm"
-      className="shrink-0"
-      onClick={() => {
-        if (atCatLimit) {
-          const hint = tier === 'pro'
-            ? 'Upgrade to Premium to add more than 3 cats.'
-            : 'Upgrade to Pro or Premium to add more cats.'
-          notify.tierLimit(`Plan limit reached. ${hint}`)
-        } else {
-          navigate(`/households/${primaryHousehold.id}/add-cat`)
-        }
-      }}
-    >
-      {atCatLimit ? <Lock className="size-4" /> : <Plus className="size-4" />}
-      Add Cat
-    </Button>
-  ) : null
-
   // Playful hero progress — same pending rules as the playful cards themselves
   const catSummaries = playful
     ? cats.map((cat) => ({
@@ -561,7 +538,6 @@ export function DashboardPage() {
           catCount={cats.length}
           vacationWindowDays={isVacationMode && vacationCtx ? vacationCtx.windowDays : undefined}
           loungingCat={cats[0]}
-          action={addCatButton}
         />
       ) : (
         /* Page header — warm greeting */
@@ -578,7 +554,6 @@ export function DashboardPage() {
               </p>
             )}
           </div>
-          {addCatButton}
         </div>
       )}
 

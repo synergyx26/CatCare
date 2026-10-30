@@ -10,6 +10,13 @@ on:
 jobs:
   backup:
     name: pg_dump → artifact
+    # Backs up the ONLINE (Render/Supabase) database, which is currently
+    # paused — every run since 2026-09-27 failed with EAUTHQUERY. Skipped
+    # unless the repo variable ONLINE_DB_BACKUP_ENABLED is 'true'; set it
+    # (Settings → Secrets and variables → Actions → Variables) when the
+    # online deployment is resumed. The self-hosted instance is backed up
+    # by proxmox-homelab (backup-offbox-copy.sh), not this workflow.
+    if: ${{ vars.ONLINE_DB_BACKUP_ENABLED == 'true' }}
     runs-on: ubuntu-latest
 
     steps:
