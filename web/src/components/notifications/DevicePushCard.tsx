@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { notify } from '@/lib/notify'
 import { api } from '@/api/client'
 import { disablePush, enablePush, getPushState, type PushState } from '@/lib/push'
+import { SECURE_APP_URL } from '@/lib/featureFlags'
 
 const MESSAGES: Record<Exclude<PushState, 'off' | 'on'>, string> = {
-  insecure: 'This page is loaded over plain HTTP, so your browser blocks push. Open CatCare over HTTPS (the secure address) to enable it.',
+  insecure: 'This page is loaded over plain HTTP, so your browser blocks push.',
   unsupported: 'This browser can’t receive push here. On iPhone/iPad, add CatCare to your Home Screen first (Share → Add to Home Screen), then open it from there.',
   unconfigured: 'Push isn’t configured on the server yet (missing VAPID keys).',
   denied: 'Notifications are blocked for this site. Allow them in your browser’s site settings, then come back.',
@@ -36,6 +37,7 @@ export function DevicePushCard() {
 
   if (state === null) return null
   const blocked = state !== 'on' && state !== 'off'
+  const showSecureSetup = state === 'insecure' && !!SECURE_APP_URL
 
   return (
     <div className="mt-2 flex items-start gap-3 rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-indigo-50 p-4 dark:border-sky-800/40 dark:from-sky-950/30 dark:to-indigo-950/30">
@@ -51,6 +53,24 @@ export function DevicePushCard() {
               ? 'Push is on for this device. Enable it on each phone and computer you want alerts on.'
               : 'Get alerts here even when CatCare is closed. Each device is enabled separately.'}
         </p>
+        {showSecureSetup && (
+          <div className="mt-3 space-y-3 text-xs text-muted-foreground">
+            <ol className="list-decimal space-y-1 pl-4">
+              <li>
+                <a className="font-medium text-primary underline" href="/ca.crt">Download the CatCare certificate</a>{' '}
+                and install it once on this device
+                (<strong>iPhone:</strong> Settings → Profile Downloaded → Install, then Settings → General → About → Certificate Trust Settings → turn on;{' '}
+                <strong>Android:</strong> Settings → Security → Encryption &amp; credentials → Install a certificate → CA certificate).
+              </li>
+              <li>Open the secure address below and sign in again (it’s a separate login from this page).</li>
+              <li>On iPhone/iPad, tap Share → Add to Home Screen and open CatCare from there.</li>
+              <li>Come back to this screen and tap Enable on this device.</li>
+            </ol>
+            <Button type="button" size="sm" onClick={() => { window.location.href = `${SECURE_APP_URL}/notification-settings` }}>
+              Open secure version
+            </Button>
+          </div>
+        )}
         {!blocked && (
           <div className="mt-3 flex flex-wrap gap-2">
             <Button type="button" size="sm" variant={state === 'on' ? 'outline' : 'default'} disabled={toggle.isPending} onClick={() => toggle.mutate()}>

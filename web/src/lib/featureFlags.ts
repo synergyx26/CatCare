@@ -14,3 +14,7 @@ export const PLAYFUL_UI_AVAILABLE = import.meta.env.VITE_PLAYFUL_UI_ENABLED === 
 // switch between the classic top bar and the sidebar on their own device. Same
 // deployment rules as the playful flag: set on the self-hosted build only.
 export const SIDEBAR_NAV_AVAILABLE = import.meta.env.VITE_SIDEBAR_NAV_ENABLED === 'true'
+
+// Address of the HTTPS front (Caddy) for the self-hosted build. Push needs a
+// secure context, so the plain-HTTP site points users here. Unset = no hint.
+export const SECURE_APP_URL: string | undefined = import.meta.env.VITE_HTTPS_URL || undefined
