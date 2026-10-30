@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set up CatCare notifications</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --fg:#111827; --muted:#6b7280; --line:#e5e7eb; --accent:#0ea5e9; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#1a1d23; --fg:#f3f4f6; --muted:#9ca3af; --line:rgba(255,255,255,.12); --accent:#38bdf8; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:560px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:22px; margin:8px 0 4px; }
+  p.lead { color:var(--muted); margin:0 0 16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin:12px 0; }
+  .step { display:flex; gap:12px; }
+  .num { flex:none; width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; display:grid; place-items:center; font-weight:700; font-size:14px; }
+  .step h2 { font-size:16px; margin:2px 0 6px; }
+  .step p { margin:4px 0; color:var(--muted); font-size:14px; }
+  .step b { color:var(--fg); }
+  a.btn, button.btn { display:block; text-align:center; padding:13px 16px; margin:10px 0 4px; border-radius:12px; background:var(--accent); color:#fff; font-weight:600; text-decoration:none; border:0; font-size:16px; width:100%; cursor:pointer; }
+  a.btn.secondary, button.btn.secondary { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  .status { display:flex; align-items:center; gap:10px; font-weight:600; }
+  .dot { width:12px; height:12px; border-radius:50%; background:var(--muted); flex:none; }
+  .dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
+  .tabs { display:flex; gap:8px; margin:12px 0; }
+  .tabs button { flex:1; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:15px; cursor:pointer; }
+  .tabs button[aria-selected="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .warn { background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.5); border-radius:12px; padding:10px 12px; font-size:14px; margin:10px 0; }
+  [hidden] { display:none !important; }
+  details { margin-top:8px; font-size:14px; color:var(--muted); } summary { cursor:pointer; color:var(--fg); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Set up CatCare notifications</h1>
+  <p class="lead">One-time setup per device so CatCare can send you alerts. Takes about two minutes.</p>
+
+  <div class="card">
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Checking this device…</span></div>
+    <button class="btn secondary" id="recheck" type="button">Check again</button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-ios" aria-selected="false">iPhone / iPad</button>
+    <button role="tab" id="tab-android" aria-selected="false">Android</button>
+  </div>
+
+  <!-- ───────────── iPhone / iPad ───────────── -->
+  <section id="ios" hidden>
+    <div class="warn"><b>Use Safari.</b> iPhones can only install this from Safari — not Chrome, Firefox, or an app’s built-in browser. If you opened this elsewhere, copy the address into Safari.</div>
+
+    <div class="card step"><div class="num">1</div><div>
+      <h2>Download the profile</h2>
+      <p>Tap the button, then tap <b>Allow</b> when Safari asks to download a configuration profile, then <b>Close</b>.</p>
+      <a class="btn" href="/catcare-ca.mobileconfig">Download profile</a>
+    </div></div>
+
+    <div class="card step"><div class="num">2</div><div>
+      <h2>Install it</h2>
+      <p>Open the <b>Settings</b> app. Near the top you’ll see <b>Profile Downloaded</b> — tap it, then <b>Install</b> (top right), enter your passcode, and tap <b>Install</b> again.</p>
+      <p>It will say “Not Signed” — that’s expected, it’s your own home server’s certificate.</p>
+      <details><summary>I don’t see “Profile Downloaded”</summary>
+        <p>Go to Settings → General → <b>VPN &amp; Device Management</b> and look under “Downloaded Profile” for <b>CatCare Local Certificate</b>. If it isn’t there, go back to step 1 and make sure you tapped Allow.</p></details>
+    </div></div>
+
+    <div class="card step"><div class="num">3</div><div>
+      <h2>Turn trust on</h2>
+      <p>Settings → General → <b>About</b> → scroll to the very bottom → <b>Certificate Trust Settings</b>. Switch on <b>Caddy Local Authority</b> and tap <b>Continue</b>.</p>
+      <p>This row <b>only appears after step 2 is done</b> — if it’s missing, the profile isn’t installed yet.</p>
+    </div></div>
+
+    <div class="card step"><div class="num">4</div><div>
+      <h2>Add CatCare to your Home Screen</h2>
+      <p>iPhones only allow notifications for apps on the Home Screen. Open the secure address below in Safari, tap <b>Share</b> → <b>Add to Home Screen</b>, then open CatCare from the new icon.</p>
+      <a class="btn" id="openSecure1" href="#">Open secure CatCare</a>
+    </div></div>
+  </section>
+
+  <!-- ───────────── Android ───────────── -->
+  <section id="android" hidden>
+    <div class="card step"><div class="num">1</div><div>
+      <h2>Download the certificate</h2>
+      <a class="btn" href="/ca.crt">Download certificate</a>
+    </div></div>
+
+    <div class="card step"><div class="num">2</div><div>
+      <h2>Install it</h2>
+      <p>Open <b>Settings</b> → <b>Security</b> (or Security &amp; privacy) → <b>More security settings</b> → <b>Encryption &amp; credentials</b> → <b>Install a certificate</b> → <b>CA certificate</b> → <b>Install anyway</b>, then pick the file you just downloaded (<b>ca.crt</b>, in Downloads).</p>
+      <p>Menu names vary a little by phone — searching Settings for “certificate” finds it.</p>
+    </div></div>
+
+    <div class="card step"><div class="num">3</div><div>
+      <h2>Open the secure address</h2>
+      <p>Open CatCare below in <b>Chrome</b>, sign in, and optionally tap the menu → <b>Install app</b>.</p>
+      <a class="btn" id="openSecure2" href="#">Open secure CatCare</a>
+    </div></div>
+  </section>
+
+  <div class="card step"><div class="num">✓</div><div>
+    <h2>Last step: turn on notifications</h2>
+    <p>On the secure CatCare, go to <b>Settings → Notifications → Push</b> and tap <b>Enable on this device</b>, then <b>Send test notification</b>.</p>
+  </div></div>
+</main>
+
+<script>
+  var secure = 'https://' + location.hostname + ':8443';
+  ['openSecure1','openSecure2'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.href = secure + '/notification-settings';
+  });
+
+  function show(which) {
+    ['ios','android'].forEach(function (p) {
+      document.getElementById(p).hidden = p !== which;
+      document.getElementById('tab-' + p).setAttribute('aria-selected', String(p === which));
+    });
+  }
+  document.getElementById('tab-ios').onclick = function () { show('ios'); };
+  document.getElementById('tab-android').onclick = function () { show('android'); };
+  show(/android/i.test(navigator.userAgent) ? 'android' : 'ios');
+
+  // A no-cors fetch to the HTTPS origin only resolves when the TLS certificate
+  // is trusted by this device — a cheap, honest "did setup work?" indicator.
+  function check() {
+    var dot = document.getElementById('dot'), text = document.getElementById('statusText');
+    dot.className = 'dot'; text.textContent = 'Checking this device…';
+    var ctrl = new AbortController(); var t = setTimeout(function () { ctrl.abort(); }, 6000);
+    fetch(secure + '/health', { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal })
+      .then(function () { dot.className = 'dot ok'; text.textContent = 'This device trusts CatCare’s secure address ✓'; })
+      .catch(function () { dot.className = 'dot bad'; text.textContent = 'Not trusted yet — follow the steps below, then tap “Check again”.'; })
+      .finally(function () { clearTimeout(t); });
+  }
+  document.getElementById('recheck').onclick = check;
+  check();
+</script>
+</body>
+</html>

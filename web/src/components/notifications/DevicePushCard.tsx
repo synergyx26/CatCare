@@ -54,20 +54,10 @@ export function DevicePushCard() {
               : 'Get alerts here even when CatCare is closed. Each device is enabled separately.'}
         </p>
         {showSecureSetup && (
-          <div className="mt-3 space-y-3 text-xs text-muted-foreground">
-            <ol className="list-decimal space-y-1 pl-4">
-              <li>
-                <a className="font-medium text-primary underline" href="/ca.crt">Download the CatCare certificate</a>{' '}
-                and install it once on this device
-                (<strong>iPhone:</strong> Settings → Profile Downloaded → Install, then Settings → General → About → Certificate Trust Settings → turn on;{' '}
-                <strong>Android:</strong> Settings → Security → Encryption &amp; credentials → Install a certificate → CA certificate).
-              </li>
-              <li>Open the secure address below and sign in again (it’s a separate login from this page).</li>
-              <li>On iPhone/iPad, tap Share → Add to Home Screen and open CatCare from there.</li>
-              <li>Come back to this screen and tap Enable on this device.</li>
-            </ol>
-            <Button type="button" size="sm" onClick={() => { window.location.href = `${SECURE_APP_URL}/notification-settings` }}>
-              Open secure version
+          <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+            <p>One-time setup for this device (about two minutes): install CatCare’s certificate, then open the secure address.</p>
+            <Button type="button" size="sm" onClick={() => { window.location.href = '/trust.html' }}>
+              Set up this device
             </Button>
           </div>
         )}
