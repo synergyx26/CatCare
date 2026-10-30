@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Bell, CheckCheck, DatabaseBackup, AlertTriangle } from 'lucide-react'
+import { Bell, CheckCheck, DatabaseBackup, AlertTriangle, PawPrint, StickyNote, ReceiptText, UserPlus, Plane, CircleCheck, AlarmClock } from 'lucide-react'
 import { api } from '@/api/client'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
@@ -11,10 +11,23 @@ import { NOTIFICATIONS_KEY, useNotifications } from '@/hooks/useUnreadNotificati
 import { cn } from '@/lib/utils'
 import type { AppNotification } from '@/types/api'
 
+const KIND_ICONS: Record<string, typeof Bell> = {
+  'care.logged': CircleCheck,
+  'chore.logged': CircleCheck,
+  'cat.added': PawPrint,
+  'note.added': StickyNote,
+  'expense.added': ReceiptText,
+  'member.joined': UserPlus,
+  'trip.added': Plane,
+  'reminder.added': AlarmClock,
+  'chore.defined': CircleCheck,
+}
+
 function KindIcon({ kind }: { kind: string }) {
   if (kind === 'backup.failed') return <AlertTriangle className="size-4 text-destructive" />
   if (kind.startsWith('backup.')) return <DatabaseBackup className="size-4 text-primary" />
-  return <Bell className="size-4 text-primary" />
+  const Icon = KIND_ICONS[kind] ?? Bell
+  return <Icon className="size-4 text-primary" />
 }
 
 export function NotificationsPage() {

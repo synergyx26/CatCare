@@ -1,6 +1,8 @@
 module Api
   module V1
     class BaseController < ApplicationController
+      include NotifiesHousehold
+
       TIER_RANK = { "free" => 0, "pro" => 1, "premium" => 2 }.freeze
 
       private

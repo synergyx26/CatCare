@@ -26,6 +26,7 @@ module Api
         return tier_error unless tier_feature_allowed?
 
         if expense.save
+          notify_household_of(expense)
           render_success(serialize_expense(expense), status: :created)
         else
           render_error("VALIDATION_ERROR", expense.errors.full_messages.join(", "),

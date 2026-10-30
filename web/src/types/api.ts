@@ -29,6 +29,10 @@ export interface PushPreferences {
   vet_appointments: boolean
   /** Someone else in the household logged care. Absent on older saved prefs = on. */
   care_activity?: boolean
+  /** Additions below: absent on older saved prefs = on. */
+  notes?: boolean
+  expenses?: boolean
+  household_updates?: boolean
 }
 
 export interface NotificationPreferences {
@@ -58,6 +62,9 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
     medication_alerts: true,
     vet_appointments: true,
     care_activity: true,
+    notes: true,
+    expenses: true,
+    household_updates: true,
   },
 }
 

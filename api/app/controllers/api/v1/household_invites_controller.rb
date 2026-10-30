@@ -80,12 +80,13 @@ module Api
 
         # Idempotent: don't add a duplicate membership if already a member
         unless current_user.households.exists?(invite.household_id)
-          invite.household.household_memberships.create!(
+          membership = invite.household.household_memberships.create!(
             user:      current_user,
             role:      invite.role,
             status:    :active,
             joined_at: Time.current,
           )
+          notify_household_of(membership)
         end
 
         invite.update!(status: :accepted)

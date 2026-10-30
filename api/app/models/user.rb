@@ -34,7 +34,12 @@ class User < ApplicationRecord
       "medication_alerts" => true,
       "vet_appointments"  => true,
       # Someone else in the household logged care (fed, litter, meds…)
-      "care_activity"     => true
+      "care_activity"     => true,
+      # Additions: notes, expenses, and household updates (new cat, new
+      # member, trip, reminder, chore). Missing key = on (see Notifier).
+      "notes"             => true,
+      "expenses"          => true,
+      "household_updates" => true
     }
   }.freeze
 

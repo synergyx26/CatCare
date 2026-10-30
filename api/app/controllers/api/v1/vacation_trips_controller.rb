@@ -14,6 +14,7 @@ module Api
         trip.created_by_id = current_user.id
         authorize trip
         if trip.save
+          notify_household_of(trip)
           render_success(serialize(trip), status: :created)
         else
           render_error("VALIDATION_ERROR", trip.errors.full_messages.join(", "),

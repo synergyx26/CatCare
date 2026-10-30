@@ -27,6 +27,7 @@ module Api
         authorize note
 
         if note.save
+          notify_household_of(note)
           render_success(serialize_note(note), status: :created)
         else
           render_error("VALIDATION_ERROR", note.errors.full_messages.join(", "), status: :unprocessable_entity)

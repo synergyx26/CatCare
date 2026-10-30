@@ -49,6 +49,9 @@ const emailSchema = z.object({
 const pushSchema = z.object({
   enabled:           z.boolean(),
   care_activity:     z.boolean().optional(),
+  notes:             z.boolean().optional(),
+  expenses:          z.boolean().optional(),
+  household_updates: z.boolean().optional(),
   care_reminders:    z.boolean(),
   medication_alerts: z.boolean(),
   vet_appointments:  z.boolean(),
@@ -441,6 +444,21 @@ function PushTab() {
     <form onSubmit={form.handleSubmit((d) => save(d))} className="space-y-2">
       <DevicePushCard />
 
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full sm:w-auto"
+        disabled={isPending}
+        onClick={() => {
+          const all = { enabled: true, care_activity: true, notes: true, expenses: true, household_updates: true,
+                        care_reminders: true, medication_alerts: true, vet_appointments: true }
+          form.reset(all)
+          save(all)
+        }}
+      >
+        Turn everything on
+      </Button>
+
       {/* Master toggle */}
       <SectionCard>
         <div className="flex items-center justify-between gap-4 min-h-[44px] py-3">
@@ -469,6 +487,24 @@ function PushTab() {
             description="When someone else in your household feeds, cleans, medicates or otherwise logs care"
             checked={form.watch('care_activity') ?? true}
             onChange={(v) => form.setValue('care_activity', v)}
+          />
+          <PrefRow
+            label="Notes"
+            description="When someone adds a care note"
+            checked={form.watch('notes') ?? true}
+            onChange={(v) => form.setValue('notes', v)}
+          />
+          <PrefRow
+            label="Expenses"
+            description="When someone logs a purchase or expense"
+            checked={form.watch('expenses') ?? true}
+            onChange={(v) => form.setValue('expenses', v)}
+          />
+          <PrefRow
+            label="Household updates"
+            description="New cats, new members, vacation trips, reminders and chores"
+            checked={form.watch('household_updates') ?? true}
+            onChange={(v) => form.setValue('household_updates', v)}
           />
           <PrefRow
             label="Care reminders"

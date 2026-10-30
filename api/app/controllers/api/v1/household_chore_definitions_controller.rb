@@ -17,6 +17,7 @@ module Api
         authorize definition
 
         if definition.save
+          notify_household_of(definition)
           render_success(serialize_definition(definition), status: :created)
         else
           render_error("VALIDATION_ERROR", definition.errors.full_messages.join(", "), status: :unprocessable_entity)

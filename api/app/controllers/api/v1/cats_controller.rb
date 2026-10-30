@@ -40,6 +40,7 @@ module Api
         cat.active = true
 
         if cat.save
+          notify_household_of(cat)
           render json: { data: cat_json(cat) }, status: :created
         else
           render json: {

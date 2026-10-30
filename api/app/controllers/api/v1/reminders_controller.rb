@@ -16,6 +16,7 @@ module Api
         authorize reminder
 
         if reminder.save
+          notify_household_of(reminder)
           render_success(serialize_reminder(reminder), status: :created)
         else
           render_error("VALIDATION_ERROR", reminder.errors.full_messages.join(", "), status: :unprocessable_entity)

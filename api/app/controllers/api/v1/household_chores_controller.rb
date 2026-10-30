@@ -33,6 +33,7 @@ module Api
         authorize chore
 
         if chore.save
+          notify_household_of(chore)
           render_success(serialize_chore(chore), status: :created)
         else
           render_error("VALIDATION_ERROR", chore.errors.full_messages.join(", "), status: :unprocessable_entity)
