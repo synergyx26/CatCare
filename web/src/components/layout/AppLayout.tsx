@@ -47,9 +47,12 @@ import {
   Stethoscope,
   LayoutGrid,
   Sparkles,
+  PanelLeft,
 } from 'lucide-react'
 import { useThemeStore, type Theme } from '@/store/themeStore'
-import { PLAYFUL_UI_AVAILABLE } from '@/lib/featureFlags'
+import { PLAYFUL_UI_AVAILABLE, SIDEBAR_NAV_AVAILABLE } from '@/lib/featureFlags'
+import { useSidebarNav } from '@/hooks/useSidebarNav'
+import { SidebarShell } from '@/components/layout/SidebarShell'
 import type { Household, MemberRole } from '@/types/api'
 
 const THEME_CYCLE: Record<Theme, Theme> = { light: 'dark', dark: 'system', system: 'light' }
@@ -92,7 +95,8 @@ export function AppLayout() {
   const queryClient = useQueryClient()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [tierSwitching, setTierSwitching] = useState(false)
-  const { theme, setTheme, uiStyle, setUiStyle } = useThemeStore()
+  const { theme, setTheme, uiStyle, setUiStyle, setNavStyle } = useThemeStore()
+  const sidebarNav = useSidebarNav()
 
   // Re-fetch /me on every app load so DB changes (e.g. tier updates) are picked up
   // without requiring the user to log out and back in.
@@ -144,6 +148,200 @@ export function AppLayout() {
     googleLogout()
     navigate('/login', { replace: true })
     api.logout().catch(() => {})
+  }
+
+
+  // Shared between the classic top bar and the sidebar layout so the two
+  // never drift apart.
+  const householdMenuItems = (
+    <>
+                    <DropdownMenuItem
+                      onClick={() => navigate('/households')}
+                      className="gap-2 text-primary font-medium"
+                    >
+                      <LayoutGrid className="size-4 shrink-0" />
+                      All households
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {households.map((h) => {
+                      const role = h.members.find((m) => m.id === user?.id)?.role
+                      const isActive = h.id === (primaryHousehold?.id)
+                      return (
+                        <DropdownMenuItem
+                          key={h.id}
+                          onClick={() => {
+                            setActiveHousehold(h.id)
+                            navigate('/dashboard')
+                          }}
+                          className="gap-2"
+                        >
+                          <span className="flex size-4 items-center justify-center shrink-0">
+                            {isActive && <Check className="size-4 text-sky-600" />}
+                          </span>
+                          <span className="flex-1 truncate">{h.name}</span>
+                          {role && <RoleBadge role={role} />}
+                        </DropdownMenuItem>
+                      )
+                    })}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/setup')}>
+                      <Plus className="size-4 shrink-0" />
+                      Create new household
+                    </DropdownMenuItem>
+    </>
+  )
+
+  const userMenuItems = (
+    <>
+                <div className="px-1.5 py-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-foreground">{user?.name}</p>
+                    {tier && (
+                      <span className={[
+                        'text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full',
+                        tier === 'premium'
+                          ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                          : tier === 'pro'
+                            ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+                            : 'bg-muted text-muted-foreground',
+                      ].join(' ')}>
+                        {tier}
+                      </span>
+                    )}
+                  </div>
+                  {user?.email && <p className="text-xs text-muted-foreground">{user.email}</p>}
+                </div>
+                <DropdownMenuSeparator />
+                {user?.is_super_admin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1.5">
+                      <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                        <ShieldCheck className="size-3" />
+                        Dev tier
+                      </div>
+                      <div className="flex gap-1 mb-2">
+                        {TIERS.map((t) => (
+                          <button
+                            key={t}
+                            disabled={tierSwitching || user.subscription_tier === t}
+                            onClick={() => handleTierSwitch(t)}
+                            className={[
+                              'flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors',
+                              user.subscription_tier === t
+                                ? 'bg-primary text-primary-foreground cursor-default'
+                                : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary',
+                              tierSwitching ? 'opacity-50' : '',
+                            ].join(' ')}
+                          >
+                            {TIER_LABELS[t]}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => navigate('/admin')}
+                        className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+                      >
+                        <ShieldCheck className="size-3 shrink-0" />
+                        Admin Dashboard
+                      </button>
+                      <button
+                        onClick={() => navigate('/admin/import')}
+                        className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+                      >
+                        <ShieldCheck className="size-3 shrink-0" />
+                        Import Data
+                      </button>
+                    </div>
+                  </>
+                )}
+                <DropdownMenuItem onClick={() => navigate('/account')}>
+                  <User className="size-4" />
+                  My Account
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={handleLogout}>
+                  <LogOut className="size-4" />
+                  Sign out
+                </DropdownMenuItem>
+    </>
+  )
+
+  const controls = (
+    <>
+            {/* Theme toggle */}
+            {(() => {
+              const ThemeIcon = THEME_ICON[theme]
+              const nextTheme = THEME_CYCLE[theme]
+              const themeLabel = `Switch to ${nextTheme} mode (currently ${theme})`
+              return (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setTheme(nextTheme)}
+                  aria-label={themeLabel}
+                  title={themeLabel}
+                >
+                  <ThemeIcon className="size-4" aria-hidden="true" />
+                </Button>
+              )
+            })()}
+
+            {/* Playful redesign preview toggle — only in builds with VITE_PLAYFUL_UI_ENABLED */}
+            {PLAYFUL_UI_AVAILABLE && (() => {
+              const playful = uiStyle === 'playful'
+              const label = playful ? 'Switch back to the classic look' : 'Try the new playful look (preview)'
+              return (
+                <Button
+                  variant={playful ? 'secondary' : 'ghost'}
+                  size="icon-sm"
+                  onClick={() => setUiStyle(playful ? 'classic' : 'playful')}
+                  aria-label={label}
+                  aria-pressed={playful}
+                  title={label}
+                  className={playful ? 'text-primary' : undefined}
+                >
+                  <Sparkles className="size-4" aria-hidden="true" />
+                </Button>
+              )
+            })()}
+
+            {/* Sidebar navigation preview toggle — only in builds with VITE_SIDEBAR_NAV_ENABLED */}
+            {SIDEBAR_NAV_AVAILABLE && (() => {
+              const label = sidebarNav ? 'Switch back to the top navigation bar' : 'Try the sidebar navigation (preview)'
+              return (
+                <Button
+                  variant={sidebarNav ? 'secondary' : 'ghost'}
+                  size="icon-sm"
+                  onClick={() => setNavStyle(sidebarNav ? 'topbar' : 'sidebar')}
+                  aria-label={label}
+                  aria-pressed={sidebarNav}
+                  title={label}
+                  className={sidebarNav ? 'text-primary' : undefined}
+                >
+                  <PanelLeft className="size-4" aria-hidden="true" />
+                </Button>
+              )
+            })()}
+    </>
+  )
+
+  if (sidebarNav) {
+    return (
+      <SidebarShell
+        household={primaryHousehold}
+        userName={user?.name}
+        isAdmin={currentRole === 'admin'}
+        canAccessCalendar={canAccessCalendar}
+        canAccessCareHistory={canAccessCareHistory}
+        canAccessExpenses={canAccessExpenses}
+        householdMenuItems={householdMenuItems}
+        userMenuItems={userMenuItems}
+        controls={controls}
+      >
+        <Outlet />
+      </SidebarShell>
+    )
   }
 
   return (
@@ -426,39 +624,7 @@ export function AppLayout() {
                     <ChevronDown className="size-3 text-muted-foreground shrink-0" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" sideOffset={8} className="min-w-56 max-w-72">
-                    <DropdownMenuItem
-                      onClick={() => navigate('/households')}
-                      className="gap-2 text-primary font-medium"
-                    >
-                      <LayoutGrid className="size-4 shrink-0" />
-                      All households
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {households.map((h) => {
-                      const role = h.members.find((m) => m.id === user?.id)?.role
-                      const isActive = h.id === (primaryHousehold?.id)
-                      return (
-                        <DropdownMenuItem
-                          key={h.id}
-                          onClick={() => {
-                            setActiveHousehold(h.id)
-                            navigate('/dashboard')
-                          }}
-                          className="gap-2"
-                        >
-                          <span className="flex size-4 items-center justify-center shrink-0">
-                            {isActive && <Check className="size-4 text-sky-600" />}
-                          </span>
-                          <span className="flex-1 truncate">{h.name}</span>
-                          {role && <RoleBadge role={role} />}
-                        </DropdownMenuItem>
-                      )
-                    })}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/setup')}>
-                      <Plus className="size-4 shrink-0" />
-                      Create new household
-                    </DropdownMenuItem>
+                    {householdMenuItems}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
@@ -563,42 +729,7 @@ export function AppLayout() {
               )}
             </nav>
 
-            {/* Theme toggle */}
-            {(() => {
-              const ThemeIcon = THEME_ICON[theme]
-              const nextTheme = THEME_CYCLE[theme]
-              const themeLabel = `Switch to ${nextTheme} mode (currently ${theme})`
-              return (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setTheme(nextTheme)}
-                  aria-label={themeLabel}
-                  title={themeLabel}
-                >
-                  <ThemeIcon className="size-4" aria-hidden="true" />
-                </Button>
-              )
-            })()}
-
-            {/* Playful redesign preview toggle — only in builds with VITE_PLAYFUL_UI_ENABLED */}
-            {PLAYFUL_UI_AVAILABLE && (() => {
-              const playful = uiStyle === 'playful'
-              const label = playful ? 'Switch back to the classic look' : 'Try the new playful look (preview)'
-              return (
-                <Button
-                  variant={playful ? 'secondary' : 'ghost'}
-                  size="icon-sm"
-                  onClick={() => setUiStyle(playful ? 'classic' : 'playful')}
-                  aria-label={label}
-                  aria-pressed={playful}
-                  title={label}
-                  className={playful ? 'text-primary' : undefined}
-                >
-                  <Sparkles className="size-4" aria-hidden="true" />
-                </Button>
-              )
-            })()}
+            {controls}
 
             {/* User dropdown */}
             <DropdownMenu>
@@ -612,77 +743,7 @@ export function AppLayout() {
                 <ChevronDown className="size-3 text-muted-foreground" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={8} className="min-w-52 w-auto">
-                <div className="px-1.5 py-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-foreground">{user?.name}</p>
-                    {tier && (
-                      <span className={[
-                        'text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full',
-                        tier === 'premium'
-                          ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
-                          : tier === 'pro'
-                            ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
-                            : 'bg-muted text-muted-foreground',
-                      ].join(' ')}>
-                        {tier}
-                      </span>
-                    )}
-                  </div>
-                  {user?.email && <p className="text-xs text-muted-foreground">{user.email}</p>}
-                </div>
-                <DropdownMenuSeparator />
-                {user?.is_super_admin && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <div className="px-2 py-1.5">
-                      <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                        <ShieldCheck className="size-3" />
-                        Dev tier
-                      </div>
-                      <div className="flex gap-1 mb-2">
-                        {TIERS.map((t) => (
-                          <button
-                            key={t}
-                            disabled={tierSwitching || user.subscription_tier === t}
-                            onClick={() => handleTierSwitch(t)}
-                            className={[
-                              'flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors',
-                              user.subscription_tier === t
-                                ? 'bg-primary text-primary-foreground cursor-default'
-                                : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary',
-                              tierSwitching ? 'opacity-50' : '',
-                            ].join(' ')}
-                          >
-                            {TIER_LABELS[t]}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        onClick={() => navigate('/admin')}
-                        className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
-                      >
-                        <ShieldCheck className="size-3 shrink-0" />
-                        Admin Dashboard
-                      </button>
-                      <button
-                        onClick={() => navigate('/admin/import')}
-                        className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
-                      >
-                        <ShieldCheck className="size-3 shrink-0" />
-                        Import Data
-                      </button>
-                    </div>
-                  </>
-                )}
-                <DropdownMenuItem onClick={() => navigate('/account')}>
-                  <User className="size-4" />
-                  My Account
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onClick={handleLogout}>
-                  <LogOut className="size-4" />
-                  Sign out
-                </DropdownMenuItem>
+                {userMenuItems}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

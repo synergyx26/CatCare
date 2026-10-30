@@ -8,3 +8,9 @@
 // scripts/deploy-catcare.sh); leave unset on Vercel so the online deployment
 // keeps the classic UI with no toggle.
 export const PLAYFUL_UI_AVAILABLE = import.meta.env.VITE_PLAYFUL_UI_ENABLED === 'true'
+
+// Opt-in preview of the left sidebar navigation (collapsible on desktop, bottom
+// pill on mobile). When true, a toggle appears in the nav so each user can
+// switch between the classic top bar and the sidebar on their own device. Same
+// deployment rules as the playful flag: set on the self-hosted build only.
+export const SIDEBAR_NAV_AVAILABLE = import.meta.env.VITE_SIDEBAR_NAV_ENABLED === 'true'
