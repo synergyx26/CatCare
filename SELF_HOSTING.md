@@ -531,7 +531,7 @@ docker compose up -d --force-recreate api sidekiq   # restart after image update
 | `VITE_SENTRY_DSN` | Leave empty |
 | `VITE_LOCAL_ACCOUNTS_ENABLED` | `true` only if `LOCAL_ACCOUNTS_ENABLED=true` is also set in `.env.api` above |
 | `VITE_PLAYFUL_UI_ENABLED` | `true` to build in the playful dashboard redesign preview; users flip classic ↔ playful with the ✨ nav button (per device). Frontend-only — no API counterpart |
-| `VITE_SIDEBAR_NAV_ENABLED` | `true` to build in the left-sidebar navigation preview (collapsible on desktop, bottom pill on mobile); users flip top bar ↔ sidebar with the panel-left nav button (per device). Frontend-only — no API counterpart |
+| `VITE_SIDEBAR_NAV_ENABLED` | `true` to build in the left-sidebar navigation preview (collapsible on desktop, bottom pill on mobile); the sidebar is the default and users can switch to the classic top bar with the panel-left nav button (per device). Frontend-only — no API counterpart |
 
 ---
 

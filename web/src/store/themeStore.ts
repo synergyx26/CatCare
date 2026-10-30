@@ -27,7 +27,7 @@ export const useThemeStore = create<ThemeStore>()(
       theme: 'system',
       colorAccent: 'blue',
       uiStyle: 'classic',
-      navStyle: 'topbar',
+      navStyle: 'sidebar',
       navCollapsed: false,
       setTheme: (theme) => set({ theme }),
       setColorAccent: (colorAccent) => set({ colorAccent }),
