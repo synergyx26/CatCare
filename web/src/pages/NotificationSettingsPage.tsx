@@ -48,6 +48,7 @@ const emailSchema = z.object({
 
 const pushSchema = z.object({
   enabled:           z.boolean(),
+  care_activity:     z.boolean().optional(),
   care_reminders:    z.boolean(),
   medication_alerts: z.boolean(),
   vet_appointments:  z.boolean(),
@@ -463,6 +464,12 @@ function PushTab() {
           Notification types
         </p>
         <SectionCard>
+          <PrefRow
+            label="Care activity"
+            description="When someone else in your household feeds, cleans, medicates or otherwise logs care"
+            checked={form.watch('care_activity') ?? true}
+            onChange={(v) => form.setValue('care_activity', v)}
+          />
           <PrefRow
             label="Care reminders"
             description="Alerts when scheduled care is due"

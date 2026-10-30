@@ -43,6 +43,7 @@ module Api
         end
 
         if event.save
+          NotifyCareEventJob.perform_later(event.id)
           render_success(serialize_event(event), status: :created)
         else
           render_error("VALIDATION_ERROR", event.errors.full_messages.join(", "), status: :unprocessable_entity)

@@ -55,7 +55,7 @@ module Api
         params.require(:notification_preferences).permit(
           in_app: [ :enabled, :position, :duration, :success_toasts, :error_toasts, :tier_limit_toasts ],
           email:  [ :enabled, :care_reminders, :medication_alerts, :vet_appointments ],
-          push:   [ :enabled, :care_reminders, :medication_alerts, :vet_appointments ]
+          push:   [ :enabled, :care_reminders, :medication_alerts, :vet_appointments, :care_activity ]
         )
       end
     end

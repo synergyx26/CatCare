@@ -32,7 +32,9 @@ class User < ApplicationRecord
       "enabled"           => false,
       "care_reminders"    => true,
       "medication_alerts" => true,
-      "vet_appointments"  => true
+      "vet_appointments"  => true,
+      # Someone else in the household logged care (fed, litter, meds…)
+      "care_activity"     => true
     }
   }.freeze
 
