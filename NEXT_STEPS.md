@@ -1,6 +1,6 @@
 # CatCare — Next Steps & Enhancement Log
 
-**Current status:** MVP deployed and functional. Beta testing with 2-person household.
+**Current status:** In daily use on the self-hosted Proxmox deployment (household of several members). Online stack paused.
 
 > **Note:** This log predates the move to local self-hosted (Proxmox) as the
 > active deployment (see `SELF_HOSTING.md`, `CLAUDE.md`'s
@@ -12,6 +12,14 @@
 ---
 
 ## Recently Completed
+
+### Notifications, HTTPS & Backups ✅ *(2026-10-30)*
+- **Notification system:** per-user inbox (bell + `/notifications`) and Web Push to every registered device, funnelled through `Notifications::Notifier`. Care events and every kind of addition (cat, member joined, note, expense, trip, reminder, chores) notify the rest of the household; bursts fold into one notification; per-category switches + "Turn everything on".
+- **HTTPS front (self-hosted):** Caddy with its own CA on `:8443`, a second web build for that origin, `/trust.html` + iOS `.mobileconfig` for one-time device setup. Required because browsers block push on plain HTTP.
+- **Backups kept in the app:** nightly zip of every table as CSV (`BackupExportJob`), `/admin/backups` to list/download/back up now, super-admin notified on success **and** failure; plus a nightly host-level `pg_dump` + photos tarball and a one-command rollback (`/opt/catcare/rollback.sh`).
+- **Sidebar navigation** is now the default layout (collapsible desktop sidebar, mobile bottom pill); the classic top bar is a per-device toggle.
+- **Add Cat** moved into Care Settings (tier-gated); the add-cat page is now a responsive form.
+- **CI:** Bundler Audit advisories fixed (`net-ssh`, `crass`); the online-DB backup workflow is skipped unless `ONLINE_DB_BACKUP_ENABLED=true` (it failed weekly because the paused Supabase DB is unreachable).
 
 ### UI/UX & Accessibility Pass ✅ *(2026-04-12)*
 - **Typography:** Replaced Geist Variable (developer font) with **Varela Round** (headings) + **Nunito Sans Variable** (body) — warmer, rounder typeface better suited to a pet care product
@@ -103,6 +111,16 @@
 
 ## Pending Issues
 
+### 0. Open items for the self-hosted deployment (highest priority)
+- **Off-box backup copy.** All four backup layers live on the same Proxmox disk. Pick a destination (NAS / Tailscale peer / B2) and schedule `proxmox-homelab/scripts/backup-offbox-copy.sh`-style sync of `/opt/catcare/backups`, `/opt/catcare/storage` and the `vzdump` output.
+- **Restore test.** Restore the latest `pg_dump` into a scratch Postgres and confirm row counts; do this once now and then quarterly. Not yet done.
+- **Backup-missed alert.** Backups notify on success/failure, but nothing fires if the 03:00 job never runs. Add a "no successful backup in 36h" check (e.g. a daily sidekiq-cron guard that notifies super admins).
+- **Duplicate member accounts.** The LA household lists both "Claire Cook"/"Claire" and "Matt"/"Matthew Shaw"; if they are the same people each gets double notifications. Merge or remove duplicates.
+- **Online stack caveat:** `BackupExportJob` is scheduled for every deployment, but on Render the worker has its own ephemeral disk, so downloads from the web service would 404. Before resuming Render either move Active Storage to shared object storage or gate the cron behind an env flag.
+- **Git remotes** are still backwards (see the note in `SELF_HOSTING.md`), and the `proxmox-homelab` repo has uncommitted infra changes (Caddy, nginx, compose, scripts) that should be committed.
+- **Dependabot:** PRs #50 (npm), #52 (upload-artifact) and #53 (Ruby gems) are open and unreviewed.
+- **Cat photos:** originals (~1–3 MB each) are served at full size everywhere; consider Active Storage variants (resize on upload) once the display issue being investigated is understood.
+
 ### 1. Upgrade Email Sender to a Verified Custom Domain
 **Current state:** Email delivery is working end-to-end. The app uses Resend's shared sender domain (`onboarding@resend.dev`).
 
@@ -118,7 +136,9 @@ No code changes required — it's purely a Resend + Render config update.
 ---
 
 ### 2. Persistent File Storage for Cat Photos
-**What's missing:** Photos use Render's ephemeral disk — wiped on every deploy.
+**Self-hosted:** solved — photos live on the LXC bind mount (`/opt/catcare/storage`), shared by api and sidekiq and included in the nightly tarball.
+
+**Online (Render) only:** Photos use Render's ephemeral disk — wiped on every deploy.
 
 **Recommended fix:** Supabase Storage (S3-compatible, free tier generous):
 - Add `gem "aws-sdk-s3"` to Gemfile
@@ -157,7 +177,7 @@ If a user logs out in Tab A, Tab B holds stale Zustand state until its next API 
 React Native + Expo. The Rails API is already mobile-ready. Priority: iOS first.
 
 ### Push Notifications
-APNs/FCM via Expo Notifications. The `Reminder` model + `ProcessPendingRemindersJob` infrastructure is in place — push would be an additional delivery channel alongside email.
+**Web Push is done** (see *Notifications, HTTPS & Backups* above) and works on desktop browsers and installed iOS/Android web apps. What remains is *native* push (APNs/FCM via Expo) for the future React Native app — it can reuse `Notifications::Notifier` as the single entry point by adding another delivery channel next to `WebPushSender`. Reminders (`ProcessPendingRemindersJob`) still only send email; routing them through the notifier would give them push + inbox for free.
 
 ### Vaccination Tracking
 New model: `Vaccination` (cat_id, vaccine_name, administered_at, expires_at). Expiration reminders via the existing Sidekiq reminder infrastructure.

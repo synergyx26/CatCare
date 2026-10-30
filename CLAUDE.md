@@ -102,9 +102,9 @@ assumption it's dead — it's paused, not decommissioned.
 | | Local self-hosted (Proxmox) | Online (Render/Vercel) |
 |---|---|---|
 | **Status** | **Active — daily use** | **Dormant/paused** — not deleted, may resume later |
-| Guide | `SELF_HOSTING.md` | `DEPLOY.md` |
+| Guide | `SELF_HOSTING.md` (start at *Operations runbook*) | `DEPLOY.md` |
 | Stack | Docker on Proxmox LXC, plain PostgreSQL + Redis containers | Render (API) + Vercel (web) + Supabase Cloud + Upstash |
-| Hosts | `192.168.20.20:3000` (API), `192.168.20.19.nip.io:8085` (web) | `catcare-v52y.onrender.com` (API) + Vercel URL |
+| Hosts | `http://192.168.20.20:8090` (web, plain HTTP), `https://192.168.20.20:8443` (web + API over HTTPS — **required for push**), `http://192.168.20.20:3000` (API). Legacy `192.168.20.19.nip.io:8085` is still CSP-allowlisted | `catcare-v52y.onrender.com` (API) + Vercel URL |
 | Auth | Devise/JWT + optional `LOCAL_ACCOUNTS_ENABLED` name+password login | Devise/JWT + Google OAuth only |
 | Photo storage | Rails local-disk Active Storage service | Same disk service today (Supabase Storage never actually adopted — see `NEXT_STEPS.md`) |
 
@@ -224,6 +224,9 @@ Run specs: `ridk.cmd exec bundle exec rspec`
 Spec locations:
 - `spec/models/` — model validations and associations
 - `spec/policies/` — Pundit authorization rules (security-critical)
+- `spec/services/` — notifier, web-push sender, CSV exporter, cat appearance
+- `spec/jobs/` — backup, care-event and household-activity notification jobs
+- `spec/requests/` — endpoint-level behaviour (notifications, push subscriptions, admin backups, cat appearance)
 - `spec/factories/` — FactoryBot factories for all models
 
 New policy specs must be added whenever a new policy is created. Pundit policy bugs are security bugs.
@@ -326,6 +329,11 @@ ReminderRecipient — reminder_id, user_id
 VacationTrip    — household_id, start_date, end_date (nullable = no scheduled return),
                   sitter_visit_frequency_days (int, default 1), active (bool DB column, default true)
 PetExpense      — household_id, cat_id (nullable), amount_cents, currency, category, description, occurred_on
+Notification    — user_id, kind (dotted key, e.g. care.logged), title, body, url, data (jsonb: items, actor_id,
+                  coalesce_key), read_at — the per-user inbox
+PushSubscription — user_id, endpoint (unique, https only), p256dh, auth, user_agent, last_used_at — one per device
+BackupExport    — kind (csv), status [pending|ok|failed], byte_size, checksum_sha256, table_counts (jsonb),
+                  error, requested_by_id; zip stored via Active Storage (`file`)
 ```
 
 **Event types (enum int):** feeding=0, litter=1, water=2, weight=3, note=4, medication=5, vet_visit=6, grooming=7
@@ -354,11 +362,32 @@ api/app/controllers/api/v1/
   oauth_controller.rb             — POST /api/v1/auth/google; verifies Google ID token via tokeninfo endpoint, finds-or-creates user, returns CatCare JWT
   vacation_trips_controller.rb    — CRUD for household vacation trips; POST /end to close active trip; admin only for create/end
 
+api/app/controllers/concerns/
+  notifies_household.rb     — notify_household_of(record): call after a successful create; enqueues NotifyHouseholdActivityJob (included in Api::V1::BaseController)
+
+api/app/controllers/api/v1/ (notifications)
+  notifications_controller.rb      — inbox: index / read / read_all / destroy (own rows only, Pundit)
+  push_subscriptions_controller.rb — vapid_key / create (device opt-in) / destroy / test; throttled by Rack::Attack
+
 api/app/controllers/api/v1/admin/
+  backups_controller.rb     — GET list, POST "back up now" (queues BackupExportJob), GET :id/download (zip)
   base_controller.rb        — requires super_admin? before all actions; inherits ApplicationController (NOT Api::V1::BaseController)
   stats_controller.rb       — GET /api/v1/admin/stats
   users_controller.rb       — GET/PATCH /api/v1/admin/users
   imports_controller.rb     — POST /api/v1/admin/imports/care_events; batched bulk insert; overrides current_household to use super-admin's first household; no tier checks; accepts { events: [...] }
+
+api/app/services/notifications/
+  notifier.rb               — THE entry point for alerts: inbox row + Web Push fan-out; `category:` gates push by preference, `coalesce:` folds bursts
+  web_push_sender.rb        — web-push/VAPID wrapper; never raises, deletes dead subscriptions
+
+api/app/services/backups/
+  csv_exporter.rb           — every table → CSV → zip → BackupExport (Active Storage); shared by the job and the rake task
+
+api/app/jobs/
+  backup_export_job.rb             — nightly 03:00 UTC (sidekiq-cron initializer); notifies super admins on success AND failure
+  deliver_push_notification_job.rb — sends one notification to the user's devices
+  notify_care_event_job.rb         — "X fed Miso" to the rest of the household
+  notify_household_activity_job.rb — new cat / member / note / expense / trip / reminder / chore announcements
 
 api/app/services/cat_appearance/
   photo_sampler.rb          — libvips thumbnail → centre + border pixel samples; raises UnreadableImage
@@ -396,11 +425,21 @@ web/src/
     useApplyTheme.ts        — applies .dark to <html>, respects OS matchMedia for system
     usePageTitle.ts         — sets document.title as "{title} · CatCare"
     usePlayfulUi.ts         — true when VITE_PLAYFUL_UI_ENABLED build + user chose uiStyle 'playful'
+  public/
+    sw.js                   — service worker: Web Push only (no caching, so deploys are never stale)
+    manifest.webmanifest, icon-*.png, apple-touch-icon.png — installable web app (required for iOS push)
+    trust.html              — guided one-time certificate setup for phones (iOS profile / Android CA) with a live "trusted?" check
+  lib/push.ts               — device registration: getPushState / enablePush / disablePush, explains why push is unavailable (insecure, unsupported, denied…)
+  lib/tiers.ts              — catLimitForTier + upgrade hint (mirrors cats_controller tier_cat_limit)
+  hooks/useSidebarNav.ts, useUnreadNotifications.ts — sidebar flag gate; inbox query shared by bell + page (polls 60s)
+  components/notifications/ — NotificationBell (badge + live toast), DevicePushCard (per-device enable/test + HTTPS setup help)
+  pages/NotificationsPage.tsx, AdminBackupsPage.tsx — inbox; super-admin backup list/download/back-up-now (/admin/backups)
   components/
     EmptyState.tsx          — reusable: Lucide icon + title + description + optional CTA
     LogCareModal.tsx        — full care logging (all 8 types + edit/delete + AlertDialog confirm); reads feeding_presets from cat prop for quick-pick portion buttons; Free tier locks weight/medication/vet_visit/grooming pills; medication section: "Track as ongoing medication" checkbox + frequency selector (shown when checkbox on or `activeMedication` prop is true)
     layout/
-      AppLayout.tsx         — sticky navbar, user dropdown, theme toggle, mobile sheet; desktop nav: Dashboard | Settings ▾ | Insights ▾ | [theme] [avatar]; Insights dropdown groups Calendar + Care History, always visible with Lock icon + tier badge for locked tiers; Settings dropdown: Household / Care (admin only) / Notifications; avatar dropdown: identity + sign-out only (settings removed to avoid duplication); mobile drawer mirrors same structure with Insights and Settings sections
+      SidebarShell.tsx      — left-sidebar layout (default when `VITE_SIDEBAR_NAV_ENABLED`): collapsible desktop sidebar with expandable Settings group, mobile slim top bar + bottom pill + "More" sheet; receives the household/user menu items and toggle buttons from AppLayout so both layouts share them. New nav entries go in BOTH layouts
+      AppLayout.tsx         — classic top-bar layout (and the data/handlers for both layouts): sticky navbar, user dropdown, theme toggle, mobile sheet; desktop nav: Dashboard | Settings ▾ | Insights ▾ | [theme] [avatar]; Insights dropdown groups Calendar + Care History, always visible with Lock icon + tier badge for locked tiers; Settings dropdown: Household / Care (admin only) / Notifications; avatar dropdown: identity + sign-out only (settings removed to avoid duplication); mobile drawer mirrors same structure with Insights and Settings sections
       PageHeader.tsx        — reusable title + subtitle + back link + action slot
     dashboard/
       BirthdayBanner.tsx    — rose/pink gradient banner; shown when any active cat has a birthday today; "Send love" button opens note-log modal; dismissable per-session
@@ -485,3 +524,8 @@ web/src/
 16. **TanStack Query key type mismatches** — `useParams` returns strings; passing those strings directly into a query key (`queryKey: ['care_events', householdId, catId]`) and then invalidating with numbers won't match. Always use `Number()` consistently in query keys, or invalidate with a broader prefix key (`['care_events']`) so type mismatches can't silently break cache invalidation.
 17. **`getActiveMedicationTasks` respects regimen bounds** — the function skips any medication whose start date is in the future (not yet active) and any finite course whose `course_end_date` has passed. Both comparisons use local calendar-day boundaries (not raw UTC timestamps) to avoid timezone-midnight shift bugs. If you add new medication task logic, apply the same guards.
 18. **Local vs. online config are both live inputs, not "current vs. legacy"** — the online (Render/Vercel) deployment is dormant, not deleted (see `## Deployment Status`). Don't remove Render/Vercel/Supabase-Cloud-specific code, env var handling, or CSP entries because "we're local-only now" — that breaks the online deployment's ability to come back up. Add local-only behavior alongside the existing branch (env var, `blob.service_name`, etc.), the way `LOCAL_ACCOUNTS_ENABLED` and the photo URL fix did, rather than replacing the online path.
+19. **Alerts go through `Notifications::Notifier`** — never call `WebPush` directly or write `Notification` rows by hand. For "something was added" announcements call `notify_household_of(record)` after the save and add a branch in `NotifyHouseholdActivityJob#spec_for` (see *Notifications* under Infrastructure). Don't add a second notification path for care events (`NotifyCareEventJob` owns that).
+20. **Push needs HTTPS, and two web builds exist** — plain `http://…:8090` cannot register a service worker. The HTTPS origin (`:8443`, Caddy) is served from a *separate* build whose `VITE_API_URL` is the HTTPS address; `deploy-catcare.sh` builds both. A change that bakes a URL into the web build must be checked in both. Each origin has its own localStorage/login.
+21. **Deploy from a clean checkout, snapshot first** — `./deploy-proxmox.sh` runs `ship.sh`, which commits *everything* in the working tree and pushes it. When unrelated work is in progress, commit only your files, then `git worktree add` a clean checkout and run `CATCARE_REPO=<worktree> proxmox-homelab/scripts/deploy-catcare.sh`. Before anything risky take a snapshot on the LXC (see `SELF_HOSTING.md` → Rollback); `/opt/catcare/rollback.sh` restores it.
+22. **CSP must list every origin and capability** — new API/page origins (`https://192.168.20.20:8443`) and capabilities (`worker-src`, `manifest-src`) have to be added to `web/index.html`, `web/public/_headers` and `web/vite.config.ts` together, or the feature fails silently in the browser.
+23. **The in-app backup assumes api and sidekiq share storage** — `BackupExportJob` writes through Active Storage in the sidekiq container and the api container serves the download, so both must mount the same `./storage` (they do on the LXC). On Render (separate worker disk, ephemeral) downloads would 404; tracked in `NEXT_STEPS.md` before the online stack is resumed.

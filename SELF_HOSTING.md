@@ -17,6 +17,144 @@
 > yet fixed; do the remote/tracking cleanup deliberately before relying on
 > either remote being "the self-hosted one."
 
+---
+
+## Operations runbook — the current Proxmox LXC deployment (read this first)
+
+Everything below describes what is actually running at `192.168.20.20`. The
+long migration guide further down (Phases 1–9) is the original Supabase-era
+plan and is kept for reference; where it disagrees with this section, this
+section wins.
+
+### What runs where
+
+One LXC, one Docker Compose project in `/opt/catcare` (source of truth lives in
+the sibling `proxmox-homelab` repo under `catcare/`):
+
+| Container | Role | Reachable at |
+|---|---|---|
+| `postgres` (17) | Database, volume `postgres_data` | internal only |
+| `redis` (7) | Sidekiq + cache | internal only |
+| `api` | Rails API (Thruster → Puma) | `http://192.168.20.20:3000` |
+| `sidekiq` | Background jobs + cron (reminders, nightly backup) | internal |
+| `web` | nginx serving the **HTTP** web build; also `/ca.crt`, `/catcare-ca.mobileconfig`, `/trust.html` | `http://192.168.20.20:8090` |
+| `caddy` | **HTTPS** front, own CA (`tls internal`): `/api`, `/health`, `/rails` → api, everything else → the **HTTPS** web build | `https://192.168.20.20:8443` |
+
+Files on the LXC (`/opt/catcare`): `docker-compose.yml`, `nginx.conf`,
+`Caddyfile`, `.env` (secrets, mode 600 — never commit), `web-dist/` (HTTP
+build), `web-dist-https/` (HTTPS build), `storage/` (photos + in-app backups,
+bind-mounted into **both** api and sidekiq), `backups/` (host-level backups),
+`caddy-root.crt` + `catcare-ca.mobileconfig` (the CA phones install),
+`backup-db.sh`, `rollback.sh`, `rollback/<snapshot>/`.
+
+### Feature flags and env (self-hosted values)
+
+| Where | Variable | Purpose |
+|---|---|---|
+| web build | `VITE_LOCAL_ACCOUNTS_ENABLED`, `VITE_PLAYFUL_UI_ENABLED`, `VITE_SIDEBAR_NAV_ENABLED` | UI feature gates (see below for the sidebar default) |
+| web build | `VITE_HTTPS_URL` | `https://192.168.20.20:8443` — only drives the "set up this device" hint on the HTTP site |
+| web build | `VITE_API_URL` | HTTP build: `http://192.168.20.20:3000`. HTTPS build: `https://192.168.20.20:8443` (set by the deploy script) |
+| api + sidekiq `.env` | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push keys. **Never regenerate casually** — every registered device would stop receiving until it re-subscribes. Unset = push off, inbox still works. Optional `VAPID_SUBJECT` |
+| api + sidekiq `.env` | `SUPER_ADMIN_EMAIL` | Who gets backup notifications and `/admin/*` |
+| api `.env` | `FORCE_SSL=false`, `CORS_ORIGINS`, `APP_HOST`, `LOCAL_ACCOUNTS_ENABLED` | As before. The HTTPS origin is same-origin through Caddy so it needs no CORS entry |
+
+### Deploying
+
+Run from `proxmox-homelab/scripts/` (it builds the API image on the LXC, builds
+**both** web variants locally, ships them and recreates `api sidekiq web caddy`):
+
+```bash
+# Normal case: a clean checkout of what's committed (never deploy half-finished work by accident)
+git worktree add --detach /tmp/catcare-deploy HEAD
+ln -s "$PWD/web/node_modules" /tmp/catcare-deploy/web/node_modules
+CATCARE_REPO=/tmp/catcare-deploy ~/Documents/Proxmox/proxmox-homelab/scripts/deploy-catcare.sh
+git worktree remove --force /tmp/catcare-deploy
+```
+
+`./deploy-proxmox.sh` in this repo is the one-command variant but it first runs
+`ship.sh`, which **commits and pushes everything in the working tree** — only
+use it when you actually want that. The API image build is cached, so a deploy
+with no Gemfile change takes well under a minute.
+
+**Take a snapshot first for anything risky** (config, schema, new containers):
+
+```bash
+ssh root@192.168.20.20 'set -e; cd /opt/catcare; SNAP=/opt/catcare/rollback/pre-<what>-$(date -u +%Y%m%dT%H%M%SZ); mkdir -p $SNAP
+/opt/catcare/backup-db.sh >/dev/null && cp "$(ls -t backups/pgdump/catcare-*.dump | head -1)" $SNAP/db.dump
+cp docker-compose.yml nginx.conf Caddyfile $SNAP/; cp .env $SNAP/env
+tar -czf $SNAP/web-dist.tar.gz -C web-dist .; tar -czf $SNAP/web-dist-https.tar.gz -C web-dist-https .
+docker tag catcare-api:latest catcare-api:pre-<what> && echo catcare-api:pre-<what> > $SNAP/image.tag
+echo $SNAP > rollback/LATEST'
+```
+
+### Rollback
+
+```bash
+ssh root@192.168.20.20 '/opt/catcare/rollback.sh "$(cat /opt/catcare/rollback/LATEST)"'
+# add --drop-tables to also remove the notification tables (destructive; off by default)
+```
+
+Restores compose/nginx/`.env`/web build and the previous API image, removes the
+`caddy` container if the snapshot predates it, recreates the containers and
+waits for `/health`. Migrations only ever **add** tables, which the previous
+release ignores, so leaving the database alone is safe. For a real data
+restore use the dump in the snapshot:
+`docker compose exec -T postgres pg_restore --clean --no-owner -U catcare -d catcare_production < db.dump`.
+
+### Backups — four layers (all nightly, all on the LXC)
+
+| What | When | Where | Notes |
+|---|---|---|---|
+| In-app export (zip of every table as CSV) | 03:00 UTC, sidekiq-cron | Active Storage → `/opt/catcare/storage`, **`/admin/backups`** to list/download/"Back up now" | Keeps 30 days (never prunes the newest good one); super admins are notified on success **and** failure |
+| Rake CSV export | 03:00 | `/opt/catcare/backups/csv/<stamp>/` | Original mechanism, kept as a second copy |
+| `pg_dump -Fc` + photos tarball | 03:10 (`/opt/catcare/backup-db.sh`) | `/opt/catcare/backups/pgdump/` | The only layer that is a faithful `pg_restore`; verified readable before it is kept |
+| Proxmox `vzdump` of the whole LXC | per `infra/backup-job.tf` | host `local` storage | See the homelab repo |
+
+**Still a single disk:** all four live on the same host. An off-box copy
+(NAS / Tailscale peer / object storage) and a periodic **restore test** are
+open items in `NEXT_STEPS.md`. The GitHub "Database Backup" workflow targets
+the *online* Supabase database and is skipped unless the repo variable
+`ONLINE_DB_BACKUP_ENABLED` is `true`.
+
+### HTTPS, certificates and phones (needed for push notifications)
+
+Browsers only allow service workers and Web Push on a secure context, so push
+works only on `https://192.168.20.20:8443`. Caddy issues certificates from its
+own CA, so each device must trust that CA **once**:
+
+1. Open `http://192.168.20.20:8090/trust.html` on the phone (it detects iPhone vs Android and shows a live "this device trusts CatCare" check).
+2. **iPhone/iPad:** in **Safari**, download the profile → Settings → *Profile Downloaded* → Install → then Settings → General → About → **Certificate Trust Settings** → enable *Caddy Local Authority*. (That last row only exists once the profile is installed.) Then open the HTTPS address, **Add to Home Screen**, and open CatCare from the icon — iOS only allows push for installed web apps.
+3. **Android:** download `/ca.crt` → Settings → Security → Install a certificate → CA certificate; open the HTTPS address in Chrome.
+4. In the app: Settings → Notifications → Push → **Enable on this device** → **Send test notification**. The HTTPS origin has its own login.
+
+Keep the `caddy_data` Docker volume: it holds the CA. If it is lost, a new CA
+is generated and every phone must re-trust it. The root is valid until 2036.
+Regenerate the iOS profile after any CA change with
+`proxmox-homelab/scripts/catcare-make-ca-profile.sh <root.crt> <out.mobileconfig>`
+(the deploy script does this automatically if the file is missing).
+
+### Notifications, in one paragraph
+
+Everything funnels through `Notifications::Notifier`: an inbox row for the user
+(bell + `/notifications`) plus Web Push to each registered device when the
+user's push preference and the category allow it. Care events and every kind of
+"added" record (cat, member, note, expense, trip, reminder, chores) notify the
+rest of the household; bursts from one person fold into one notification.
+Per-category switches and "Turn everything on" are in Settings → Notifications →
+Push. Developer detail: `CLAUDE.md` → Infrastructure → *Notifications*.
+
+### Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| iPhone has no "Certificate Trust Settings" row | The profile isn't installed yet. Use **Safari** (not Chrome/in-app), tap Allow, then Settings → Profile Downloaded → Install. The row appears only afterwards |
+| `/ca.crt` or the profile returns 403 | File permissions on the LXC: `chmod 644 /opt/catcare/caddy-root.crt /opt/catcare/catcare-ca.mobileconfig` |
+| `https://…:8443` refuses connections | Caddy listens on **8443 inside the container**; compose must map `8443:8443` (not `8443:443`) |
+| Browser says certificate invalid | Device hasn't trusted the CA (see above), or you opened the IP via a different hostname — use exactly `https://192.168.20.20:8443` |
+| "Enable on this device" is greyed with a message | The card tells you why: plain HTTP, browser unsupported (iPhone not added to Home Screen), permission denied, or push not configured (VAPID keys missing) |
+| Test notification works but nothing on one phone | That phone must enable push itself (per-device). On iOS also confirm it was opened from the Home Screen icon |
+| `/admin/backups` download 404s | api and sidekiq must mount the same `./storage` (compose) |
+
 This guide covers migrating CatCare from its current cloud stack to a fully self-hosted setup on your home network, including a live database migration from Supabase Cloud to self-hosted Supabase.
 
 > **Deploying to the Proxmox homelab box (`192.168.20.50`)?** Use the
@@ -521,6 +659,8 @@ docker compose up -d --force-recreate api sidekiq   # restart after image update
 | `GOOGLE_CLIENT_ID` | Copy from Render (unchanged) |
 | `SUPER_ADMIN_EMAIL` | `mjshaw90@gmail.com` (comma-separated for multiple) |
 | `LOCAL_ACCOUNTS_ENABLED` | `true` to allow name+password login with no email (self-hosted only — never set on Render); pair with `VITE_LOCAL_ACCOUNTS_ENABLED` below |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push keys (generate once with `WebPush.generate_key`; keep stable). Optional `VAPID_SUBJECT` (`mailto:`). Unset = push disabled |
+| `FORCE_SSL` | `false` on the LAN (TLS is terminated by Caddy; the API itself is plain HTTP) |
 
 ### Frontend (`.env.production` — baked into build)
 
@@ -531,6 +671,7 @@ docker compose up -d --force-recreate api sidekiq   # restart after image update
 | `VITE_SENTRY_DSN` | Leave empty |
 | `VITE_LOCAL_ACCOUNTS_ENABLED` | `true` only if `LOCAL_ACCOUNTS_ENABLED=true` is also set in `.env.api` above |
 | `VITE_PLAYFUL_UI_ENABLED` | `true` to build in the playful dashboard redesign preview; users flip classic ↔ playful with the ✨ nav button (per device). Frontend-only — no API counterpart |
+| `VITE_HTTPS_URL` | `https://192.168.20.20:8443` — address of the Caddy HTTPS front; only used to show the "set up this device" help on the HTTP site |
 | `VITE_SIDEBAR_NAV_ENABLED` | `true` to build in the left-sidebar navigation preview (collapsible on desktop, bottom pill on mobile); the sidebar is the default and users can switch to the classic top bar with the panel-left nav button (per device). Frontend-only — no API counterpart |
 
 ---

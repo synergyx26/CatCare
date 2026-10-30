@@ -83,6 +83,8 @@ Production deployment for 2-person household beta testing. All services are free
    | `RESEND_API_KEY` | API key from Resend dashboard (Step 1C) |
    | `MAILER_SENDER` | `onboarding@resend.dev` (or `noreply@yourdomain.com` after domain verification) |
    | `GOOGLE_CLIENT_ID` | OAuth 2.0 Web Client ID from Google Cloud Console (optional — only needed if Google sign-in is enabled) |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | *(optional)* Web Push keys for the notification system. Generate once (`bundle exec rails runner 'k=WebPush.generate_key; puts k.public_key, k.private_key'`) and keep them stable. Vercel/Render are already HTTPS, so push works here with no extra infrastructure. Unset = push off (inbox still works) |
+| `SUPER_ADMIN_EMAIL` | Comma-separated emails with super-admin rights; also the recipients of backup notifications |
 
    **Generating secrets:**
    ```bash
@@ -170,3 +172,12 @@ Render does not use the Docker entrypoint — it reads the Procfile (`web: bin/r
 | Email | Resend Pro ($20/mo for 50k emails/mo) |
 | File storage | Re-add Cloudinary once gem supports Rails 8.1 (see NEXT_STEPS.md) |
 | Frontend | Vercel free tier scales well for personal use |
+
+---
+
+## Notifications, backups and CI on the online stack
+
+- **Notifications** (inbox + Web Push) are part of the shared codebase and work here unchanged once the VAPID keys above are set. On Vercel the web build needs no extra flag; the sidebar/playful UI flags are self-hosted-only — leave `VITE_SIDEBAR_NAV_ENABLED` and `VITE_PLAYFUL_UI_ENABLED` unset so this deployment keeps the classic layout.
+- **In-app database export** (`BackupExportJob`, nightly) assumes the sidekiq worker and the web service share Active Storage. On Render they do not (separate ephemeral disks), so before resuming this stack either point Active Storage at shared object storage (see `NEXT_STEPS.md` → Persistent File Storage) or remove the cron entry from `api/config/initializers/sidekiq_cron.rb`.
+- **GitHub "Database Backup" workflow** (`.github/workflows/db-backup.yml`) dumps the Supabase database. It is **skipped** unless the repository variable `ONLINE_DB_BACKUP_ENABLED` is `true` (Settings → Secrets and variables → Actions → Variables) — it failed every week while this stack was paused. Set the variable when you resume.
+- **CI** (`.github/workflows/ci.yml`) runs RSpec, Brakeman and Bundler Audit on the API and a type-check + build on the web app. A failing Bundler Audit usually means a new advisory: `cd api && bundle lock --update <gem> --conservative`, then re-run `gem exec bundler-audit check`.
