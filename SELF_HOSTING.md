@@ -149,10 +149,11 @@ Push. Developer detail: `CLAUDE.md` → Infrastructure → *Notifications*.
 |---|---|
 | iPhone has no "Certificate Trust Settings" row | The profile isn't installed yet. Use **Safari** (not Chrome/in-app), tap Allow, then Settings → Profile Downloaded → Install. The row appears only afterwards |
 | `/ca.crt` or the profile returns 403 | File permissions on the LXC: `chmod 644 /opt/catcare/caddy-root.crt /opt/catcare/catcare-ca.mobileconfig` |
-| `https://…:8443` refuses connections | Caddy listens on **8443 inside the container**; compose must map `8443:8443` (not `8443:443`) |
+| `https://…:8443` refuses connections | Caddy listens on **8443 inside the container**; compose must map `8443:8443` (not `8443:443`). Don't re-enable HTTP/3 unless UDP 8443 is published too |
 | Browser says certificate invalid | Device hasn't trusted the CA (see above), or you opened the IP via a different hostname — use exactly `https://192.168.20.20:8443` |
 | "Enable on this device" is greyed with a message | The card tells you why: plain HTTP, browser unsupported (iPhone not added to Home Screen), permission denied, or push not configured (VAPID keys missing) |
 | Test notification works but nothing on one phone | That phone must enable push itself (per-device). On iOS also confirm it was opened from the Home Screen icon |
+| Cat photos (or other images) missing on the HTTPS address only | Caddy was advertising HTTP/3 (`Alt-Svc: h3=…; ma=2592000`) while Docker publishes only TCP 8443, so phones moved images onto a QUIC path that goes nowhere. Fixed in the Caddyfile (`servers { protocols h1 h2 }` + `Alt-Svc clear`); check with `curl -sI --cacert root.crt https://192.168.20.20:8443/ \| grep -i alt-svc` — it should print `alt-svc: clear`. Access logs: `docker compose logs caddy` |
 | `/admin/backups` download 404s | api and sidekiq must mount the same `./storage` (compose) |
 
 This guide covers migrating CatCare from its current cloud stack to a fully self-hosted setup on your home network, including a live database migration from Supabase Cloud to self-hosted Supabase.
