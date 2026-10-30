@@ -56,6 +56,11 @@ gem "jsonapi-serializer"
 gem "sidekiq"
 gem "sidekiq-cron"
 
+# Web Push (VAPID) delivery for the notification system, and zip packaging
+# for in-app database exports
+gem "web-push"
+gem "rubyzip"
+
 # Redis client — required by RedisCacheStore in production.rb
 gem "redis", "~> 5.0"
 

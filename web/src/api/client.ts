@@ -392,6 +392,32 @@ export const api = {
   updateNotificationPreferences: (prefs: Partial<NotificationPreferences>) =>
     apiClient.patch('/me/notification_preferences', { notification_preferences: prefs }),
 
+  // ─── Notifications + Web Push ──────────────────────────────────────────────
+
+  getNotifications: (limit = 50) =>
+    apiClient.get('/notifications', { params: { limit } }),
+
+  markNotificationRead: (id: number) =>
+    apiClient.patch(`/notifications/${id}/read`),
+
+  markAllNotificationsRead: () =>
+    apiClient.post('/notifications/read_all'),
+
+  deleteNotification: (id: number) =>
+    apiClient.delete(`/notifications/${id}`),
+
+  getPushConfig: () =>
+    apiClient.get('/push_subscriptions/vapid_key'),
+
+  registerPushSubscription: (subscription: PushSubscriptionJSON) =>
+    apiClient.post('/push_subscriptions', { subscription }),
+
+  removePushSubscription: (endpoint: string) =>
+    apiClient.delete('/push_subscriptions', { data: { endpoint } }),
+
+  sendTestNotification: () =>
+    apiClient.post('/push_subscriptions/test'),
+
   // Super-admin
   adminStats: () =>
     apiClient.get('/admin/stats'),
@@ -413,6 +439,15 @@ export const api = {
 
   adminDeleteUser: (userId: number) =>
     apiClient.delete(`/admin/users/${userId}`),
+
+  adminBackups: () =>
+    apiClient.get('/admin/backups'),
+
+  adminCreateBackup: () =>
+    apiClient.post('/admin/backups'),
+
+  adminDownloadBackup: (id: number) =>
+    apiClient.get(`/admin/backups/${id}/download`, { responseType: 'blob', timeout: 120_000 }),
 
   adminImportCareEvents: (events: ImportCareEventRow[]) =>
     apiClient.post('/admin/imports/care_events', { events }, { timeout: 120_000 }),

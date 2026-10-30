@@ -6,6 +6,12 @@ Sidekiq.configure_server do |config|
         "cron"        => "*/5 * * * *",
         "queue"       => "reminders",
         "description" => "Fire email notifications for due reminders"
+      },
+      "nightly_backup_export" => {
+        "class"       => "BackupExportJob",
+        "cron"        => "0 3 * * *",
+        "queue"       => "default",
+        "description" => "Export every table to a zip of CSVs kept in the app and notify super admins"
       }
     )
   end

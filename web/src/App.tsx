@@ -11,6 +11,8 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { HouseholdSetupPage } from '@/pages/HouseholdSetupPage'
 import { AddCatPage } from '@/pages/AddCatPage'
+import { NotificationsPage } from '@/pages/NotificationsPage'
+import { AdminBackupsPage } from '@/pages/AdminBackupsPage'
 import { CatProfilePage } from '@/pages/CatProfilePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { InvitePage } from '@/pages/InvitePage'
@@ -75,6 +77,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/households" element={<HouseholdsOverviewPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
               <Route
                 path="/households/:householdId/add-cat"
                 element={<AddCatPage />}
@@ -136,6 +139,7 @@ export default function App() {
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/import" element={<AdminImportPage />} />
+            <Route path="/admin/backups" element={<AdminBackupsPage />} />
           </Route>
 
           {/* Fallback */}

@@ -23,6 +23,14 @@ class Rack::Attack
       req.ip if req.path.end_with?("/appearance_suggestion") && req.get?
     end
 
+    # Push test + on-demand backups are cheap to abuse: tight per-IP limits
+    throttle("push_test/ip", limit: 5, period: 1.minute) do |req|
+      req.ip if req.path.end_with?("/push_subscriptions/test") && req.post?
+    end
+    throttle("backup_create/ip", limit: 3, period: 10.minutes) do |req|
+      req.ip if req.path.end_with?("/admin/backups") && req.post?
+    end
+
     # General API throttle: 300 requests per 5 minutes per IP
     throttle("api/ip", limit: 300, period: 5.minutes) do |req|
       req.ip if req.path.start_with?("/api/")

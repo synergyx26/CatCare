@@ -12,7 +12,7 @@ import { usePageTitle } from '@/hooks/usePageTitle'
 import { notify } from '@/lib/notify'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { DevicePushCard } from '@/components/notifications/DevicePushCard'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Select,
@@ -438,29 +438,7 @@ function PushTab() {
 
   return (
     <form onSubmit={form.handleSubmit((d) => save(d))} className="space-y-2">
-      {/* Coming soon header */}
-      <div className="flex items-start gap-3 rounded-2xl bg-gradient-to-br from-sky-50 to-indigo-50 dark:from-sky-950/30 dark:to-indigo-950/30 border border-sky-100 dark:border-sky-800/40 p-4 mt-2">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600">
-          <Smartphone className="size-5" />
-        </div>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold">Mobile Push Notifications</p>
-            <Badge variant="secondary" className="text-[10px]">Coming soon</Badge>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            CatCare is coming to iOS and Android. Set your push preferences now — they'll be ready when the app launches.
-          </p>
-          <div className="mt-2.5 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span className="text-base">🍎</span> iOS
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="text-base">🤖</span> Android
-            </span>
-          </div>
-        </div>
-      </div>
+      <DevicePushCard />
 
       {/* Master toggle */}
       <SectionCard>
@@ -468,7 +446,7 @@ function PushTab() {
           <div>
             <p className="text-sm font-semibold">Enable push notifications</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Receive alerts on your phone even when the app is closed
+              Master switch for push on all of your devices
             </p>
           </div>
           <Toggle
@@ -508,7 +486,7 @@ function PushTab() {
 
       <div className="pt-4">
         <Button type="submit" disabled={isPending} variant="outline" className="w-full sm:w-auto">
-          {isPending ? 'Saving…' : 'Save push preferences (not yet active)'}
+          {isPending ? 'Saving…' : 'Save push preferences'}
         </Button>
       </div>
     </form>

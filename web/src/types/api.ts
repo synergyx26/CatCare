@@ -508,3 +508,29 @@ export interface ExpenseStats {
   upcoming: PetExpense[]
 }
 
+
+// ─── Notifications (inbox + Web Push) ────────────────────────────────────────
+
+export interface AppNotification {
+  id: number
+  kind: string
+  title: string
+  body: string | null
+  url: string | null
+  data: Record<string, unknown>
+  read: boolean
+  created_at: string
+}
+
+export interface BackupExport {
+  id: number
+  kind: string
+  status: 'pending' | 'ok' | 'failed'
+  byte_size: number | null
+  checksum_sha256: string | null
+  table_counts: Record<string, number>
+  error: string | null
+  requested_by: string | null
+  filename: string
+  created_at: string
+}

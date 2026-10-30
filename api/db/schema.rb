@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_26_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_30_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -40,6 +40,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_000001) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "backup_exports", force: :cascade do |t|
+    t.bigint "byte_size"
+    t.string "checksum_sha256"
+    t.datetime "created_at", null: false
+    t.text "error"
+    t.string "kind", default: "csv", null: false
+    t.bigint "requested_by_id"
+    t.string "status", default: "pending", null: false
+    t.jsonb "table_counts", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_backup_exports_on_created_at"
+    t.index ["requested_by_id"], name: "index_backup_exports_on_requested_by_id"
   end
 
   create_table "care_events", force: :cascade do |t|
@@ -194,6 +208,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_000001) do
     t.string "vet_phone"
   end
 
+  create_table "notifications", force: :cascade do |t|
+    t.text "body"
+    t.datetime "created_at", null: false
+    t.jsonb "data", default: {}, null: false
+    t.string "kind", null: false
+    t.datetime "read_at"
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.string "url"
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_notifications_on_user_id_and_created_at"
+    t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
+    t.index ["user_id"], name: "index_notifications_on_user_id"
+  end
+
   create_table "pet_expenses", force: :cascade do |t|
     t.string "brand"
     t.bigint "cat_id"
@@ -217,6 +246,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_000001) do
     t.index ["household_id", "is_recurring"], name: "index_pet_expenses_on_household_id_and_is_recurring"
     t.index ["household_id", "purchase_date"], name: "index_pet_expenses_on_household_id_and_purchase_date"
     t.index ["household_id"], name: "index_pet_expenses_on_household_id"
+  end
+
+  create_table "push_subscriptions", force: :cascade do |t|
+    t.string "auth", null: false
+    t.datetime "created_at", null: false
+    t.text "endpoint", null: false
+    t.datetime "last_used_at"
+    t.string "p256dh", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.bigint "user_id", null: false
+    t.index ["endpoint"], name: "index_push_subscriptions_on_endpoint", unique: true
+    t.index ["user_id"], name: "index_push_subscriptions_on_user_id"
   end
 
   create_table "reminder_recipients", force: :cascade do |t|
@@ -290,6 +332,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_000001) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "backup_exports", "users", column: "requested_by_id"
   add_foreign_key "care_events", "cats"
   add_foreign_key "care_events", "households"
   add_foreign_key "care_notes", "cats"
@@ -302,9 +345,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_000001) do
   add_foreign_key "household_invites", "households"
   add_foreign_key "household_memberships", "households"
   add_foreign_key "household_memberships", "users"
+  add_foreign_key "notifications", "users"
   add_foreign_key "pet_expenses", "cats"
   add_foreign_key "pet_expenses", "households"
   add_foreign_key "pet_expenses", "users", column: "created_by_id"
+  add_foreign_key "push_subscriptions", "users"
   add_foreign_key "reminder_recipients", "reminders"
   add_foreign_key "reminder_recipients", "users"
   add_foreign_key "reminders", "cats"

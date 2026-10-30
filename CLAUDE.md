@@ -202,6 +202,12 @@ Config and behavior that exists *only* for the local deployment (never set these
 - **CSP allowlists both hosts simultaneously** — `web/index.html`, `web/public/_headers`, `web/vite.config.ts` all list the Render host, the Proxmox LAN photo host (`192.168.20.19.nip.io:8085`), and the Proxmox API host (`192.168.20.20:3000`) side by side. Update all three files together if either host changes.
 - Full setup: `SELF_HOSTING.md`.
 
+### Notifications (inbox + Web Push) and in-app backups — both deployments
+- **One entry point:** `Notifications::Notifier.call(user, kind:, title:, body:, url:, category:)` always writes the in-app inbox (`notifications` table, bell + `/notifications` page) and, when the user has push enabled and a registered device, enqueues `DeliverPushNotificationJob` → `Notifications::WebPushSender` (web-push gem). Use this for every future alert; don't send push or inbox rows any other way. `kind` is a free-form dotted key (`backup.ready`), `category` maps to the `push` preference keys.
+- **Devices:** one `push_subscriptions` row per browser; enabled per device in Settings → Notifications → Push (`lib/push.ts`, `public/sw.js`). Dead endpoints are deleted on 404/410. Registering a device flips `notification_preferences.push.enabled` on.
+- **HTTPS is required for push** (service workers need a secure context; plain `http://192.168.20.20:8090` can't subscribe — the UI says so). Env: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (optional `VAPID_SUBJECT`) on api + sidekiq; unset = push disabled, inbox still works. The CSP in `index.html` / `_headers` / `vite.config.ts` needs `worker-src 'self'; manifest-src 'self'` (already there).
+- **Backups:** `BackupExportJob` (sidekiq-cron, 03:00 UTC) → `Backups::CsvExporter` zips every table to CSV into a `BackupExport` (Active Storage), prunes after 30 days but never the newest good one, and notifies all super admins on success *and* failure. Super-admin page `/admin/backups` lists/downloads/“Back up now”. The sidekiq container must mount the same `./storage` as the api (compose). This is *in addition to* the host-level `pg_dump` cron (`/opt/catcare/backup-db.sh`) and the rake CSV export.
+
 ### CI/CD
 GitHub Actions workflow at `.github/workflows/ci.yml`. Runs on every push/PR to `main`/`master`:
 - **api job**: RSpec → Brakeman static analysis → Bundler Audit CVE check

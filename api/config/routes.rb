@@ -20,6 +20,16 @@ Rails.application.routes.draw do
       patch  "me/subscription_tier",            to: "users#update_subscription_tier"
       patch  "me/notification_preferences",     to: "users#update_notification_preferences"
 
+      # Notification inbox + Web Push device registration
+      resources :notifications, only: [:index, :destroy] do
+        member     { patch :read }
+        collection { post :read_all }
+      end
+      get    "push_subscriptions/vapid_key", to: "push_subscriptions#vapid_key"
+      post   "push_subscriptions/test",   to: "push_subscriptions#test"
+      post   "push_subscriptions",        to: "push_subscriptions#create"
+      delete "push_subscriptions",        to: "push_subscriptions#destroy"
+
       # Account self-service (GDPR right-to-erasure)
       delete "account",                         to: "account#destroy"
 
@@ -65,6 +75,9 @@ Rails.application.routes.draw do
         delete 'users/:id', to: 'users#destroy'
         post 'users/:id/reset_password', to: 'users#reset_password'
         post 'imports/care_events', to: 'imports#care_events'
+        get  'backups',                  to: 'backups#index'
+        post 'backups',                  to: 'backups#create'
+        get  'backups/:id/download',     to: 'backups#download'
       end
     end
   end

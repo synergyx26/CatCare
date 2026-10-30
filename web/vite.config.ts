@@ -40,6 +40,8 @@ export default defineConfig({
         "font-src 'self' data:; " +
         "connect-src 'self' http://localhost:3000 https://catcare-v52y.onrender.com http://192.168.20.19.nip.io:8085 http://192.168.20.20:3000 https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://accounts.google.com ws: wss:; " +
         "frame-src https://accounts.google.com; " +
+        "worker-src 'self'; " +
+        "manifest-src 'self'; " +
         "frame-ancestors 'none'; " +
         "form-action 'self'; " +
         "base-uri 'self'; " +

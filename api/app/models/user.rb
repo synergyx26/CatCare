@@ -8,6 +8,8 @@ class User < ApplicationRecord
   has_many :household_memberships, dependent: :destroy
   has_many :households, through: :household_memberships
   has_many :reminder_recipients, dependent: :destroy
+  has_many :notifications, dependent: :destroy
+  has_many :push_subscriptions, dependent: :destroy
 
   SUBSCRIPTION_TIERS = %w[free pro premium].freeze
 
@@ -79,6 +81,11 @@ class User < ApplicationRecord
   # works unchanged) — env-controlled, no DB flag.
   def self.super_admin_emails
     ENV["SUPER_ADMIN_EMAIL"].to_s.split(",").map { |e| e.strip.downcase }.reject(&:empty?)
+  end
+
+  def self.super_admins
+    emails = super_admin_emails
+    emails.empty? ? none : where("lower(email) IN (?)", emails)
   end
 
   def self.super_admin_email?(email)

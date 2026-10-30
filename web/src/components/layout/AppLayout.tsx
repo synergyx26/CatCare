@@ -53,6 +53,7 @@ import { useThemeStore, type Theme } from '@/store/themeStore'
 import { PLAYFUL_UI_AVAILABLE, SIDEBAR_NAV_AVAILABLE } from '@/lib/featureFlags'
 import { useSidebarNav } from '@/hooks/useSidebarNav'
 import { SidebarShell } from '@/components/layout/SidebarShell'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import type { Household, MemberRole } from '@/types/api'
 
 const THEME_CYCLE: Record<Theme, Theme> = { light: 'dark', dark: 'system', system: 'light' }
@@ -251,6 +252,12 @@ export function AppLayout() {
                       >
                         <ShieldCheck className="size-3 shrink-0" />
                         Import Data
+                      </button>                      <button
+                        onClick={() => navigate('/admin/backups')}
+                        className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+                      >
+                        <ShieldCheck className="size-3 shrink-0" />
+                        Backups
                       </button>
                     </div>
                   </>
@@ -269,6 +276,8 @@ export function AppLayout() {
 
   const controls = (
     <>
+            <NotificationBell />
+
             {/* Theme toggle */}
             {(() => {
               const ThemeIcon = THEME_ICON[theme]
