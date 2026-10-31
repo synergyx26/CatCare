@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
-import { ChevronDown, ChevronUp, Pencil, Pill } from 'lucide-react'
+import { ChevronDown, ChevronUp, PackageOpen, Pencil, Pill } from 'lucide-react'
 import { api } from '@/api/client'
 import { notify } from '@/lib/notify'
-import { getNextDoseLabel, buildDoseTimeline, formatTime } from '@/lib/helpers'
+import { getNextDoseLabel, buildDoseTimeline, getCourseEndMs, isMedicationCourseOver, parseLocalDate, formatTime, getMedicationSupply, formatSupplyLabel } from '@/lib/helpers'
 import { FREQUENCY_LABELS } from '@/types/api'
 import type { ApiError, CareEvent, MedicationFrequency } from '@/types/api'
 import { AddMedicationModal } from './AddMedicationModal'
 import { QuickLogDoseSheet } from './QuickLogDoseSheet'
+import { NewSupplySheet } from './NewSupplySheet'
 
 function formatDayLabel(isoString: string): string {
   const d = new Date(isoString)
@@ -36,6 +37,8 @@ interface Props {
   startEvent: CareEvent
   /** All dose events for this medication (sorted newest-first) */
   doseHistory: CareEvent[]
+  /** New-supply events (details.supply_refill) for this medication, on/after the start event */
+  refills?: CareEvent[]
   memberMap: Map<number, string>
   currentUserId: number
   isSitter: boolean
@@ -49,6 +52,7 @@ export function MedicationCard({
   name,
   startEvent,
   doseHistory,
+  refills = [],
   memberMap,
   currentUserId,
   isSitter,
@@ -58,6 +62,8 @@ export function MedicationCard({
   const [expanded, setExpanded]   = useState(defaultExpanded)
   const [showLog, setShowLog]     = useState(false)
   const [showEdit, setShowEdit]   = useState(false)
+  const [showNewSupply, setShowNewSupply] = useState(false)
+  const [editingRefill, setEditingRefill] = useState<CareEvent | null>(null)
 
   const d = startEvent.details as Record<string, unknown>
   const dosage    = d.dosage    as string | undefined
@@ -65,6 +71,7 @@ export function MedicationCard({
   const frequency = d.frequency as MedicationFrequency | undefined
   const courseEnd = d.course_end_date as string | undefined
   const stopped   = d.stopped === true
+  const courseOver = isMedicationCourseOver(d)
 
   const doseLabel    = dosage ? `${dosage} ${unit}` : null
   const freqLabel    = frequency ? FREQUENCY_LABELS[frequency] : null
@@ -76,21 +83,34 @@ export function MedicationCard({
   const lastDose = doseHistory[0]
   // Only compute next-due from an actual logged dose — the start event is not a dose,
   // so using startEvent.occurred_at as a fallback produces misleading overdue values.
-  const nextDueLabel = lastDose ? getNextDoseLabel(frequency, lastDose.occurred_at) : null
+  const nextDueLabel = lastDose && !stopped && !courseOver ? getNextDoseLabel(frequency, lastDose.occurred_at) : null
 
   // Build unified timeline
   const timeline = buildDoseTimeline(
     frequency ?? null,
     startEvent.occurred_at,
-    doseHistory
+    doseHistory,
+    getCourseEndMs(d),
   )
-  const visibleTimeline = timeline.slice(0, 14) // show last 14 rows max
+  // New-supply entries interleaved with doses/missed markers, newest first
+  type Row = typeof timeline[number] | { type: 'refill'; event: CareEvent }
+  const rowTime = (row: Row) => row.type === 'missed' ? row.expectedAt : row.event.occurred_at
+  const visibleTimeline: Row[] = [
+    ...timeline,
+    ...refills.map((event) => ({ type: 'refill' as const, event })),
+  ]
+    .sort((a, b) => new Date(rowTime(b)).getTime() - new Date(rowTime(a)).getTime())
+    .slice(0, 14) // show last 14 rows max
+
+  const supply = getMedicationSupply(startEvent, doseHistory, refills)
 
   // Days remaining on a course
   let courseRemaining: string | null = null
   if (courseEnd && !stopped) {
-    const daysLeft = Math.ceil(
-      (new Date(courseEnd).getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const daysLeft = Math.round(
+      (parseLocalDate(courseEnd).getTime() - today.getTime()) / (24 * 60 * 60 * 1000)
     )
     if (daysLeft > 0) {
       courseRemaining = `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`
@@ -138,9 +158,14 @@ export function MedicationCard({
 
   // ── Grouping helper ────────────────────────────────────────────────────────
 
-  function groupLabel(row: typeof visibleTimeline[number]): string {
-    const at = row.type === 'dose' ? row.event.occurred_at : row.expectedAt
-    return formatDayLabel(at)
+  function groupLabel(row: Row): string {
+    return formatDayLabel(rowTime(row))
+  }
+
+  function memberLabel(event: CareEvent): string {
+    return event.logged_by_id === currentUserId
+      ? 'You'
+      : (memberMap.get(event.logged_by_id) ?? 'Someone')
   }
 
   return (
@@ -177,6 +202,17 @@ export function MedicationCard({
                   {courseRemaining}
                 </span>
               )}
+              {supply && !stopped && (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  supply.isEmpty
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : supply.isLow
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      : 'bg-muted text-muted-foreground'
+                }`}>
+                  {formatSupplyLabel(supply)}
+                </span>
+              )}
             </div>
             <div className="mt-0.5 flex items-center gap-2 flex-wrap">
               {freqLabel && (
@@ -185,6 +221,11 @@ export function MedicationCard({
               {freqLabel && <span className="text-xs text-muted-foreground/40">·</span>}
               <span className="text-xs text-muted-foreground">Started {startedLabel}</span>
             </div>
+            {supply && !stopped && supply.isLow && (
+              <p className="text-xs mt-1 font-medium text-amber-600 dark:text-amber-400">
+                {supply.isEmpty ? 'Supply used up — start a new supply' : 'Running low — time to reorder'}
+              </p>
+            )}
             {!stopped && nextDueLabel && (
               <p className={`text-xs mt-1 font-medium ${
                 nextDueLabel.startsWith('Overdue') || nextDueLabel === 'Due now'
@@ -203,6 +244,18 @@ export function MedicationCard({
         {/* ── Expanded body ─────────────────────────────────────────────────── */}
         {expanded && (
           <div id={`med-card-body-${startEvent.id}`} className="border-t border-border/40">
+            {supply && (
+              <p className="px-4 pt-3 text-xs text-muted-foreground">
+                Current supply started{' '}
+                <span className="font-medium text-foreground">
+                  {new Date(supply.startedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                {' '}with {supply.quantity} {supply.unit}
+                {supply.daysLeft !== null && !supply.isEmpty && (
+                  <> · runs out ~{new Date(Date.now() + supply.daysLeft * 86_400_000).toLocaleDateString([], { month: 'short', day: 'numeric' })}</>
+                )}
+              </p>
+            )}
             {/* Dose timeline */}
             <div className="px-4 py-3 space-y-2 max-h-72 overflow-y-auto">
               {visibleTimeline.length === 0 ? (
@@ -230,10 +283,41 @@ export function MedicationCard({
                     )
                   }
 
+                  if (row.type === 'refill') {
+                    const event = row.event
+                    const rd = event.details as Record<string, unknown>
+                    // Sitters may only edit entries they logged (CareEventPolicy)
+                    const canEdit = !isSitter || event.logged_by_id === currentUserId
+                    return (
+                      <div key={`refill-${event.id}`}>
+                        {showDay && (
+                          <p className="text-xs text-muted-foreground/60 font-medium mb-1 mt-2 first:mt-0">{day}</p>
+                        )}
+                        <div className="flex items-center gap-2 text-xs">
+                          <PackageOpen className="size-3 text-sky-500 shrink-0" aria-hidden="true" />
+                          <span className="text-foreground font-medium">
+                            New supply · {String(rd.supply_quantity)} {(rd.supply_unit as string) ?? supply?.unit ?? ''}
+                          </span>
+                          <span className="text-muted-foreground">· {formatTime(event.occurred_at)} · {memberLabel(event)}</span>
+                          {event.notes && (
+                            <span className="text-muted-foreground truncate">· {event.notes}</span>
+                          )}
+                          {canEdit && supply && (
+                            <button
+                              onClick={() => setEditingRefill(event)}
+                              className="ml-auto text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded"
+                              aria-label="Edit new supply entry"
+                            >
+                              <Pencil className="size-3" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  }
+
                   const event = row.event
-                  const who = event.logged_by_id === currentUserId
-                    ? 'You'
-                    : (memberMap.get(event.logged_by_id) ?? 'Someone')
+                  const who = memberLabel(event)
 
                   return (
                     <div key={event.id}>
@@ -276,6 +360,17 @@ export function MedicationCard({
                   >
                     Log dose
                   </button>
+                  {supply && (
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <button
+                        onClick={() => setShowNewSupply(true)}
+                        className="text-xs text-sky-600 dark:text-sky-400 font-medium hover:underline"
+                      >
+                        New supply
+                      </button>
+                    </>
+                  )}
                   {!isSitter && (
                     <>
                       <span className="text-muted-foreground/40">·</span>
@@ -308,7 +403,19 @@ export function MedicationCard({
           catId={catId}
           householdId={householdId}
           startEvent={startEvent}
+          supply={supply}
           onClose={() => setShowLog(false)}
+        />
+      )}
+
+      {(showNewSupply || editingRefill) && supply && (
+        <NewSupplySheet
+          catId={catId}
+          householdId={householdId}
+          startEvent={startEvent}
+          supply={supply}
+          editEvent={editingRefill ?? undefined}
+          onClose={() => { setShowNewSupply(false); setEditingRefill(null) }}
         />
       )}
 

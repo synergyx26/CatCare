@@ -342,7 +342,9 @@ BackupExport    — kind (csv), status [pending|ok|failed], byte_size, checksum_
 - feeding: `{ food_type, amount_grams, unit }` — unit is free-text (grams, packs, etc.)
 - weight: `{ weight_value, weight_unit }`
 - medication: `{ medication_name, dosage?, unit?, active_medication?: bool, stopped?: bool, frequency?: MedicationFrequency, course_end_date?: string }` — unit is `mg` | `ml` | `tablet`; `active_medication: true` marks a regimen start event; `frequency` values: `once_daily | twice_daily | every_8h | every_12h | every_other_day | every_3_days | every_week | as_needed`
+- medication supply countdown (optional): start event holds the initial count snapshot + settings `{ supply_quantity, supply_refilled_at (ISO UTC), supply_unit, supply_per_dose, supply_low_threshold? }`. Each new supply (e.g. new inhaler) is its **own** medication event `{ medication_name, supply_refill: true, supply_quantity, supply_unit }` counted at `occurred_at`; newest snapshot wins. Dose events may carry `supply_used`. Remaining is **derived** (`getMedicationSupply` in `helpers.ts`) — never store a decremented counter. Validated server-side in `CareEvent#medication_supply_details`.
 - cat appearance: `{ pattern, fur, fur2?, fur3?, eyes }` — pattern ∈ `solid|tabby|tuxedo|bicolor|calico|tortoiseshell|colorpoint`, colours `#rrggbb`; fur2/fur3 meaning depends on pattern (stripes / white / orange+dark patches / points). Validated + normalised in `Cat#appearance_shape`; PATCH `{ cat: { appearance: null } }` clears it.
+- medication event roles: start (`active_medication: true`), new supply (`supply_refill: true`), dose (anything else). **Always classify with `isMedicationDose` / `isMedicationRefill` from `helpers.ts`** — checking only `active_medication !== true` counts new-supply entries as doses.
 
 ---
 
@@ -459,7 +461,8 @@ web/src/
       MedicationsSection.tsx  — focused medication query; active/stopped split; Stop + Reactivate mutations; tier guard on Log
       MedicationCard.tsx      — single regimen card; header shows name/dosage/frequency/course-remaining; next-due label computed from last DOSE only (never from start event); expanded body shows dose timeline with missed-dose markers; Stop/Reactivate/Edit/Log dose actions
       AddMedicationModal.tsx  — start or edit a medication regimen; fields: name, dosage+unit, frequency (all 8 options), start date, finite-course toggle+end date, notes; onSuccess invalidates `['care_events']` broadly
-      QuickLogDoseSheet.tsx   — bottom sheet to log a dose for a specific regimen; pre-fills medication name from start event
+      QuickLogDoseSheet.tsx   — bottom sheet to log a dose for a specific regimen; pre-fills medication name from start event; records `supply_used` when the regimen tracks supply
+      NewSupplySheet.tsx      — log/edit/delete a "new supply started" event (e.g. new inhaler): quantity, backdatable start time, notes; shown in MedicationCard timeline
     dashboard/catTaskSummary.tsx — summarizeCatTasks() (pending/done + task counts), getMedicationStartDetails(), CatCareInfo, ToothIcon; shared by CatTaskCard + PlayfulCatCard so both agree on what's pending
     playful/                — playful-UI preview only (see VITE_PLAYFUL_UI_ENABLED): AnimatedCat (SVG cat, moods happy|hungry|sleep|party, coatForCat by id), PlayfulCatCard, PlayfulDashboardHero, PeekingCat, effects.ts, CatLookEditor (Edit Cat page "Cartoon look": Match from photo, pattern/colour pickers, saves appearance separately from the main form)
     reminders/

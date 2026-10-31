@@ -31,6 +31,9 @@ type SymptomSeverity = 'mild' | 'moderate' | 'severe'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// details keys LogCareModal edits directly for medication events
+const MEDICATION_FORM_KEYS = ['medication_name', 'dosage', 'unit', 'active_medication', 'frequency']
+
 const CARE_TYPES: { value: EventType; label: string }[] = [
   { value: 'feeding',        label: 'Feeding'        },
   { value: 'tooth_brushing', label: 'Toothbrushing'  },
@@ -287,7 +290,19 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
       return { weight_value: parseFloat(weightValue), weight_unit: weightUnit }
     }
     if (eventType === 'medication') {
+      // This form only owns name/dosage/unit and the start-event flag/frequency.
+      // Everything else (stopped, course_end_date, supply tracking, supply_refill,
+      // supply_used) must survive an edit — rebuilding from scratch silently
+      // stripped it. Dropped when the event's role changes (dose <-> start) so
+      // start-only settings don't leak onto a dose.
+      const preserved: Record<string, unknown> = {}
+      if (isEditing && initialEvent?.event_type === 'medication' && isStartMedication === initIsStartMedication) {
+        for (const [key, value] of Object.entries(initDetails)) {
+          if (!MEDICATION_FORM_KEYS.includes(key)) preserved[key] = value
+        }
+      }
       return {
+        ...preserved,
         medication_name: medicationName.trim(),
         ...(medicationDosage ? { dosage: medicationDosage, unit: medicationUnit === 'other' ? customMedUnit.trim() || 'other' : medicationUnit } : {}),
         ...(isStartMedication ? {

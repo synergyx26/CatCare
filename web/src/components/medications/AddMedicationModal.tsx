@@ -13,6 +13,9 @@ type MedUnit = string
 const PRESET_UNITS = ['mg', 'ml', 'tablet'] as const
 const isPresetUnit = (u: string) => (PRESET_UNITS as readonly string[]).includes(u)
 
+const PRESET_SUPPLY_UNITS = ['puffs', 'tablets', 'ml', 'doses'] as const
+const isPresetSupplyUnit = (u: string) => (PRESET_SUPPLY_UNITS as readonly string[]).includes(u)
+
 const FREQUENCIES: { value: MedicationFrequency; label: string }[] = [
   { value: 'once_daily',      label: FREQUENCY_LABELS.once_daily      },
   { value: 'twice_daily',     label: FREQUENCY_LABELS.twice_daily     },
@@ -69,12 +72,36 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
   )
   const [notes, setNotes]             = useState(editEvent?.notes ?? '')
 
+  // Supply countdown. When the regimen already tracks supply, the count itself is
+  // only changed by logging a new supply on the medication card — editing here
+  // would silently reset the snapshot and lose track of doses given since.
+  const wasTrackingSupply = prefill?.supply_quantity != null && !!prefill?.supply_refilled_at
+  const prefillSupplyUnit = (prefill?.supply_unit as string) ?? 'puffs'
+  const [trackSupply, setTrackSupply]       = useState(wasTrackingSupply)
+  const [supplyQuantity, setSupplyQuantity] = useState('')
+  const [supplyUnit, setSupplyUnit]         = useState(isPresetSupplyUnit(prefillSupplyUnit) ? prefillSupplyUnit : 'other')
+  const [customSupplyUnit, setCustomSupplyUnit] = useState(isPresetSupplyUnit(prefillSupplyUnit) ? '' : prefillSupplyUnit)
+  const [supplyPerDose, setSupplyPerDose]   = useState(String(prefill?.supply_per_dose ?? 1))
+  const [lowThreshold, setLowThreshold]     = useState(
+    prefill?.supply_low_threshold != null ? String(prefill.supply_low_threshold) : ''
+  )
+
   // Keep unit in sync when dosage is cleared
   useEffect(() => {
     if (!dosage) { setUnit('mg'); setCustomUnit('') }
   }, [dosage])
 
-  const canSubmit = name.trim().length > 0
+  const needsSupplyCount   = trackSupply && !wasTrackingSupply
+  const resolvedSupplyUnit = supplyUnit === 'other' ? customSupplyUnit.trim() : supplyUnit
+  const isNonNegative = (v: string) => v.trim() !== '' && Number.isFinite(Number(v)) && Number(v) >= 0
+  const supplyValid = !trackSupply || (
+    resolvedSupplyUnit.length > 0 &&
+    isNonNegative(supplyPerDose) && Number(supplyPerDose) > 0 &&
+    (!needsSupplyCount || isNonNegative(supplyQuantity)) &&
+    (lowThreshold.trim() === '' || isNonNegative(lowThreshold))
+  )
+
+  const canSubmit = name.trim().length > 0 && supplyValid
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -84,6 +111,15 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
         ...(dosage ? { dosage: dosage.trim(), unit: unit === 'other' ? customUnit.trim() || 'other' : unit } : {}),
         ...(frequency ? { frequency } : {}),
         ...(isCourse && courseEndDate ? { course_end_date: courseEndDate } : {}),
+        ...(trackSupply ? {
+          supply_unit:     resolvedSupplyUnit,
+          supply_per_dose: Number(supplyPerDose),
+          ...(lowThreshold.trim() !== '' ? { supply_low_threshold: Number(lowThreshold) } : {}),
+          // New count → snapshot taken now; otherwise carry the existing snapshot forward
+          ...(needsSupplyCount
+            ? { supply_quantity: Number(supplyQuantity), supply_refilled_at: new Date().toISOString() }
+            : { supply_quantity: prefill?.supply_quantity, supply_refilled_at: prefill?.supply_refilled_at }),
+        } : {}),
         // Preserve stopped state when editing a stopped med
         ...(prefill?.stopped ? { stopped: true } : {}),
       }
@@ -267,6 +303,119 @@ export function AddMedicationModal({ catId, householdId, editEvent, onClose }: P
                   value={courseEndDate}
                   onChange={(e) => setCourseEndDate(e.target.value)}
                 />
+              </div>
+            )}
+          </div>
+
+          {/* Supply countdown */}
+          <div className="space-y-2">
+            <label htmlFor="add-med-track-supply" className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                id="add-med-track-supply"
+                type="checkbox"
+                checked={trackSupply}
+                onChange={(e) => setTrackSupply(e.target.checked)}
+                className="size-4 rounded border-border"
+              />
+              <span className="text-sm font-medium">Track remaining supply</span>
+              <span className="text-xs text-muted-foreground">(e.g. inhaler puffs)</span>
+            </label>
+            {trackSupply && (
+              <div className="space-y-3 pl-6">
+                {needsSupplyCount ? (
+                  <div className="space-y-1">
+                    <label htmlFor="add-med-supply-qty" className="text-xs text-muted-foreground">
+                      Amount on hand now <span aria-hidden="true" className="text-destructive">*</span>
+                    </label>
+                    <Input
+                      id="add-med-supply-qty"
+                      type="number"
+                      min="0"
+                      step="any"
+                      inputMode="decimal"
+                      value={supplyQuantity}
+                      onChange={(e) => setSupplyQuantity(e.target.value)}
+                      placeholder="e.g. 120"
+                      className="w-28"
+                      aria-required="true"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Use <span className="font-medium">New supply</span> on the medication card when you open a new pack or inhaler.
+                  </p>
+                )}
+
+                <div className="space-y-1">
+                  <p id="add-med-supply-unit-label" className="text-xs text-muted-foreground">Counted in</p>
+                  <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-labelledby="add-med-supply-unit-label">
+                    {([...PRESET_SUPPLY_UNITS, 'other']).map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        role="radio"
+                        aria-checked={supplyUnit === u}
+                        onClick={() => setSupplyUnit(u)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          supplyUnit === u
+                            ? 'bg-red-500 text-white border-red-500'
+                            : 'border-border hover:bg-muted'
+                        }`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                    {supplyUnit === 'other' && (
+                      <Input
+                        type="text"
+                        placeholder="e.g. sachets"
+                        value={customSupplyUnit}
+                        onChange={(e) => setCustomSupplyUnit(e.target.value)}
+                        maxLength={30}
+                        className="w-28"
+                        aria-label="Custom supply unit"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <div className="space-y-1">
+                    <label htmlFor="add-med-supply-per-dose" className="text-xs text-muted-foreground">
+                      Used per dose
+                    </label>
+                    <Input
+                      id="add-med-supply-per-dose"
+                      type="number"
+                      min="0"
+                      step="any"
+                      inputMode="decimal"
+                      value={supplyPerDose}
+                      onChange={(e) => setSupplyPerDose(e.target.value)}
+                      className="w-24"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="add-med-supply-low" className="text-xs text-muted-foreground">
+                      Reorder when at or below
+                    </label>
+                    <Input
+                      id="add-med-supply-low"
+                      type="number"
+                      min="0"
+                      step="any"
+                      inputMode="decimal"
+                      value={lowThreshold}
+                      onChange={(e) => setLowThreshold(e.target.value)}
+                      placeholder="20% left"
+                      className="w-28"
+                      aria-describedby="add-med-supply-low-hint"
+                    />
+                  </div>
+                </div>
+                <p id="add-med-supply-low-hint" className="text-xs text-muted-foreground">
+                  Leave the reorder level blank to be warned at 20% remaining. Allow for pharmacy lead time.
+                </p>
               </div>
             )}
           </div>

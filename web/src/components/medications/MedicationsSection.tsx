@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Lock, Plus } from 'lucide-react'
 import { api } from '@/api/client'
 import { useEffectiveTier } from '@/hooks/useEffectiveTier'
-import { formatTime } from '@/lib/helpers'
+import { formatTime, getMedicationSupply, formatSupplyLabel, isMedicationDose, isMedicationRefill, isMedicationCourseOver } from '@/lib/helpers'
+import type { MedicationSupply } from '@/lib/helpers'
 import { notify } from '@/lib/notify'
 import type { CareEvent, MemberRole } from '@/types/api'
 
@@ -34,17 +35,18 @@ export function MedicationsSection({ householdId, catId, currentRole, onOpenModa
   )
 
   // Build summary: newest start event per medication name
-  const summaryMap = new Map<string, { lastAt: string; dosage: string; unit: string; stopped: boolean }>()
+  const summaryMap = new Map<string, { startEvent: CareEvent; lastAt: string; dosage: string; unit: string; stopped: boolean }>()
   for (const event of medicationEvents) {
     const d = event.details as Record<string, unknown>
     if (d.active_medication !== true) continue
     const name = (d.medication_name as string) || 'Unknown medication'
     if (!summaryMap.has(name)) {
       summaryMap.set(name, {
+        startEvent: event,
         lastAt:  event.occurred_at,
         dosage:  (d.dosage as string) ?? '',
         unit:    (d.unit   as string) ?? '',
-        stopped: d.stopped === true,
+        stopped: d.stopped === true || isMedicationCourseOver(d),
       })
     }
   }
@@ -52,12 +54,24 @@ export function MedicationsSection({ householdId, catId, currentRole, onOpenModa
   // Also account for dose events to find the actual last-given time
   const lastDoseMap = new Map<string, string>()
   for (const event of medicationEvents) {
+    if (!isMedicationDose(event)) continue
     const d = event.details as Record<string, unknown>
-    if (d.active_medication === true) continue
     const name = (d.medication_name as string) || 'Unknown medication'
     if (!lastDoseMap.has(name)) {
       lastDoseMap.set(name, event.occurred_at)
     }
+  }
+
+  // Supply per regimen — dose history scoped to on/after the start event
+  const supplyMap = new Map<string, MedicationSupply | null>()
+  for (const [name, { startEvent }] of summaryMap) {
+    const startMs = new Date(startEvent.occurred_at).getTime()
+    const belongs = (e: CareEvent) =>
+      (((e.details as Record<string, unknown>).medication_name as string) || 'Unknown medication') === name &&
+      new Date(e.occurred_at).getTime() >= startMs
+    const doses   = medicationEvents.filter((e) => isMedicationDose(e) && belongs(e))
+    const refills = medicationEvents.filter((e) => isMedicationRefill(e) && belongs(e))
+    supplyMap.set(name, getMedicationSupply(startEvent, doses, refills))
   }
 
   const active  = Array.from(summaryMap.entries()).filter(([, v]) => !v.stopped)
@@ -101,12 +115,24 @@ export function MedicationsSection({ householdId, catId, currentRole, onOpenModa
 
         {active.map(([name, { dosage, unit }]) => {
           const lastAt = lastDoseMap.get(name) ?? summaryMap.get(name)!.lastAt
+          const supply = supplyMap.get(name)
           return (
             <div key={name} className="flex items-center justify-between gap-3 text-sm">
               <div className="min-w-0">
                 <p className="font-medium truncate text-sm">{name}</p>
                 {dosage && (
                   <p className="text-xs text-muted-foreground">{dosage} {unit}</p>
+                )}
+                {supply && (
+                  <p className={`text-xs ${
+                    supply.isEmpty
+                      ? 'text-red-600 dark:text-red-400 font-medium'
+                      : supply.isLow
+                        ? 'text-amber-600 dark:text-amber-400 font-medium'
+                        : 'text-muted-foreground'
+                  }`}>
+                    {formatSupplyLabel(supply)}{supply.isLow && !supply.isEmpty ? ' · reorder' : ''}
+                  </p>
                 )}
               </div>
               <span className="text-xs text-muted-foreground shrink-0">

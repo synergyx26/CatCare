@@ -1,4 +1,5 @@
 import type { Cat, CatStats, CareEvent, CareNote } from '@/types/api'
+import { isMedicationRefill } from '@/lib/helpers'
 
 export interface MedicationRow {
   date: string
@@ -47,6 +48,7 @@ export function assembleVetSummary(
 
   const medicationRows: MedicationRow[] = medicationEvents
     .filter(inRange)
+    .filter((e) => !isMedicationRefill(e))
     .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
     .map((e) => {
       const d = e.details as Record<string, unknown>

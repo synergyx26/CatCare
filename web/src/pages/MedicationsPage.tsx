@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
 import { MedicationCard } from '@/components/medications/MedicationCard'
 import { AddMedicationModal } from '@/components/medications/AddMedicationModal'
+import { isMedicationRefill, isMedicationCourseOver } from '@/lib/helpers'
 import type { Cat, CareEvent, Household } from '@/types/api'
 
 export function MedicationsPage() {
@@ -69,12 +70,14 @@ export function MedicationsPage() {
     name: string
     startEvent: CareEvent
     doseHistory: CareEvent[]
+    refills: CareEvent[]
     stopped: boolean
   }
 
   // Build regimen map: newest start event per medication name
   const regimenMap = new Map<string, Regimen>()
   const dosesByName = new Map<string, CareEvent[]>()
+  const refillsByName = new Map<string, CareEvent[]>()
 
   for (const event of allMedEvents) {
     const d = event.details as Record<string, unknown>
@@ -87,9 +90,15 @@ export function MedicationsPage() {
           name:       medName,
           startEvent: event,
           doseHistory: [],
-          stopped:    d.stopped === true,
+          refills:    [],
+          stopped:    d.stopped === true || isMedicationCourseOver(d),
         })
       }
+    } else if (isMedicationRefill(event)) {
+      // New supply started — feeds the supply countdown, not adherence
+      const existing = refillsByName.get(medName) ?? []
+      existing.push(event)
+      refillsByName.set(medName, existing)
     } else {
       // Dose log — collect for the matching regimen
       const existing = dosesByName.get(medName) ?? []
@@ -104,6 +113,9 @@ export function MedicationsPage() {
     const startMs = new Date(regimen.startEvent.occurred_at).getTime()
     regimen.doseHistory = (dosesByName.get(name) ?? []).filter(
       d => new Date(d.occurred_at).getTime() >= startMs
+    )
+    regimen.refills = (refillsByName.get(name) ?? []).filter(
+      r => new Date(r.occurred_at).getTime() >= startMs
     )
   }
 
@@ -198,6 +210,7 @@ export function MedicationsPage() {
                       name={regimen.name}
                       startEvent={regimen.startEvent}
                       doseHistory={regimen.doseHistory}
+                      refills={regimen.refills}
                       memberMap={memberMap}
                       currentUserId={user?.id ?? 0}
                       isSitter={isSitter}
@@ -227,6 +240,7 @@ export function MedicationsPage() {
                           name={regimen.name}
                           startEvent={regimen.startEvent}
                           doseHistory={regimen.doseHistory}
+                      refills={regimen.refills}
                           memberMap={memberMap}
                           currentUserId={user?.id ?? 0}
                           isSitter={isSitter}

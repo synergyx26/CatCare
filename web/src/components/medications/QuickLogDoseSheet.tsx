@@ -6,6 +6,7 @@ import { api } from '@/api/client'
 import { notify } from '@/lib/notify'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import type { MedicationSupply } from '@/lib/helpers'
 import type { ApiError, CareEvent } from '@/types/api'
 
 function toLocalDateTimeInput(date: Date): string {
@@ -18,10 +19,12 @@ interface Props {
   householdId: number
   /** The "start" event for this medication — provides name, dosage, unit */
   startEvent: CareEvent
+  /** Present when the regimen tracks supply — enables the "used" input */
+  supply?: MedicationSupply | null
   onClose: () => void
 }
 
-export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: Props) {
+export function QuickLogDoseSheet({ catId, householdId, startEvent, supply, onClose }: Props) {
   const queryClient = useQueryClient()
   const d = startEvent.details as Record<string, unknown>
 
@@ -31,6 +34,14 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
 
   const [occurredAt, setOccurredAt] = useState(toLocalDateTimeInput(new Date()))
   const [notes, setNotes]           = useState(startEvent.notes ?? '')
+
+  const [supplyUsed, setSupplyUsed] = useState(supply ? String(supply.perDose) : '')
+  const supplyUsedValid = !supply || (
+    supplyUsed.trim() !== '' && Number.isFinite(Number(supplyUsed)) && Number(supplyUsed) >= 0
+  )
+  const remainingAfter = supply && supplyUsedValid
+    ? Math.max(0, Math.round((supply.remaining - Number(supplyUsed)) * 100) / 100)
+    : null
 
   const doseLabel = dosage ? `${dosage} ${unit}` : null
 
@@ -45,6 +56,8 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
           details: {
             medication_name: medicationName,
             ...(dosage ? { dosage, unit } : {}),
+            // Recorded on the dose so later changes to supply_per_dose don't rewrite history
+            ...(supply ? { supply_used: Number(supplyUsed) } : {}),
             // No active_medication flag — this is a dose log, not a start event
           },
         },
@@ -102,6 +115,31 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
             />
           </div>
 
+          {/* Supply used */}
+          {supply && (
+            <div className="space-y-1">
+              <label htmlFor="dose-supply-used" className="text-sm font-medium">
+                {supply.unit.charAt(0).toUpperCase() + supply.unit.slice(1)} used
+              </label>
+              <Input
+                id="dose-supply-used"
+                type="number"
+                min="0"
+                step="any"
+                inputMode="decimal"
+                value={supplyUsed}
+                onChange={(e) => setSupplyUsed(e.target.value)}
+                className="w-28"
+                aria-describedby="dose-supply-remaining"
+              />
+              {remainingAfter !== null && (
+                <p id="dose-supply-remaining" className="text-xs text-muted-foreground">
+                  {remainingAfter} {supply.unit} left after this dose
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Notes */}
           <div className="space-y-1">
             <label htmlFor="dose-notes" className="text-sm font-medium">
@@ -138,7 +176,7 @@ export function QuickLogDoseSheet({ catId, householdId, startEvent, onClose }: P
             <button
               type="button"
               onClick={() => mutation.mutate()}
-              disabled={mutation.isPending}
+              disabled={!supplyUsedValid || mutation.isPending}
               className="px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium disabled:opacity-40 hover:bg-red-600 transition-colors"
             >
               {mutation.isPending ? 'Logging…' : 'Log dose'}

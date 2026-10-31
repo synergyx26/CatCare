@@ -11,7 +11,7 @@ export function isCatBirthday(birthday: string | null): boolean {
 
 // Parses a YYYY-MM-DD string as local midnight, avoiding the UTC-shift
 // that `new Date("YYYY-MM-DD")` introduces for users west of UTC.
-function parseLocalDate(dateStr: string): Date {
+export function parseLocalDate(dateStr: string): Date {
   const [year, month, day] = dateStr.split('-').map(Number)
   return new Date(year, month - 1, day)
 }
@@ -97,6 +97,10 @@ export function formatEventSummary(event: CareEvent): string {
     }
     case 'medication': {
       const name = d.medication_name as string
+      if (isMedicationRefill(event)) {
+        const qty = d.supply_quantity != null ? ` · ${d.supply_quantity} ${(d.supply_unit as string) ?? ''}`.trimEnd() : ''
+        return `${name || 'Medication'} · New supply${qty}`
+      }
       const dosage = d.dosage as string
       const unit = d.unit as string
       if (!name) return 'Medication'
@@ -154,6 +158,36 @@ export const EVENT_TYPE_LABEL: Record<EventType, string> = {
 }
 
 // ─── Medication Adherence Helpers ─────────────────────────────────────────────
+
+// A medication CareEvent is one of three things:
+//   start event  — details.active_medication === true (regimen definition)
+//   refill event — details.supply_refill === true (new pack/inhaler opened)
+//   dose         — anything else
+// Always classify through these helpers so refills never count as doses.
+
+export function isMedicationRefill(event: CareEvent): boolean {
+  return (event.details as Record<string, unknown>).supply_refill === true
+}
+
+export function isMedicationDose(event: CareEvent): boolean {
+  const d = event.details as Record<string, unknown>
+  return event.event_type === 'medication' && d.active_medication !== true && d.supply_refill !== true
+}
+
+/** End of the last day of a finite course (local time), or null when the course is open-ended. */
+export function getCourseEndMs(details: Record<string, unknown>): number | null {
+  const end = details.course_end_date
+  if (typeof end !== 'string' || !end) return null
+  const d = parseLocalDate(end)
+  d.setHours(23, 59, 59, 999)
+  return d.getTime()
+}
+
+/** True once the final day of a finite course has passed. Open-ended regimens never finish. */
+export function isMedicationCourseOver(details: Record<string, unknown>, now = Date.now()): boolean {
+  const endMs = getCourseEndMs(details)
+  return endMs !== null && now > endMs
+}
 
 const FREQUENCY_HOURS: Record<MedicationFrequency, number | null> = {
   once_daily:      24,
@@ -246,7 +280,7 @@ export function getActiveMedicationTasks(
     // Only count doses that belong to this regimen (at or after the start event)
     const dosesGivenToday = catEvents.filter(e => {
       const d = e.details as Record<string, unknown>
-      if (d.active_medication === true) return false
+      if (!isMedicationDose(e)) return false
       if ((d.medication_name as string) !== name) return false
       const t = new Date(e.occurred_at).getTime()
       return t >= todayStart.getTime() && t <= todayEnd.getTime() && t >= startedAt
@@ -261,7 +295,7 @@ export function getActiveMedicationTasks(
       // Only consider doses on or after the start event
       const lastDose = catEvents.find(e => {
         const d = e.details as Record<string, unknown>
-        if (d.active_medication === true) return false
+        if (!isMedicationDose(e)) return false
         if ((d.medication_name as string) !== name) return false
         return new Date(e.occurred_at).getTime() >= startedAt
       })
@@ -312,6 +346,104 @@ export function getNextDoseLabel(
   return `Due in ~${Math.round(diffHours)}h`
 }
 
+// ─── Medication Supply Countdown ──────────────────────────────────────────────
+
+/** Share of the counted quantity at which "reorder soon" kicks in when no explicit threshold is set. */
+const DEFAULT_LOW_SUPPLY_FRACTION = 0.2
+
+export interface MedicationSupply {
+  unit: string
+  /** Amount counted when the current supply started */
+  quantity: number
+  /** When the current supply started (ISO) */
+  startedAt: string
+  perDose: number
+  /** Never negative — an over-count means the snapshot is stale, not that supply went below zero */
+  remaining: number
+  lowThreshold: number
+  isLow: boolean
+  isEmpty: boolean
+  /** Whole days of supply left at the scheduled rate; null for as-needed / unknown frequency */
+  daysLeft: number | null
+}
+
+/**
+ * Derives remaining supply for a regimen. The current supply starts at the newest
+ * count snapshot: the start event's initial count (supply_quantity at
+ * supply_refilled_at) or a later refill event (supply_quantity at occurred_at).
+ * Each dose logged at or after that moment consumes its supply_used (or the
+ * regimen's supply_per_dose when the dose was logged from a surface that doesn't
+ * set it). Derived rather than decremented so edited/deleted/backdated doses and
+ * refills stay accurate. doses/refills must belong to this regimen (same
+ * medication name, on/after the start event). Returns null when supply tracking
+ * is off for the regimen.
+ */
+export function getMedicationSupply(
+  startEvent: CareEvent,
+  doses: CareEvent[],
+  refills: CareEvent[] = []
+): MedicationSupply | null {
+  const d = startEvent.details as Record<string, unknown>
+  const initialQuantity = Number(d.supply_quantity)
+  const initialAt       = d.supply_refilled_at as string | undefined
+  if (d.supply_quantity == null || !Number.isFinite(initialQuantity) || !initialAt) return null
+
+  let quantity   = initialQuantity
+  let refilledAt = initialAt
+  for (const refill of refills) {
+    const refillQuantity = Number((refill.details as Record<string, unknown>).supply_quantity)
+    if (!Number.isFinite(refillQuantity)) continue
+    if (new Date(refill.occurred_at).getTime() >= new Date(refilledAt).getTime()) {
+      quantity   = refillQuantity
+      refilledAt = refill.occurred_at
+    }
+  }
+
+  const perDoseRaw = Number(d.supply_per_dose)
+  const perDose    = Number.isFinite(perDoseRaw) && perDoseRaw > 0 ? perDoseRaw : 1
+  const refilledMs = new Date(refilledAt).getTime()
+
+  let used = 0
+  for (const dose of doses) {
+    if (new Date(dose.occurred_at).getTime() < refilledMs) continue
+    const doseUsed = Number((dose.details as Record<string, unknown>).supply_used)
+    used += Number.isFinite(doseUsed) && doseUsed >= 0 ? doseUsed : perDose
+  }
+
+  // Round away float noise from fractional doses (e.g. 0.1 ml)
+  const remaining = Math.max(0, Math.round((quantity - used) * 100) / 100)
+
+  const thresholdRaw = Number(d.supply_low_threshold)
+  const lowThreshold = d.supply_low_threshold != null && Number.isFinite(thresholdRaw)
+    ? thresholdRaw
+    : Math.ceil(quantity * DEFAULT_LOW_SUPPLY_FRACTION)
+
+  const frequency     = d.frequency as MedicationFrequency | undefined
+  const intervalHours = frequency ? FREQUENCY_HOURS[frequency] : null
+  const dailyUse      = intervalHours ? (24 / intervalHours) * perDose : null
+
+  return {
+    unit:     (d.supply_unit as string) || 'doses',
+    quantity,
+    startedAt: refilledAt,
+    perDose,
+    remaining,
+    lowThreshold,
+    isEmpty:  remaining <= 0,
+    isLow:    remaining <= lowThreshold,
+    daysLeft: dailyUse ? Math.floor(remaining / dailyUse) : null,
+  }
+}
+
+/** e.g. "42 puffs left · ~21 days" */
+export function formatSupplyLabel(supply: MedicationSupply): string {
+  if (supply.isEmpty) return `Out of ${supply.unit}`
+  const days = supply.daysLeft === null
+    ? ''
+    : ` · ~${supply.daysLeft} day${supply.daysLeft === 1 ? '' : 's'}`
+  return `${supply.remaining} ${supply.unit} left${days}`
+}
+
 export type DoseTimelineRow =
   | { type: 'dose'; event: CareEvent }
   | { type: 'missed'; expectedAt: string }
@@ -321,11 +453,13 @@ export type DoseTimelineRow =
  * Inserts "missed" rows wherever a dose gap exceeds the expected interval.
  * startAt is the occurred_at of the "start" event (active_medication: true).
  * doses should be sorted newest-first on entry; output is also newest-first.
+ * endAtMs caps a finite course: no expected slots (so no "missed" rows) after it.
  */
 export function buildDoseTimeline(
   frequency: MedicationFrequency | null | undefined,
   startAt: string,
-  doses: CareEvent[]
+  doses: CareEvent[],
+  endAtMs: number | null = null,
 ): DoseTimelineRow[] {
   const intervalHours = frequency ? FREQUENCY_HOURS[frequency] : null
 
@@ -352,7 +486,9 @@ export function buildDoseTimeline(
   let expectedMs = startMs + intervalMs
   let doseIndex = 0
 
-  while (expectedMs <= now + intervalMs) {
+  const horizon = endAtMs === null ? now + intervalMs : Math.min(endAtMs, now + intervalMs)
+
+  while (expectedMs <= horizon) {
     const dose = sorted[doseIndex]
     if (dose) {
       const doseMs = new Date(dose.occurred_at).getTime()

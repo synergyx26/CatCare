@@ -259,7 +259,12 @@ export const FREQUENCY_LABELS: Record<MedicationFrequency, string> = {
 //   weight:     { weight_value: number, weight_unit: 'kg'|'g' }
 //   medication: { medication_name: string, dosage?: string, unit?: 'mg'|'ml'|'tablet',
 //                 active_medication?: boolean, stopped?: boolean,
-//                 frequency?: MedicationFrequency, course_end_date?: string }
+//                 frequency?: MedicationFrequency, course_end_date?: string,
+//                 // Supply countdown (start event): count snapshot + consumption rate
+//                 supply_quantity?: number, supply_refilled_at?: string (ISO UTC),
+//                 supply_unit?: string, supply_per_dose?: number, supply_low_threshold?: number,
+//                 // Dose event: amount consumed, overrides supply_per_dose
+//                 supply_used?: number }
 //   vet_visit:  { reason: string, vet_name?: string, vet_clinic?: string }
 //   grooming:   { grooming_type: 'bath'|'nail_trim'|'full_groom'|'other' }
 //   symptom:    { symptom_type: SymptomType, severity?: 'mild'|'moderate'|'severe', duration_minutes?: number }
