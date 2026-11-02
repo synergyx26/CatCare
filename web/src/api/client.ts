@@ -219,6 +219,9 @@ export const api = {
   }) =>
     apiClient.patch(`/households/${householdId}/chore_definitions/${definitionId}`, data),
 
+  reorderHouseholdChoreDefinitions: (householdId: number, ids: number[]) =>
+    apiClient.patch(`/households/${householdId}/chore_definitions/reorder`, { ids }),
+
   deleteHouseholdChoreDefinition: (householdId: number, definitionId: number) =>
     apiClient.delete(`/households/${householdId}/chore_definitions/${definitionId}`),
 

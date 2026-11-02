@@ -6,6 +6,7 @@ class HouseholdChoreDefinitionPolicy < ApplicationPolicy
   def create?  = non_sitter?
   def update?  = non_sitter?
   def destroy? = non_sitter?
+  def reorder? = non_sitter?
 
   private
 

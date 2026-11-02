@@ -13,7 +13,7 @@ module Api
       # POST /api/v1/households/:household_id/chore_definitions
       def create
         definition = @household.household_chore_definitions.build(create_params)
-        definition.position = @household.household_chore_definitions.count if definition.position.zero?
+        definition.position = (@household.household_chore_definitions.maximum(:position) || -1) + 1 if definition.position.zero?
         authorize definition
 
         if definition.save
@@ -34,6 +34,24 @@ module Api
         else
           render_error("VALIDATION_ERROR", definition.errors.full_messages.join(", "), status: :unprocessable_entity)
         end
+      end
+
+      # PATCH /api/v1/households/:household_id/chore_definitions/reorder
+      # Body: { ids: [3, 1, 2] } — the complete list of definition ids in the new order.
+      def reorder
+        authorize @household, :reorder?, policy_class: HouseholdChoreDefinitionPolicy
+        definitions = @household.household_chore_definitions
+        ids = Array(params[:ids]).map(&:to_i)
+
+        if ids.uniq.sort != definitions.pluck(:id).sort
+          return render_error("VALIDATION_ERROR", "ids must list every chore exactly once",
+                              status: :unprocessable_entity)
+        end
+
+        HouseholdChoreDefinition.transaction do
+          ids.each_with_index { |id, index| definitions.where(id: id).update_all(position: index, updated_at: Time.current) }
+        end
+        render_success(definitions.ordered.map { |d| serialize_definition(d) })
       end
 
       # DELETE /api/v1/households/:household_id/chore_definitions/:id

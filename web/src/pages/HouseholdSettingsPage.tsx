@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { notify } from '@/lib/notify'
-import { Plus, X, Pencil, Check, Lock, PawPrint } from 'lucide-react'
+import { Plus, X, Pencil, Check, Lock, PawPrint, ChevronUp, ChevronDown } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -194,6 +194,34 @@ export function HouseholdSettingsPage() {
     onError: () => notify.error('Failed to remove chore.'),
   })
 
+  const reorderDefinitionsMutation = useMutation({
+    mutationFn: (ids: number[]) => api.reorderHouseholdChoreDefinitions(hid, ids),
+    onMutate: async (ids) => {
+      const key = ['household_chore_definitions', hid]
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData(key)
+      queryClient.setQueryData(key, (old: any) => {
+        if (!old?.data?.data) return old
+        const byId = new Map<number, HouseholdChoreDefinition>(old.data.data.map((d: HouseholdChoreDefinition) => [d.id, d]))
+        return { ...old, data: { ...old.data, data: ids.map((id, position) => ({ ...byId.get(id)!, position })) } }
+      })
+      return { previous }
+    },
+    onError: (_err, _ids, context) => {
+      queryClient.setQueryData(['household_chore_definitions', hid], context?.previous)
+      notify.error('Failed to reorder chores.')
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['household_chore_definitions', hid] }),
+  })
+
+  function moveChore(index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= choreDefinitions.length) return
+    const ids = choreDefinitions.map((d) => d.id)
+    ;[ids[index], ids[target]] = [ids[target], ids[index]]
+    reorderDefinitionsMutation.mutate(ids)
+  }
+
   function handleAddChore() {
     const name = newChoreName.trim()
     if (!name) return
@@ -384,7 +412,7 @@ export function HouseholdSettingsPage() {
         {/* Existing definitions */}
         {choreDefinitions.length > 0 && (
           <div className="divide-y divide-border/30">
-            {choreDefinitions.map((def) => (
+            {choreDefinitions.map((def, index) => (
               <div key={def.id} className="px-4 py-2.5">
                 {editingDefId === def.id ? (
                   <div className="space-y-2">
@@ -442,6 +470,25 @@ export function HouseholdSettingsPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
+                    {/* Reorder */}
+                    <div className="flex flex-col shrink-0">
+                      <button
+                        onClick={() => moveChore(index, -1)}
+                        disabled={index === 0 || reorderDefinitionsMutation.isPending}
+                        className="flex h-4 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        aria-label={`Move ${def.name} up`}
+                      >
+                        <ChevronUp className="size-3.5" />
+                      </button>
+                      <button
+                        onClick={() => moveChore(index, 1)}
+                        disabled={index === choreDefinitions.length - 1 || reorderDefinitionsMutation.isPending}
+                        className="flex h-4 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        aria-label={`Move ${def.name} down`}
+                      >
+                        <ChevronDown className="size-3.5" />
+                      </button>
+                    </div>
                     <span className="text-base w-6 text-center shrink-0">
                       {def.emoji ?? '•'}
                     </span>

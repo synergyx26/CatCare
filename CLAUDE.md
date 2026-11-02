@@ -362,6 +362,7 @@ api/app/controllers/api/v1/
   household_invites_controller.rb — role param + accept flow + Pundit; tier enforcement on create (member limit)
   memberships_controller.rb       — self profile (show/update) + admin manage_update/manage_destroy
   oauth_controller.rb             — POST /api/v1/auth/google; verifies Google ID token via tokeninfo endpoint, finds-or-creates user, returns CatCare JWT
+  household_chore_definitions_controller.rb — chore types CRUD + `PATCH chore_definitions/reorder` (body `{ ids: [...] }`, must list every chore once; renumbers `position` 0..n atomically; non_sitter). Order shown everywhere = `ordered` scope (position, id); new chores append at max+1. UI: up/down arrows in Settings → Household chores (`HouseholdSettingsPage`)
   vacation_trips_controller.rb    — CRUD for household vacation trips; POST /end to close active trip; admin only for create/end
 
 api/app/controllers/concerns/

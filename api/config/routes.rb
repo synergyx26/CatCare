@@ -53,7 +53,9 @@ Rails.application.routes.draw do
         resources :chores, only: [:index, :create, :update, :destroy],
                            controller: "household_chores"
         resources :chore_definitions, only: [:index, :create, :update, :destroy],
-                                      controller: "household_chore_definitions"
+                                      controller: "household_chore_definitions" do
+          collection { patch :reorder }
+        end
         resources :expenses, only: [:index, :create, :update, :destroy],
                              controller: "pet_expenses" do
           collection { get :stats }
