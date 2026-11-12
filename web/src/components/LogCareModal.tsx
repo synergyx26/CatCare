@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffectiveTier } from '@/hooks/useEffectiveTier'
 import { notify } from '@/lib/notify'
-import { X, Lock } from 'lucide-react'
+import { X, Lock, Pill } from 'lucide-react'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -194,6 +194,11 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
   )
   const [isStartMedication,   setIsStartMedication]   = useState(initIsStartMedication)
   const [medicationFrequency, setMedicationFrequency] = useState<MedicationFrequency>(initMedicationFrequency)
+  // Logging a dose of a known regimen (opened from a "med due" button): name, dosage
+  // and unit come from the regimen, so there is nothing to type — show a summary and
+  // just a Log button, like tooth brushing. Manual entry (no prefilled name), editing
+  // and starting a regimen keep the full form.
+  const isKnownDose = !isEditing && !!initialMedicationName && activeMedication !== true
 
   // Vet visit
   const [vetReason,  setVetReason]  = useState((initDetails.reason as string) ?? '')
@@ -589,7 +594,21 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
           )}
 
           {/* Medication fields */}
-          {eventType === 'medication' && (
+          {eventType === 'medication' && isKnownDose && (
+            <div className="flex items-center gap-3 rounded-xl bg-red-50 dark:bg-red-950/20 px-3 py-2.5">
+              <Pill className="size-4 text-red-500 shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{medicationName}</p>
+                {medicationDosage && (
+                  <p className="text-xs text-muted-foreground">
+                    {medicationDosage} {medicationUnit === 'other' ? customMedUnit : medicationUnit}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {eventType === 'medication' && !isKnownDose && (
             <div className="space-y-3">
               <div className="space-y-1">
                 <label htmlFor="med-name" className="text-sm font-medium">
@@ -603,7 +622,7 @@ export function LogCareModal({ cat, householdId, initialEvent, initialType, init
                   aria-required="true"
                   aria-invalid={submitAttempted && !medicationName.trim() ? 'true' : undefined}
                   aria-describedby={submitAttempted && !medicationName.trim() ? 'med-name-error' : undefined}
-                  autoFocus
+                  autoFocus={!medicationName}
                 />
                 {submitAttempted && !medicationName.trim() && (
                   <p id="med-name-error" role="alert" className="text-xs text-destructive mt-1">
