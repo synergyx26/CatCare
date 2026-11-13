@@ -653,32 +653,6 @@ export function DashboardPage() {
               {/* Birthday banner — shown when any active cat has a birthday today */}
               <BirthdayBanner cats={cats} onLog={openNewLog} />
 
-              {/* Needs attention banner — shown above cat cards when any cat has pending tasks.
-                  The playful hero + card bubbles already say who needs what, so it's skipped there. */}
-              {!playful && catsNeedingAttention.length > 0 && (
-                <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-950/10 p-4 space-y-2">
-                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-                    {isVacationMode && vacationCtx
-                      ? `Needs attention (last ${vacationCtx.windowDays}d)`
-                      : 'Needs attention today'}
-                  </p>
-                  {catsNeedingAttention.map(({ cat, missing }) => (
-                    <div key={cat.id} className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-medium truncate">{cat.name}</span>
-                        <span className="text-xs text-muted-foreground">{missing.join(' · ')}</span>
-                      </div>
-                      <button
-                        onClick={() => openNewLog(cat)}
-                        className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline"
-                      >
-                        Log
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {isVacationMode && currentRole === 'sitter' ? (
                 <SitterVisitChecklist
                   cats={cats}
